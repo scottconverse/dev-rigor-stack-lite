@@ -6,3 +6,9 @@
 The Lite adaptation removes the Codex hook runtime and Desktop trust machinery, renames
 the package and entrypoints, makes authorization host-controlled, and replaces private
 hook-ledger requirements with portable evidence artifacts.
+
+`tools/rigor_goals.py` is adapted from the goal engine (`scripts/goals.py`) of
+[`fivetaku/fablize`](https://github.com/fivetaku/fablize), MIT licensed. The adaptation
+renames the tool and its state directory (`./.fablize/` → `./.rigor/`), adds a Windows
+console-encoding guard, and keeps the behavioral contract — sequential stories, evidence
+checkpoints, and a final verification gate — intact.

@@ -16,14 +16,25 @@ jobs:
         with:
           python-version: '3.12'
       - run: python tools/validate_bundle.py
+      - run: python tools/test_rigor_goals.py
       - name: Installer smoke on Linux
         if: runner.os == 'Linux'
         run: |
-          ./install.sh "$RUNNER_TEMP/skills"
+          ./install.sh "$RUNNER_TEMP/skills" --goals "$RUNNER_TEMP/tools" --anchor "$RUNNER_TEMP/CLAUDE.md"
           test "$(find "$RUNNER_TEMP/skills" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 19
+          test -f "$RUNNER_TEMP/tools/rigor_goals.py"
+          grep -qF '<!-- dev-rigor-lite anchor' "$RUNNER_TEMP/CLAUDE.md"
+          # second run must be idempotent: still exactly one managed block
+          ./install.sh "$RUNNER_TEMP/skills" --force --anchor "$RUNNER_TEMP/CLAUDE.md"
+          test "$(grep -cF '<!-- dev-rigor-lite anchor v' "$RUNNER_TEMP/CLAUDE.md")" -eq 1
       - name: Installer smoke on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          .\install.ps1 -Target "$env:RUNNER_TEMP\skills"
+          .\install.ps1 -Target "$env:RUNNER_TEMP\skills" -Goals "$env:RUNNER_TEMP\tools" -Anchor "$env:RUNNER_TEMP\CLAUDE.md"
           if ((Get-ChildItem "$env:RUNNER_TEMP\skills" -Directory).Count -ne 19) { throw 'wrong skill count' }
+          if (-not (Test-Path "$env:RUNNER_TEMP\tools\rigor_goals.py")) { throw 'rigor-goals not installed' }
+          if (-not (Select-String -Path "$env:RUNNER_TEMP\CLAUDE.md" -SimpleMatch '<!-- dev-rigor-lite anchor' -Quiet)) { throw 'anchor block missing' }
+          .\install.ps1 -Target "$env:RUNNER_TEMP\skills" -Force -Anchor "$env:RUNNER_TEMP\CLAUDE.md"
+          $blocks = (Select-String -Path "$env:RUNNER_TEMP\CLAUDE.md" -SimpleMatch '<!-- dev-rigor-lite anchor v' -AllMatches | Measure-Object).Count
+          if ($blocks -ne 1) { throw "expected exactly one managed block, found $blocks" }
