@@ -19,6 +19,11 @@ reproduced before fixing):
 - README precision (also from the report): `rigor-goals` records verification
   evidence, it does not run the command — a workflow-completeness gate, not
   proof enforcement; and one active plan per working tree.
+- **Antigravity anchor path fixed** (Antigravity compatibility report):
+  `.gemini/config` targets now get `AGENTS.md` beside the skills directory —
+  Antigravity reads `AGENTS.md`, not `GEMINI.md` (verified from its own system
+  prompt). Plain `.gemini` targets (Gemini CLI) still get `GEMINI.md`. Both
+  CI-pinned.
 
 ## 0.3.1 - 2026-07-15
 

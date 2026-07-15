@@ -47,10 +47,15 @@ fi
 if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
   # Case-insensitive inference: Windows filesystems are case-insensitive, and
   # install.ps1's -like already matches that way. (Review finding, 0.3.0.)
+  # ~/.gemini is shared by two products: Antigravity (~/.gemini/config/*, reads
+  # AGENTS.md — verified from its own system prompt) and Gemini CLI (~/.gemini/*,
+  # reads GEMINI.md). Antigravity's anchor belongs NEXT TO its config skills dir,
+  # not in the CWD. (Antigravity compatibility report, 0.3.2.)
   target_lc=$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')
   case "$target_lc" in
-    *.claude*) anchor_file=CLAUDE.md ;;
+    *.gemini/config*|*.gemini\\config*) anchor_file=$(dirname -- "$target")/AGENTS.md ;;
     *.gemini*) anchor_file=GEMINI.md ;;
+    *.claude*) anchor_file=CLAUDE.md ;;
     *)         anchor_file=AGENTS.md ;;
   esac
 fi

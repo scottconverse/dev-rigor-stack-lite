@@ -37,6 +37,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/uc" && cd "$RUNNER_TEMP/uc"
           "$GITHUB_WORKSPACE/install.sh" ".CLAUDE/skills"
           test -f CLAUDE.md && test ! -e AGENTS.md
+          # Antigravity: .gemini/config targets get AGENTS.md beside the skills dir,
+          # never GEMINI.md (Antigravity report regression)
+          mkdir -p "$RUNNER_TEMP/ag" && cd "$RUNNER_TEMP/ag"
+          "$GITHUB_WORKSPACE/install.sh" ".gemini/config/skills" --no-goals
+          test -f .gemini/config/AGENTS.md && test ! -e GEMINI.md
+          # Gemini CLI: plain .gemini targets still get GEMINI.md
+          mkdir -p "$RUNNER_TEMP/gcli" && cd "$RUNNER_TEMP/gcli"
+          "$GITHUB_WORKSPACE/install.sh" ".gemini/skills" --no-goals
+          test -f GEMINI.md
           # opt-out + explicit override is a refused contradiction (review regression)
           mkdir -p "$RUNNER_TEMP/conflict" && cd "$RUNNER_TEMP/conflict"
           if "$GITHUB_WORKSPACE/install.sh" skills --no-goals --goals mytools; then

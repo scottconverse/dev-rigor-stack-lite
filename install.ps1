@@ -24,8 +24,15 @@ if (-not $NoGoals -and -not $Goals) {
   $Goals = Join-Path $parent 'tools'
 }
 if (-not $NoAnchor -and -not $Anchor) {
-  if ($Target -like '*.claude*') { $Anchor = 'CLAUDE.md' }
+  # ~/.gemini is shared: Antigravity (config subtree, reads AGENTS.md next to its
+  # skills dir) vs Gemini CLI (reads GEMINI.md). (Antigravity report, 0.3.2.)
+  if ($Target -like '*.gemini*config*') {
+    $anchorParent = Split-Path -Parent $Target
+    if (-not $anchorParent) { $anchorParent = '.' }
+    $Anchor = Join-Path $anchorParent 'AGENTS.md'
+  }
   elseif ($Target -like '*.gemini*') { $Anchor = 'GEMINI.md' }
+  elseif ($Target -like '*.claude*') { $Anchor = 'CLAUDE.md' }
   else { $Anchor = 'AGENTS.md' }
 }
 
