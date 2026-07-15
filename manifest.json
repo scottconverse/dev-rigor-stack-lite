@@ -1,0 +1,35 @@
+{
+  "name": "dev-rigor-stack-lite",
+  "version": "0.1.0",
+  "license": "MIT",
+  "source": {
+    "repository": "https://github.com/scottconverse/codex-dev-rigor-stack",
+    "version": "1.7.0",
+    "commit": "a1a738881d63a3c62b516db5ed748be084e37967"
+  },
+  "format": "agent-skills",
+  "hooks": false,
+  "skill_count": 19,
+  "supported_hosts": ["codex", "claude-code", "google-antigravity", "agent-skills-compatible"],
+  "skills": [
+    "audit-lite",
+    "audit-team-lite",
+    "coder-tdd-qa-lite",
+    "dev-rigor-stack-lite",
+    "dev-rigor-stack-lite-audit-lite",
+    "dev-rigor-stack-lite-audit-team",
+    "dev-rigor-stack-lite-build",
+    "dev-rigor-stack-lite-continuity",
+    "dev-rigor-stack-lite-docs-gate",
+    "dev-rigor-stack-lite-gauntletgate",
+    "dev-rigor-stack-lite-merge-gate",
+    "dev-rigor-stack-lite-plan",
+    "dev-rigor-stack-lite-proof-gate",
+    "dev-rigor-stack-lite-release",
+    "dev-rigor-stack-lite-visitor-audit",
+    "dev-rigor-stack-lite-walkthrough",
+    "gauntletgate-lite",
+    "proof-gate-lite",
+    "visitor-audit-lite"
+  ]
+}

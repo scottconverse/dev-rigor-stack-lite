@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python tools/validate_bundle.py
+      - name: Installer smoke on Linux
+        if: runner.os == 'Linux'
+        run: |
+          ./install.sh "$RUNNER_TEMP/skills"
+          test "$(find "$RUNNER_TEMP/skills" -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 19
+      - name: Installer smoke on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          .\install.ps1 -Target "$env:RUNNER_TEMP\skills"
+          if ((Get-ChildItem "$env:RUNNER_TEMP\skills" -Directory).Count -ne 19) { throw 'wrong skill count' }
