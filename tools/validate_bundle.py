@@ -32,12 +32,38 @@ for name in sorted(expected):
     found_name = re.search(r"(?m)^name:\s*([^\n]+)$", frontmatter)
     if not found_name or found_name.group(1).strip(' \"\'') != name:
         errors.append(f"{name}: frontmatter name does not match directory")
-    if not re.search(r"(?m)^description:\s*(?:>|[^\s].*)$", frontmatter):
-        errors.append(f"{name}: missing description")
+    # A description must have actual content: either inline text, or a block
+    # scalar (>/|) followed by at least one non-empty indented line. A bare
+    # 'description: >' passed the old check. (Gate finding, 0.2.1.)
+    desc = re.search(r"(?m)^description:\s*(.*)$", frontmatter)
+    desc_ok = False
+    if desc:
+        inline = desc.group(1).strip()
+        if inline and inline not in (">", "|", ">-", "|-"):
+            desc_ok = True
+        else:
+            after = frontmatter[desc.end():]
+            desc_ok = bool(re.search(r"(?m)^[ \t]+\S", after))
+    if not desc_ok:
+        errors.append(f"{name}: missing or empty description")
     forbidden = ["DevRigorSTATUS", "DevRigorREPAIR", "evidence-v4-", "hooks.json"]
     for term in forbidden:
         if term in text:
             errors.append(f"{name}: hook-only term remains: {term}")
+    # The hook-free claim covers EVERY file the installers copy, not just
+    # SKILL.md: a hooks.json dropped anywhere in a skill dir would install
+    # wholesale and still validate. (Gate finding, 0.2.1.)
+    for member in sorted((SKILLS / name).rglob("*")):
+        if not member.is_file():
+            continue
+        if member.name in ("hooks.json", "settings.json", "settings.local.json"):
+            errors.append(f"{name}: hook/config file must not ship in a skill dir: {member.relative_to(ROOT)}")
+            continue
+        if member.suffix.lower() in (".md", ".txt", ".json", ".yaml", ".yml") and member.name != "SKILL.md":
+            body = member.read_text(encoding="utf-8", errors="replace")
+            for term in forbidden:
+                if term in body:
+                    errors.append(f"{name}: hook-only term in {member.relative_to(ROOT)}: {term}")
 
 # --- version sync: every version label in skills/ must match the manifest ---
 manifest_version = manifest.get("version", "")

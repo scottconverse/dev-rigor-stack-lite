@@ -122,6 +122,49 @@ class RigorGoalsTest(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("create", (r.stderr + r.stdout).lower())
 
+    def test_no_false_completion_when_stories_failed_or_blocked(self):
+        # Gate finding (critical): a plan whose stories all ended failed/blocked
+        # must never be reported as complete — by checkpoint OR by next.
+        self._create_two()
+        run(self.cwd, "next")
+        run(self.cwd, "checkpoint", "--id", "G001", "--status", "blocked",
+            "--evidence", "stuck")
+        run(self.cwd, "next")
+        r = run(self.cwd, "checkpoint", "--id", "G002", "--status", "failed",
+                "--evidence", "broke")
+        self.assertNotIn("all stories complete", r.stdout,
+                         "failed/blocked plan reported as complete (checkpoint)")
+        self.assertIn("failed", r.stdout.lower())
+        r = run(self.cwd, "next")
+        self.assertNotIn("all stories complete", r.stdout,
+                         "failed/blocked plan reported as complete (next)")
+
+    def test_output_is_pure_ascii(self):
+        # Gate finding (major): non-ASCII output turns into cp1252 mojibake on
+        # stock Windows consoles. The tool's own output must be plain ASCII.
+        self._create_two()
+        run(self.cwd, "next")
+        run(self.cwd, "checkpoint", "--id", "G001", "--status", "complete",
+            "--evidence", "did it")
+        run(self.cwd, "next")
+        chunks = [
+            run(self.cwd, "status").stdout,
+            run(self.cwd, "next").stdout,
+            run(self.cwd, "checkpoint", "--id", "G002", "--status", "complete",
+                "--evidence", "e", "--verify-cmd", "c",
+                "--verify-evidence", "r").stdout,
+            run(self.cwd, "status").stdout,
+        ]
+        # error paths write to stderr — those must be ASCII too
+        chunks.append(run(self.cwd, "checkpoint", "--id", "G001", "--status",
+                          "complete", "--evidence", "x").stderr)  # not active
+        fresh = tempfile.TemporaryDirectory()
+        self.addCleanup(fresh.cleanup)
+        chunks.append(run(fresh.name, "status").stderr)  # no plan
+        for chunk in chunks:
+            self.assertTrue(all(ord(ch) < 128 for ch in chunk),
+                            f"non-ASCII in output: {chunk!r}")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

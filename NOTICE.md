@@ -9,6 +9,7 @@ hook-ledger requirements with portable evidence artifacts.
 
 `tools/rigor_goals.py` is adapted from the goal engine (`scripts/goals.py`) of
 [`fivetaku/fablize`](https://github.com/fivetaku/fablize), MIT licensed. The adaptation
-renames the tool and its state directory (`./.fablize/` → `./.rigor/`), adds a Windows
-console-encoding guard, and keeps the behavioral contract — sequential stories, evidence
-checkpoints, and a final verification gate — intact.
+renames the tool and its state directory (`./.fablize/` → `./.rigor/`), restricts all
+output to plain ASCII so stock Windows consoles render it correctly, and keeps the
+behavioral contract — sequential stories, evidence checkpoints, and a final verification
+gate — intact.

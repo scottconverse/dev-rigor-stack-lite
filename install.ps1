@@ -6,8 +6,17 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Resolve relative paths against PowerShell's ACTUAL working directory ($PWD).
+# [IO.Path]::GetFullPath alone resolves against the process CurrentDirectory,
+# which Set-Location/cd never updates — the documented install commands would
+# silently write into the wrong folder. (Gate finding, 0.2.1.)
+function Resolve-UserPath([string]$p) {
+  return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p)
+}
+
 $source = Join-Path $PSScriptRoot 'skills'
-$targetPath = [IO.Path]::GetFullPath($Target)
+$targetPath = Resolve-UserPath $Target
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
 
 foreach ($skill in Get-ChildItem -LiteralPath $source -Directory) {
@@ -21,14 +30,14 @@ foreach ($skill in Get-ChildItem -LiteralPath $source -Directory) {
 Write-Host "Installed 19 hook-free skills to $targetPath"
 
 if ($Goals) {
-  $goalsDir = [IO.Path]::GetFullPath($Goals)
+  $goalsDir = Resolve-UserPath $Goals
   New-Item -ItemType Directory -Force -Path $goalsDir | Out-Null
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tools\rigor_goals.py') -Destination (Join-Path $goalsDir 'rigor_goals.py') -Force
   Write-Host "Installed rigor-goals to $goalsDir\rigor_goals.py (run: python $goalsDir\rigor_goals.py)"
 }
 
 if ($Anchor) {
-  $anchorFile = [IO.Path]::GetFullPath($Anchor)
+  $anchorFile = Resolve-UserPath $Anchor
   $anchorSrc = Join-Path $PSScriptRoot 'anchor\anchor.md'
   # UTF-8 without BOM: a BOM breaks some hosts' instructions-file parsing.
   $utf8NoBom = New-Object System.Text.UTF8Encoding($false)

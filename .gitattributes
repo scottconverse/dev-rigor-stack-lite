@@ -1,0 +1,9 @@
+# Pin line endings so a core.autocrlf=true checkout (Git for Windows' suggested
+# default) cannot produce CRLF working copies of files whose byte content matters:
+# install.sh's anchor block handling compares text across runs, and *.sh must be
+# LF to run under sh at all. (Gate finding, 0.2.1.)
+* text=auto
+*.sh text eol=lf
+*.py text eol=lf
+anchor/anchor.md text eol=lf
+*.ps1 text eol=crlf

@@ -27,6 +27,15 @@ jobs:
           # second run must be idempotent: still exactly one managed block
           ./install.sh "$RUNNER_TEMP/skills" --force --anchor "$RUNNER_TEMP/CLAUDE.md"
           test "$(grep -cF '<!-- dev-rigor-lite anchor v' "$RUNNER_TEMP/CLAUDE.md")" -eq 1
+      - name: Anchor idempotency with a CRLF checkout (gate regression)
+        if: runner.os == 'Linux'
+        run: |
+          # Simulate core.autocrlf=true: the anchor source checks out CRLF.
+          cp -r . "$RUNNER_TEMP/crlf-repo"
+          sed -i 's/$/\r/' "$RUNNER_TEMP/crlf-repo/anchor/anchor.md"
+          bash "$RUNNER_TEMP/crlf-repo/install.sh" "$RUNNER_TEMP/crlf-skills" --anchor "$RUNNER_TEMP/crlf-CLAUDE.md"
+          out=$(bash "$RUNNER_TEMP/crlf-repo/install.sh" "$RUNNER_TEMP/crlf-skills" --force --anchor "$RUNNER_TEMP/crlf-CLAUDE.md")
+          echo "$out" | grep -qF 'already current' || { echo "first refresh after CRLF install was not idempotent: $out"; exit 1; }
       - name: Installer smoke on Windows
         if: runner.os == 'Windows'
         shell: powershell
@@ -38,3 +47,15 @@ jobs:
           .\install.ps1 -Target "$env:RUNNER_TEMP\skills" -Force -Anchor "$env:RUNNER_TEMP\CLAUDE.md"
           $blocks = (Select-String -Path "$env:RUNNER_TEMP\CLAUDE.md" -SimpleMatch '<!-- dev-rigor-lite anchor v' -AllMatches | Measure-Object).Count
           if ($blocks -ne 1) { throw "expected exactly one managed block, found $blocks" }
+      - name: Relative paths resolve against $PWD (gate regression)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          # The documented usage: cd into a project, run the installer with relative paths.
+          $proj = Join-Path $env:RUNNER_TEMP 'relproj'
+          New-Item -ItemType Directory -Force -Path $proj | Out-Null
+          $installer = Join-Path $PWD 'install.ps1'
+          Set-Location $proj
+          & $installer -Target '.claude\skills' -Anchor 'CLAUDE.md'
+          if (-not (Test-Path "$proj\.claude\skills\dev-rigor-stack-lite")) { throw 'skills did not land in the cd-ed project' }
+          if (-not (Test-Path "$proj\CLAUDE.md")) { throw 'anchor did not land in the cd-ed project' }
