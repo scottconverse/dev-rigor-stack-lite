@@ -14,7 +14,7 @@ description: >
 license: MIT
 ---
 
-# Standing dev rigor stack Lite v0.3.1
+# Standing dev rigor stack Lite v0.3.2
 
 Two altitudes. The **per-unit loop** (gates 1–5) applies to EVERY unit of work — a
 fix, a module, a feature. The **release gate** fires once per version, at the tag
@@ -29,7 +29,7 @@ Every functional section is independently invokable and also routed by this coor
 - `$dev-rigor-stack-lite-plan`
 - `$dev-rigor-stack-lite-build` (backward-compatible `$coder-tdd-qa-lite`)
 - `$dev-rigor-stack-lite-proof-gate` (backward-compatible `$proof-gate-lite`)
-- `$dev-rigor-stack-lite-audit-lite` (backward-compatible `$audit-lite`)
+- `$dev-rigor-stack-lite-audit-lite` (short name `$quick-audit-lite`)
 - `$dev-rigor-stack-lite-audit-team` (backward-compatible `$audit-team-lite`)
 - `$dev-rigor-stack-lite-walkthrough`
 - `$dev-rigor-stack-lite-visitor-audit` (backward-compatible `$visitor-audit-lite`)
@@ -108,7 +108,7 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
 4. REVIEW — the coordinator picks the proportionate review lane for what this
    slice touched, and dispatches a bounded subagent when available. Otherwise, run the
    same review serially from a fresh adversarial posture:
-   • `$dev-rigor-stack-lite-audit-lite` / `$audit-lite` — default; a scoped diff, a slice,
+   • `$dev-rigor-stack-lite-audit-lite` / `$quick-audit-lite` — default; a scoped diff, a slice,
      an end-of-slice read.
    • `$dev-rigor-stack-lite-audit-team` / `$audit-team-lite` — escalate for high-blast units.
    • `$dev-rigor-stack-lite-walkthrough` — user-facing wiring and black-box newcomer truth:

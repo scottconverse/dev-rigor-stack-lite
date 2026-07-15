@@ -43,6 +43,16 @@ jobs:
             echo "conflicting flags were accepted"; exit 1
           fi
           test ! -e mytools
+          # 0.3.2 migration: old lite-owned audit-lite removed; full-stack copy preserved
+          mkdir -p "$RUNNER_TEMP/mig/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/mig"
+          printf 'old lite copy. Escalate to `audit-team-lite`.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
+          test ! -e .claude/skills/audit-lite
+          mkdir -p "$RUNNER_TEMP/keep/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/keep"
+          printf 'FULL stack. Escalate to `audit-team`.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
+          test -f .claude/skills/audit-lite/SKILL.md
+          grep -q "FULL stack" .claude/skills/audit-lite/SKILL.md
       - name: Anchor idempotency with a CRLF checkout (gate regression)
         if: runner.os == 'Linux'
         run: |

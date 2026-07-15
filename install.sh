@@ -58,6 +58,21 @@ fi
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mkdir -p "$target"
 
+# Migration (0.3.2): 0.3.1 renamed lite's audit-lite to quick-audit-lite, but an
+# upgrade over an old lite install left the stale audit-lite behind, still
+# routable. Remove it ONLY if it is identifiably lite's own old copy — the full
+# dev-rigor-stack's audit-lite (which escalates to audit-team, not
+# audit-team-lite) must never be touched; protecting it is why the rename exists.
+old_audit=$target/audit-lite
+if [ -f "$old_audit/SKILL.md" ]; then
+  if grep -qF "audit-team-lite" "$old_audit/SKILL.md"; then
+    rm -rf -- "$old_audit"
+    echo "Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)"
+  else
+    echo "Note: $old_audit is not lite's old copy (likely the full dev-rigor-stack's) - left untouched"
+  fi
+fi
+
 for source in "$repo_dir"/skills/*; do
   [ -d "$source" ] || continue
   name=${source##*/}

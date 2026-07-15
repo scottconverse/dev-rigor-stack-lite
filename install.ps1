@@ -41,6 +41,21 @@ $source = Join-Path $PSScriptRoot 'skills'
 $targetPath = Resolve-UserPath $Target
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
 
+# Migration (0.3.2): remove the stale lite-owned audit-lite left by upgrades over
+# a pre-0.3.1 lite install. Only lite's own old copy (identified by its
+# audit-team-lite escalation) is removed; the full dev-rigor-stack's audit-lite
+# must never be touched — protecting it is why the rename exists.
+$oldAudit = Join-Path $targetPath 'audit-lite'
+$oldSkillMd = Join-Path $oldAudit 'SKILL.md'
+if (Test-Path -LiteralPath $oldSkillMd) {
+  if (Select-String -LiteralPath $oldSkillMd -SimpleMatch 'audit-team-lite' -Quiet) {
+    Remove-Item -LiteralPath $oldAudit -Recurse -Force
+    Write-Host 'Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)'
+  } else {
+    Write-Host "Note: $oldAudit is not lite's old copy (likely the full dev-rigor-stack's) - left untouched"
+  }
+}
+
 foreach ($skill in Get-ChildItem -LiteralPath $source -Directory) {
   $destination = Join-Path $targetPath $skill.Name
   if (Test-Path -LiteralPath $destination) {

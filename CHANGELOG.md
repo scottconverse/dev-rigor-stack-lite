@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.2 - 2026-07-15
+
+Repairs the 0.3.1 rename, from a Codex-side compatibility report (both findings
+reproduced before fixing):
+
+- **The standalone audit entrypoint works again**: `dev-rigor-stack-lite-audit-lite`
+  still read the deleted `../audit-lite/SKILL.md`, and the coordinator still
+  advertised `$audit-lite`. Both now point at `quick-audit-lite`.
+- **Upgrades migrate safely**: installing over a pre-0.3.1 lite install left the
+  stale `audit-lite` behind, still routable. The installers now remove it — but
+  ONLY when it is identifiably lite's own old copy (its `audit-team-lite`
+  escalation); the full dev-rigor-stack's richer `audit-lite` is never touched.
+  Both branches CI-pinned.
+- **Validator checks internal references resolve**: dangling `../name/SKILL.md`
+  reads and `$name` entrypoint tokens naming no skill in the bundle now fail
+  validation (this check was run red against the broken tree first).
+- README precision (also from the report): `rigor-goals` records verification
+  evidence, it does not run the command — a workflow-completeness gate, not
+  proof enforcement; and one active plan per working tree.
+
 ## 0.3.1 - 2026-07-15
 
 - Rename `audit-lite` to `quick-audit-lite`. It was the only skill whose name

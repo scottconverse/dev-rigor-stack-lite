@@ -105,6 +105,13 @@ The final story refuses to complete without `--verify-cmd` and `--verify-evidenc
 that refusal is the point. State lives in `./.rigor/` (add it to `.gitignore` or commit
 it; your choice). A fresh session resumes with `status`.
 
+Be precise about what the gate is: `rigor-goals` **records** the verification command
+and its result — it does not run the command or check the result is true. It is a
+workflow-completeness gate (no story closes without named evidence), not independent
+proof enforcement. The honesty of the evidence is the agent's obligation and the
+reviewer's to check. One active plan per working tree: concurrent tasks sharing a
+checkout will fight over `./.rigor/` — use separate worktrees.
+
 **Known limitation — the state is a file, not a fortress.** Any process that can delete
 files in the workspace can destroy the plan, and nothing in-repo can detect a deletion
 that also removes the ledger. Replacing a plan is loud (`create --force` prints what it
