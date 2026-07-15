@@ -39,6 +39,17 @@ for name in sorted(expected):
         if term in text:
             errors.append(f"{name}: hook-only term remains: {term}")
 
+# --- version sync: every version label in skills/ must match the manifest ---
+manifest_version = manifest.get("version", "")
+if not manifest_version:
+    errors.append("manifest: missing version")
+for path in sorted(SKILLS.rglob("*.md")):
+    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        for found in re.findall(r"\bv(\d+\.\d+\.\d+)\b", line):
+            if found != manifest_version:
+                rel = path.relative_to(ROOT)
+                errors.append(f"{rel}:{line_no}: version v{found} != manifest {manifest_version}")
+
 # --- anchor block (Tier 2) ---
 ANCHOR = ROOT / "anchor" / "anchor.md"
 if not ANCHOR.is_file():
