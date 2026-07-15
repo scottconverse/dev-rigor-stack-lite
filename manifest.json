@@ -1,6 +1,10 @@
 {
   "name": "dev-rigor-stack-lite",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "tiers": {
+    "anchor": "anchor/anchor.md — marker-fenced discipline block for the host's persistent instructions file",
+    "goals": "tools/rigor_goals.py — multi-story loop with a verification exit gate; state in ./.rigor/ (adapted from fivetaku/fablize, MIT — see NOTICE.md)"
+  },
   "license": "MIT",
   "source": {
     "repository": "https://github.com/scottconverse/codex-dev-rigor-stack",
