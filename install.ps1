@@ -48,16 +48,21 @@ $source = Join-Path $PSScriptRoot 'skills'
 $targetPath = Resolve-UserPath $Target
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
 
-# Migration (0.3.2): remove the stale lite-owned audit-lite left by upgrades over
-# a pre-0.3.1 lite install. Only lite's own old copy (identified by its
-# audit-team-lite escalation) is removed; the full dev-rigor-stack's audit-lite
-# must never be touched — protecting it is why the rename exists.
+# Migration (0.3.2, review-hardened): remove the stale lite-owned audit-lite left
+# by upgrades over a pre-0.3.1 lite install. Identity = lite's exact escalation
+# sentence (case-sensitive, matching install.sh) — never a bare name mention.
+# Destructive only under -Force, like every other destructive act here.
 $oldAudit = Join-Path $targetPath 'audit-lite'
 $oldSkillMd = Join-Path $oldAudit 'SKILL.md'
+$liteMarker = 'Escalate to `audit-team-lite`'
 if (Test-Path -LiteralPath $oldSkillMd) {
-  if (Select-String -LiteralPath $oldSkillMd -SimpleMatch 'audit-team-lite' -Quiet) {
-    Remove-Item -LiteralPath $oldAudit -Recurse -Force
-    Write-Host 'Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)'
+  if (Select-String -LiteralPath $oldSkillMd -SimpleMatch $liteMarker -CaseSensitive -Quiet) {
+    if ($Force) {
+      Remove-Item -LiteralPath $oldAudit -Recurse -Force
+      Write-Host 'Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)'
+    } else {
+      Write-Warning "stale lite-owned audit-lite detected at $oldAudit (renamed to quick-audit-lite in 0.3.1). Re-run with -Force to migrate it, or remove it by hand - until then both may route."
+    }
   } else {
     Write-Host "Note: $oldAudit is not lite's old copy (likely the full dev-rigor-stack's) - left untouched"
   }

@@ -10,9 +10,13 @@ reproduced before fixing):
   advertised `$audit-lite`. Both now point at `quick-audit-lite`.
 - **Upgrades migrate safely**: installing over a pre-0.3.1 lite install left the
   stale `audit-lite` behind, still routable. The installers now remove it — but
-  ONLY when it is identifiably lite's own old copy (its `audit-team-lite`
-  escalation); the full dev-rigor-stack's richer `audit-lite` is never touched.
-  Both branches CI-pinned.
+  ONLY when it is identifiably lite's own old copy, and this wave's independent
+  review hardened all three edges of that deletion: identity is lite's exact
+  escalation sentence, not a bare name mention (a file that merely talks about
+  audit-team-lite survives); deletion happens only under `--force`/`-Force`
+  (without it: a warning with instructions); and the match is case-sensitive in
+  both shells, which previously diverged. The full dev-rigor-stack's richer
+  `audit-lite` is never touched. All branches CI-pinned.
 - **Validator checks internal references resolve**: dangling `../name/SKILL.md`
   reads and `$name` entrypoint tokens naming no skill in the bundle now fail
   validation (this check was run red against the broken tree first).

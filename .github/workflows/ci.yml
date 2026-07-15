@@ -62,6 +62,16 @@ jobs:
           "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
           test -f .claude/skills/audit-lite/SKILL.md
           grep -q "FULL stack" .claude/skills/audit-lite/SKILL.md
+          # prose MENTION of the old name must survive migration (review regression)
+          mkdir -p "$RUNNER_TEMP/prose/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/prose"
+          printf 'FULL stack. Escalate to `audit-team`. Note: audit-team-lite was the lite name.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
+          test -f .claude/skills/audit-lite/SKILL.md
+          # without --force the migration warns and does NOT delete (review regression)
+          mkdir -p "$RUNNER_TEMP/nf/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/nf"
+          printf 'old lite. Escalate to `audit-team-lite` if findings warrant.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --no-anchor --no-goals 2>&1 | grep -q WARNING
+          test -f .claude/skills/audit-lite/SKILL.md
       - name: Anchor idempotency with a CRLF checkout (gate regression)
         if: runner.os == 'Linux'
         run: |

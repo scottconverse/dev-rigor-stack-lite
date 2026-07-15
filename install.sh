@@ -65,14 +65,23 @@ mkdir -p "$target"
 
 # Migration (0.3.2): 0.3.1 renamed lite's audit-lite to quick-audit-lite, but an
 # upgrade over an old lite install left the stale audit-lite behind, still
-# routable. Remove it ONLY if it is identifiably lite's own old copy — the full
-# dev-rigor-stack's audit-lite (which escalates to audit-team, not
-# audit-team-lite) must never be touched; protecting it is why the rename exists.
+# routable. Deletion rules (review-hardened):
+#   - identity = lite's exact escalation sentence, not a bare name mention —
+#     a file that merely *talks about* audit-team-lite must survive;
+#   - destructive only under --force, like every other destructive act here
+#     (real upgrades pass --force anyway to replace the 19 skill dirs);
+#   - case-sensitive, matching install.ps1 exactly.
 old_audit=$target/audit-lite
+lite_marker='Escalate to `audit-team-lite`'
 if [ -f "$old_audit/SKILL.md" ]; then
-  if grep -qF "audit-team-lite" "$old_audit/SKILL.md"; then
-    rm -rf -- "$old_audit"
-    echo "Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)"
+  if grep -qF "$lite_marker" "$old_audit/SKILL.md"; then
+    if [ "$force" = "--force" ]; then
+      rm -rf -- "$old_audit"
+      echo "Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)"
+    else
+      echo "WARNING: stale lite-owned audit-lite detected at $old_audit (renamed to quick-audit-lite in 0.3.1)." >&2
+      echo "         Re-run with --force to migrate it, or remove it by hand - until then both may route." >&2
+    fi
   else
     echo "Note: $old_audit is not lite's old copy (likely the full dev-rigor-stack's) - left untouched"
   fi

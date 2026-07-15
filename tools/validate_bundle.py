@@ -87,7 +87,10 @@ for name in sorted(expected):
     for ref in re.findall(r"\.\./([A-Za-z0-9_-]+)/SKILL\.md", body):
         if ref not in expected:
             errors.append(f"{name}: dangling sibling reference ../{ref}/SKILL.md")
-    for token in re.findall(r"\$([a-z][a-z0-9-]{2,})\b", body):
+    # Entrypoint tokens always contain a hyphen (quick-audit-lite, proof-gate-lite,
+    # ...); requiring one keeps ordinary shell variables in code examples ($rand,
+    # $here) from tripping the check. (Review finding, 0.3.2.)
+    for token in re.findall(r"\$([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\b", body):
         if token not in entry_names:
             errors.append(f"{name}: entrypoint token ${token} names no skill in the bundle")
 
