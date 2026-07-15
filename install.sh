@@ -47,16 +47,45 @@ fi
 if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
   # Case-insensitive inference: Windows filesystems are case-insensitive, and
   # install.ps1's -like already matches that way. (Review finding, 0.3.0.)
+  # ~/.gemini is shared by two products: Antigravity (~/.gemini/config/*, reads
+  # AGENTS.md — verified from its own system prompt) and Gemini CLI (~/.gemini/*,
+  # reads GEMINI.md). Antigravity's anchor belongs NEXT TO its config skills dir,
+  # not in the CWD. (Antigravity compatibility report, 0.3.2.)
   target_lc=$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')
   case "$target_lc" in
-    *.claude*) anchor_file=CLAUDE.md ;;
+    *.gemini/config*|*.gemini\\config*) anchor_file=$(dirname -- "$target")/AGENTS.md ;;
     *.gemini*) anchor_file=GEMINI.md ;;
+    *.claude*) anchor_file=CLAUDE.md ;;
     *)         anchor_file=AGENTS.md ;;
   esac
 fi
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mkdir -p "$target"
+
+# Migration (0.3.2): 0.3.1 renamed lite's audit-lite to quick-audit-lite, but an
+# upgrade over an old lite install left the stale audit-lite behind, still
+# routable. Deletion rules (review-hardened):
+#   - identity = lite's exact escalation sentence, not a bare name mention —
+#     a file that merely *talks about* audit-team-lite must survive;
+#   - destructive only under --force, like every other destructive act here
+#     (real upgrades pass --force anyway to replace the 19 skill dirs);
+#   - case-sensitive, matching install.ps1 exactly.
+old_audit=$target/audit-lite
+lite_marker='Escalate to `audit-team-lite`'
+if [ -f "$old_audit/SKILL.md" ]; then
+  if grep -qF "$lite_marker" "$old_audit/SKILL.md"; then
+    if [ "$force" = "--force" ]; then
+      rm -rf -- "$old_audit"
+      echo "Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)"
+    else
+      echo "WARNING: stale lite-owned audit-lite detected at $old_audit (renamed to quick-audit-lite in 0.3.1)." >&2
+      echo "         Re-run with --force to migrate it, or remove it by hand - until then both may route." >&2
+    fi
+  else
+    echo "Note: $old_audit is not lite's old copy (likely the full dev-rigor-stack's) - left untouched"
+  fi
+fi
 
 for source in "$repo_dir"/skills/*; do
   [ -d "$source" ] || continue

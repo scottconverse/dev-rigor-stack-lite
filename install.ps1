@@ -24,8 +24,15 @@ if (-not $NoGoals -and -not $Goals) {
   $Goals = Join-Path $parent 'tools'
 }
 if (-not $NoAnchor -and -not $Anchor) {
-  if ($Target -like '*.claude*') { $Anchor = 'CLAUDE.md' }
+  # ~/.gemini is shared: Antigravity (config subtree, reads AGENTS.md next to its
+  # skills dir) vs Gemini CLI (reads GEMINI.md). (Antigravity report, 0.3.2.)
+  if ($Target -like '*.gemini*config*') {
+    $anchorParent = Split-Path -Parent $Target
+    if (-not $anchorParent) { $anchorParent = '.' }
+    $Anchor = Join-Path $anchorParent 'AGENTS.md'
+  }
   elseif ($Target -like '*.gemini*') { $Anchor = 'GEMINI.md' }
+  elseif ($Target -like '*.claude*') { $Anchor = 'CLAUDE.md' }
   else { $Anchor = 'AGENTS.md' }
 }
 
@@ -40,6 +47,26 @@ function Resolve-UserPath([string]$p) {
 $source = Join-Path $PSScriptRoot 'skills'
 $targetPath = Resolve-UserPath $Target
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
+
+# Migration (0.3.2, review-hardened): remove the stale lite-owned audit-lite left
+# by upgrades over a pre-0.3.1 lite install. Identity = lite's exact escalation
+# sentence (case-sensitive, matching install.sh) — never a bare name mention.
+# Destructive only under -Force, like every other destructive act here.
+$oldAudit = Join-Path $targetPath 'audit-lite'
+$oldSkillMd = Join-Path $oldAudit 'SKILL.md'
+$liteMarker = 'Escalate to `audit-team-lite`'
+if (Test-Path -LiteralPath $oldSkillMd) {
+  if (Select-String -LiteralPath $oldSkillMd -SimpleMatch $liteMarker -CaseSensitive -Quiet) {
+    if ($Force) {
+      Remove-Item -LiteralPath $oldAudit -Recurse -Force
+      Write-Host 'Migrated: removed stale lite-owned audit-lite (renamed to quick-audit-lite in 0.3.1)'
+    } else {
+      Write-Warning "stale lite-owned audit-lite detected at $oldAudit (renamed to quick-audit-lite in 0.3.1). Re-run with -Force to migrate it, or remove it by hand - until then both may route."
+    }
+  } else {
+    Write-Host "Note: $oldAudit is not lite's old copy (likely the full dev-rigor-stack's) - left untouched"
+  }
+}
 
 foreach ($skill in Get-ChildItem -LiteralPath $source -Directory) {
   $destination = Join-Path $targetPath $skill.Name

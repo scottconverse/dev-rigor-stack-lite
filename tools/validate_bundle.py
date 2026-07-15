@@ -78,6 +78,22 @@ for path in sorted(SKILLS.rglob("*.md")):
                 rel = path.relative_to(ROOT)
                 errors.append(f"{rel}:{line_no}: version v{found} != manifest {manifest_version}")
 
+# --- internal references resolve (0.3.2, Codex report) ---
+# A rename that leaves a dangling `../old-name/SKILL.md` read or a stale
+# `$old-name` entrypoint token ships a broken skill that still validates.
+entry_names = expected | {"dev-rigor-stack-lite"}  # $tokens must name real skills
+for name in sorted(expected):
+    body = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8", errors="replace")
+    for ref in re.findall(r"\.\./([A-Za-z0-9_-]+)/SKILL\.md", body):
+        if ref not in expected:
+            errors.append(f"{name}: dangling sibling reference ../{ref}/SKILL.md")
+    # Entrypoint tokens always contain a hyphen (quick-audit-lite, proof-gate-lite,
+    # ...); requiring one keeps ordinary shell variables in code examples ($rand,
+    # $here) from tripping the check. (Review finding, 0.3.2.)
+    for token in re.findall(r"\$([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\b", body):
+        if token not in entry_names:
+            errors.append(f"{name}: entrypoint token ${token} names no skill in the bundle")
+
 # --- anchor block (Tier 2) ---
 ANCHOR = ROOT / "anchor" / "anchor.md"
 if not ANCHOR.is_file():

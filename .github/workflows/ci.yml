@@ -37,12 +37,41 @@ jobs:
           mkdir -p "$RUNNER_TEMP/uc" && cd "$RUNNER_TEMP/uc"
           "$GITHUB_WORKSPACE/install.sh" ".CLAUDE/skills"
           test -f CLAUDE.md && test ! -e AGENTS.md
+          # Antigravity: .gemini/config targets get AGENTS.md beside the skills dir,
+          # never GEMINI.md (Antigravity report regression)
+          mkdir -p "$RUNNER_TEMP/ag" && cd "$RUNNER_TEMP/ag"
+          "$GITHUB_WORKSPACE/install.sh" ".gemini/config/skills" --no-goals
+          test -f .gemini/config/AGENTS.md && test ! -e GEMINI.md
+          # Gemini CLI: plain .gemini targets still get GEMINI.md
+          mkdir -p "$RUNNER_TEMP/gcli" && cd "$RUNNER_TEMP/gcli"
+          "$GITHUB_WORKSPACE/install.sh" ".gemini/skills" --no-goals
+          test -f GEMINI.md
           # opt-out + explicit override is a refused contradiction (review regression)
           mkdir -p "$RUNNER_TEMP/conflict" && cd "$RUNNER_TEMP/conflict"
           if "$GITHUB_WORKSPACE/install.sh" skills --no-goals --goals mytools; then
             echo "conflicting flags were accepted"; exit 1
           fi
           test ! -e mytools
+          # 0.3.2 migration: old lite-owned audit-lite removed; full-stack copy preserved
+          mkdir -p "$RUNNER_TEMP/mig/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/mig"
+          printf 'old lite copy. Escalate to `audit-team-lite`.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
+          test ! -e .claude/skills/audit-lite
+          mkdir -p "$RUNNER_TEMP/keep/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/keep"
+          printf 'FULL stack. Escalate to `audit-team`.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
+          test -f .claude/skills/audit-lite/SKILL.md
+          grep -q "FULL stack" .claude/skills/audit-lite/SKILL.md
+          # prose MENTION of the old name must survive migration (review regression)
+          mkdir -p "$RUNNER_TEMP/prose/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/prose"
+          printf 'FULL stack. Escalate to `audit-team`. Note: audit-team-lite was the lite name.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force --no-anchor --no-goals
+          test -f .claude/skills/audit-lite/SKILL.md
+          # without --force the migration warns and does NOT delete (review regression)
+          mkdir -p "$RUNNER_TEMP/nf/.claude/skills/audit-lite" && cd "$RUNNER_TEMP/nf"
+          printf 'old lite. Escalate to `audit-team-lite` if findings warrant.\n' > .claude/skills/audit-lite/SKILL.md
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --no-anchor --no-goals 2>&1 | grep -q WARNING
+          test -f .claude/skills/audit-lite/SKILL.md
       - name: Anchor idempotency with a CRLF checkout (gate regression)
         if: runner.os == 'Linux'
         run: |
