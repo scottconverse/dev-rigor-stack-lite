@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - 2026-07-15
+
+- Rename `audit-lite` to `quick-audit-lite`. It was the only skill whose name
+  collided with the full dev-rigor-stack's skills: installing lite over a full
+  install with `--force` would silently overwrite the richer full-stack
+  `audit-lite`. No other entrypoint collides.
+
 ## 0.3.0 - 2026-07-15
 
 **The anchor block and rigor-goals now install by default.** They are part of

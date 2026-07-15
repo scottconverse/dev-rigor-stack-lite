@@ -1,6 +1,6 @@
 {
   "name": "dev-rigor-stack-lite",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "tiers": {
     "anchor": "anchor/anchor.md — marker-fenced discipline block for the host's persistent instructions file",
     "goals": "tools/rigor_goals.py — multi-story loop with a verification exit gate; state in ./.rigor/ (adapted from fivetaku/fablize, MIT — see NOTICE.md)"
@@ -16,7 +16,7 @@
   "skill_count": 19,
   "supported_hosts": ["codex", "claude-code", "google-antigravity", "agent-skills-compatible"],
   "skills": [
-    "audit-lite",
+    "quick-audit-lite",
     "audit-team-lite",
     "coder-tdd-qa-lite",
     "dev-rigor-stack-lite",

@@ -128,8 +128,11 @@ durable as the files it lives in.
 - `dev-rigor-stack-lite-continuity`
 - `dev-rigor-stack-lite-release`
 
-Six compatibility entrypoints are also included: `coder-tdd-qa-lite`, `proof-gate-lite`,
-`audit-lite`, `audit-team-lite`, `gauntletgate-lite`, and `visitor-audit-lite`.
+Six short-name entrypoints are also included: `coder-tdd-qa-lite`, `proof-gate-lite`,
+`quick-audit-lite`, `audit-team-lite`, `gauntletgate-lite`, and `visitor-audit-lite`.
+(`quick-audit-lite` was `audit-lite` before 0.3.1 — renamed because it was the one name
+that collided with, and could silently overwrite, a full dev-rigor-stack install sharing
+the same skills directory.)
 
 ## Validate
 
