@@ -121,7 +121,7 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
      checksums/sizes against the published asset. Source inspection or CI is not a pass.
    (These are the per-unit *review reports*. GauntletGate as the full advancement
    stage-gate — its `lite`/`full` lanes plus a pass/fail verdict — belongs to the RELEASE
-   gate below, not here. Its `lite`/`full` lanes re-run the same discipline as audit-lite
+   gate below, not here. Its `lite`/`full` lanes re-run the same discipline as quick-audit-lite
    and audit-team-lite, self-contained, because a gate can't invoke a separate skill mid-run.)
    **What counts as a finding:** a REAL defect. An incorrect finding or tool
    false-positive is classified OUT, with the reason it isn't real — that is the
