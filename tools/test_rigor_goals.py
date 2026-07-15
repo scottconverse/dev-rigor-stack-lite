@@ -16,9 +16,13 @@ TOOL = Path(__file__).resolve().parent / "rigor_goals.py"
 def run(cwd, *args, env=None):
     import os
     merged = {**os.environ, **(env or {})}
+    # Explicit utf-8 + replace: when a test forces the child onto cp1252
+    # (PYTHONIOENCODING), user text in its output is legitimately not UTF-8,
+    # and the platform-default decoder must not blow up the harness.
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
         cwd=cwd, capture_output=True, text=True, env=merged,
+        encoding="utf-8", errors="replace",
     )
 
 
