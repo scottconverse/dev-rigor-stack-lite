@@ -58,9 +58,12 @@ if [ -n "$anchor_file" ]; then
       exit 1
     fi
     # Replace the managed block in place; hand edits outside the markers survive.
+    # CRs are stripped from the source lines here AND on first append (below), so
+    # a CRLF checkout (core.autocrlf=true) cannot make the first refresh report a
+    # spurious change. (Gate finding, 0.2.1.)
     tmp=$(mktemp)
     awk -v begin="$begin_marker" -v end="$end_marker" -v src="$anchor_src" '
-      index($0, begin) == 1 { skipping = 1; while ((getline line < src) > 0) print line; close(src); next }
+      index($0, begin) == 1 { skipping = 1; while ((getline line < src) > 0) { sub(/\r$/, "", line); print line }; close(src); next }
       skipping && index($0, end) == 1 { skipping = 0; next }
       !skipping { print }
     ' "$anchor_file" > "$tmp"
@@ -73,7 +76,7 @@ if [ -n "$anchor_file" ]; then
       echo "Anchor block refreshed in $anchor_file"
     fi
   else
-    { [ -f "$anchor_file" ] && [ -s "$anchor_file" ] && printf '\n'; cat "$anchor_src"; } >> "$anchor_file"
+    { [ -f "$anchor_file" ] && [ -s "$anchor_file" ] && printf '\n'; tr -d '\r' < "$anchor_src"; } >> "$anchor_file"
     echo "Anchor block added to $anchor_file"
   fi
 fi
