@@ -2,10 +2,27 @@ param(
   [Parameter(Mandatory = $true)][string]$Target,
   [switch]$Force,
   [string]$Goals,
-  [string]$Anchor
+  [string]$Anchor,
+  # OWNER-ONLY opt-outs: the anchor and rigor-goals are part of the stack and
+  # install by default. These switches exist for the human owner; an agent must
+  # never pass them on its own initiative.
+  [switch]$NoGoals,
+  [switch]$NoAnchor
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Default-on: the full stack installs unless the owner opts out.
+if (-not $NoGoals -and -not $Goals) {
+  $parent = Split-Path -Parent $Target
+  if (-not $parent) { $parent = '.' }
+  $Goals = Join-Path $parent 'tools'
+}
+if (-not $NoAnchor -and -not $Anchor) {
+  if ($Target -like '*.claude*') { $Anchor = 'CLAUDE.md' }
+  elseif ($Target -like '*.gemini*') { $Anchor = 'GEMINI.md' }
+  else { $Anchor = 'AGENTS.md' }
+}
 
 # Resolve relative paths against PowerShell's ACTUAL working directory ($PWD).
 # [IO.Path]::GetFullPath alone resolves against the process CurrentDirectory,

@@ -13,10 +13,12 @@ from pathlib import Path
 TOOL = Path(__file__).resolve().parent / "rigor_goals.py"
 
 
-def run(cwd, *args):
+def run(cwd, *args, env=None):
+    import os
+    merged = {**os.environ, **(env or {})}
     return subprocess.run(
         [sys.executable, str(TOOL), *args],
-        cwd=cwd, capture_output=True, text=True,
+        cwd=cwd, capture_output=True, text=True, env=merged,
     )
 
 
@@ -121,6 +123,44 @@ class RigorGoalsTest(unittest.TestCase):
         r = run(self.cwd, "status")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("create", (r.stderr + r.stdout).lower())
+
+    def test_non_ascii_user_text_never_crashes_on_legacy_console(self):
+        # Fix-wave review (critical): user-supplied emoji crashed the tool with
+        # UnicodeEncodeError on cp1252 consoles after the guard was removed.
+        # PYTHONIOENCODING forces the failing encoding on any platform.
+        cp = {"PYTHONIOENCODING": "cp1252"}
+        r = run(self.cwd, "create", "--brief", "emoji job \U0001f680",
+                "--goal", "x—y::obj \U0001f680", env=cp)
+        self.assertEqual(r.returncode, 0, f"create crashed: {r.stderr}")
+        r = run(self.cwd, "status", env=cp)
+        self.assertEqual(r.returncode, 0, f"status crashed: {r.stderr}")
+        r = run(self.cwd, "next", env=cp)
+        self.assertEqual(r.returncode, 0, f"next crashed: {r.stderr}")
+        r = run(self.cwd, "checkpoint", "--id", "G001", "--status", "complete",
+                "--evidence", "done \U0001f680", "--verify-cmd", "c",
+                "--verify-evidence", "r", env=cp)
+        self.assertEqual(r.returncode, 0, f"checkpoint crashed: {r.stderr}")
+
+    def test_force_replacement_is_loud_and_events_carry_plan_id(self):
+        # Gate incident (0.2.2): a plan silently vanished and was silently
+        # replaced. --force must announce what it destroys, and every ledger
+        # event must carry the plan_id so mixed histories are detectable.
+        import json
+        self._create_two()
+        r = run(self.cwd, "create", "--brief", "second", "--goal", "x::y", "--force")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("REPLACING", r.stdout, "--force replacement must be loud")
+        self.assertIn("test job", r.stdout, "must name the plan being destroyed")
+        run(self.cwd, "next")
+        run(self.cwd, "checkpoint", "--id", "G001", "--status", "failed",
+            "--evidence", "e")
+        ledger = (Path(self.cwd) / ".rigor" / "ledger.jsonl").read_text(encoding="utf-8")
+        events = [json.loads(line) for line in ledger.splitlines() if line]
+        plan_ids = {e.get("plan_id") for e in events if e["event"] != "plan_created"}
+        created_ids = [e["plan_id"] for e in events if e["event"] == "plan_created"]
+        self.assertEqual(len(created_ids), 2, "both plans must be in the ledger")
+        self.assertTrue(all(pid == created_ids[-1] for pid in plan_ids),
+                        f"post-replacement events must carry the new plan_id: {events}")
 
     def test_no_false_completion_when_stories_failed_or_blocked(self):
         # Gate finding (critical): a plan whose stories all ended failed/blocked

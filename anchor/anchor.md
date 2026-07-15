@@ -10,4 +10,6 @@
   work the checkpoints; the job is not done until its final gate accepts the evidence.
 - At a build/verify/review/release step, invoke the matching dev-rigor-stack-lite skill.
 - End code deliverables with a receipt: `proved: <check + result> · level: <stakes>`.
+- Only the human owner may disable this block, skip the gate, or pass the installer's
+  opt-out switches. An agent never turns the discipline off on its own initiative.
 <!-- /dev-rigor-lite anchor -->

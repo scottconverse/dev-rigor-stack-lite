@@ -24,12 +24,20 @@ Adapted from fablize's goal engine (fivetaku/fablize, MIT) - see NOTICE.md.
 import argparse
 import json
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Output is deliberately pure ASCII: stock Windows consoles default to cp1252
-# and turn any fancier glyph into mojibake or a crash. Plain text works
-# everywhere the tool does. (Gate finding, 0.2.1.)
+# Two output rules (gate findings, 0.2.1/0.2.2):
+# 1. The tool's OWN strings are pure ASCII - no glyphs to garble on cp1252.
+# 2. USER text (--brief/--goal/--evidence) passes through verbatim, so streams
+#    must degrade (errors="replace") instead of crashing when a legacy console
+#    cannot encode it. Without this, an emoji in a brief is a hard crash.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 DIR = Path(".rigor")
 GOALS = DIR / "goals.json"
@@ -58,8 +66,19 @@ def save(plan):
 
 
 def cmd_create(a):
-    if GOALS.exists() and not a.force:
-        sys.exit("rigor-goals: a plan already exists. Check it with `status`, or replace it with --force.")
+    if GOALS.exists():
+        if not a.force:
+            sys.exit("rigor-goals: a plan already exists. Check it with `status`, or replace it with --force.")
+        # Replacement must be loud: a silently vanished plan is how a job's
+        # history gets rewritten without anyone noticing. (Gate incident, 0.2.2.)
+        try:
+            old = json.loads(GOALS.read_text(encoding="utf-8"))
+            done = sum(1 for g in old.get("goals", []) if g.get("status") == "complete")
+            print(f"rigor-goals: REPLACING plan '{old.get('brief', '?')}' "
+                  f"(plan {old.get('plan_id', 'unknown')}, {done}/{len(old.get('goals', []))} complete, "
+                  f"created {old.get('created', '?')})")
+        except (json.JSONDecodeError, OSError):
+            print("rigor-goals: REPLACING an existing plan that could not be read")
     goals = []
     for i, g in enumerate(a.goal, 1):
         if "::" not in g:
@@ -69,8 +88,9 @@ def cmd_create(a):
                       "status": "pending", "evidence": None})
     if not goals:
         sys.exit("rigor-goals: at least one --goal is required.")
-    save({"brief": a.brief, "created": now(), "goals": goals})
-    log("plan_created", brief=a.brief, count=len(goals))
+    plan_id = uuid.uuid4().hex[:12]
+    save({"plan_id": plan_id, "brief": a.brief, "created": now(), "goals": goals})
+    log("plan_created", plan_id=plan_id, brief=a.brief, count=len(goals))
     print(f"rigor-goals: plan created - {len(goals)} stories (state in ./.rigor/ - consider gitignoring it)")
     for g in goals:
         print(f"  {g['id']} {g['title']}: {g['objective']}")
@@ -100,7 +120,7 @@ def cmd_next(a):
             print(plan_wrapup(plan)); return
         g = pending[0]
         g["status"] = "in_progress"
-        save(plan); log("story_started", id=g["id"], title=g["title"])
+        save(plan); log("story_started", plan_id=plan.get("plan_id"), id=g["id"], title=g["title"])
     is_final = g["id"] == plan["goals"][-1]["id"]
     print(f"=== rigor-goals handoff - {g['id']} {g['title']}")
     print(f"Objective: {g['objective']}")
@@ -127,7 +147,7 @@ def cmd_checkpoint(a):
     g["status"] = a.status
     g["evidence"] = a.evidence
     save(plan)
-    log("checkpoint", id=g["id"], status=a.status, evidence=a.evidence,
+    log("checkpoint", plan_id=plan.get("plan_id"), id=g["id"], status=a.status, evidence=a.evidence,
         verify_cmd=a.verify_cmd, verify_evidence=a.verify_evidence)
     print(f"rigor-goals: {g['id']} -> {a.status}")
     remaining = [x for x in plan["goals"] if x["status"] in ("pending", "in_progress")]
@@ -137,7 +157,7 @@ def cmd_checkpoint(a):
 def cmd_status(a):
     plan = load()
     done = sum(1 for g in plan["goals"] if g["status"] == "complete")
-    print(f"rigor-goals: {done}/{len(plan['goals'])} complete - {plan['brief']}")
+    print(f"rigor-goals: {done}/{len(plan['goals'])} complete - {plan['brief']} (plan {plan.get('plan_id', 'unknown')})")
     mark = {"complete": "+", "in_progress": ">", "pending": ".", "failed": "x", "blocked": "#"}
     for g in plan["goals"]:
         print(f"  {mark.get(g['status'],'?')} {g['id']} [{g['status']}] {g['title']}")
