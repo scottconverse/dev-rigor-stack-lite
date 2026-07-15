@@ -33,6 +33,16 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bare" && cd "$RUNNER_TEMP/bare"
           "$GITHUB_WORKSPACE/install.sh" ".agents/skills" --no-goals --no-anchor
           test ! -e .agents/tools && test ! -e AGENTS.md
+          # anchor inference is case-insensitive (review regression)
+          mkdir -p "$RUNNER_TEMP/uc" && cd "$RUNNER_TEMP/uc"
+          "$GITHUB_WORKSPACE/install.sh" ".CLAUDE/skills"
+          test -f CLAUDE.md && test ! -e AGENTS.md
+          # opt-out + explicit override is a refused contradiction (review regression)
+          mkdir -p "$RUNNER_TEMP/conflict" && cd "$RUNNER_TEMP/conflict"
+          if "$GITHUB_WORKSPACE/install.sh" skills --no-goals --goals mytools; then
+            echo "conflicting flags were accepted"; exit 1
+          fi
+          test ! -e mytools
       - name: Anchor idempotency with a CRLF checkout (gate regression)
         if: runner.os == 'Linux'
         run: |

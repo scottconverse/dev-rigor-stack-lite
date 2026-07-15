@@ -12,6 +12,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# An opt-out combined with its own explicit override is a contradiction —
+# refuse loudly rather than silently picking a winner. (Review finding, 0.3.0.)
+if ($NoGoals -and $Goals) { throw 'conflicting flags: -NoGoals and -Goals cannot be combined' }
+if ($NoAnchor -and $Anchor) { throw 'conflicting flags: -NoAnchor and -Anchor cannot be combined' }
+
 # Default-on: the full stack installs unless the owner opts out.
 if (-not $NoGoals -and -not $Goals) {
   $parent = Split-Path -Parent $Target

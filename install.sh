@@ -31,12 +31,24 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+# An opt-out combined with its own explicit override is a contradiction —
+# refuse loudly rather than silently picking a winner. (Review finding, 0.3.0.)
+if [ -n "$no_goals" ] && [ -n "$goals_dir" ]; then
+  echo "conflicting flags: --no-goals and --goals cannot be combined" >&2; exit 2
+fi
+if [ -n "$no_anchor" ] && [ -n "$anchor_file" ]; then
+  echo "conflicting flags: --no-anchor and --anchor cannot be combined" >&2; exit 2
+fi
+
 # Default-on: the full stack installs unless the owner opts out.
 if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
   goals_dir=$(dirname -- "$target")/tools
 fi
 if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
-  case "$target" in
+  # Case-insensitive inference: Windows filesystems are case-insensitive, and
+  # install.ps1's -like already matches that way. (Review finding, 0.3.0.)
+  target_lc=$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')
+  case "$target_lc" in
     *.claude*) anchor_file=CLAUDE.md ;;
     *.gemini*) anchor_file=GEMINI.md ;;
     *)         anchor_file=AGENTS.md ;;
