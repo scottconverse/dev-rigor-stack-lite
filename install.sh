@@ -2,26 +2,58 @@
 set -eu
 
 usage() {
-  echo "usage: ./install.sh TARGET [--force] [--goals DIR] [--anchor FILE]" >&2
+  echo "usage: ./install.sh TARGET [--force] [--goals DIR] [--anchor FILE] [--no-goals] [--no-anchor]" >&2
   echo "  TARGET        directory to copy the 19 skills into" >&2
   echo "  --force       replace skills that already exist in TARGET" >&2
-  echo "  --goals DIR   also install the rigor-goals tool into DIR" >&2
-  echo "  --anchor FILE create or refresh the managed anchor block in FILE" >&2
-  echo "                (an agent instructions file: CLAUDE.md, AGENTS.md, GEMINI.md)" >&2
+  echo "  --goals DIR   override where the rigor-goals tool installs (default: <TARGET>/../tools)" >&2
+  echo "  --anchor FILE override which instructions file gets the anchor block" >&2
+  echo "                (default: CLAUDE.md/GEMINI.md/AGENTS.md in the current directory," >&2
+  echo "                inferred from TARGET)" >&2
+  echo "  --no-goals    OWNER-ONLY opt-out: skip the rigor-goals tool" >&2
+  echo "  --no-anchor   OWNER-ONLY opt-out: skip the anchor block" >&2
+  echo "The anchor and rigor-goals install BY DEFAULT: they are part of the stack, not" >&2
+  echo "extras. The opt-outs exist for the human owner; an agent must never pass them" >&2
+  echo "on its own initiative." >&2
   exit 2
 }
 
 [ "$#" -ge 1 ] || usage
 target=$1; shift
-force=""; goals_dir=""; anchor_file=""
+force=""; goals_dir=""; anchor_file=""; no_goals=""; no_anchor=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --force)  force="--force"; shift ;;
-    --goals)  [ "$#" -ge 2 ] || usage; goals_dir=$2; shift 2 ;;
-    --anchor) [ "$#" -ge 2 ] || usage; anchor_file=$2; shift 2 ;;
+    --force)     force="--force"; shift ;;
+    --goals)     [ "$#" -ge 2 ] || usage; goals_dir=$2; shift 2 ;;
+    --anchor)    [ "$#" -ge 2 ] || usage; anchor_file=$2; shift 2 ;;
+    --no-goals)  no_goals=1; shift ;;
+    --no-anchor) no_anchor=1; shift ;;
     *) echo "unknown option: $1" >&2; usage ;;
   esac
 done
+
+# An opt-out combined with its own explicit override is a contradiction —
+# refuse loudly rather than silently picking a winner. (Review finding, 0.3.0.)
+if [ -n "$no_goals" ] && [ -n "$goals_dir" ]; then
+  echo "conflicting flags: --no-goals and --goals cannot be combined" >&2; exit 2
+fi
+if [ -n "$no_anchor" ] && [ -n "$anchor_file" ]; then
+  echo "conflicting flags: --no-anchor and --anchor cannot be combined" >&2; exit 2
+fi
+
+# Default-on: the full stack installs unless the owner opts out.
+if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
+  goals_dir=$(dirname -- "$target")/tools
+fi
+if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
+  # Case-insensitive inference: Windows filesystems are case-insensitive, and
+  # install.ps1's -like already matches that way. (Review finding, 0.3.0.)
+  target_lc=$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')
+  case "$target_lc" in
+    *.claude*) anchor_file=CLAUDE.md ;;
+    *.gemini*) anchor_file=GEMINI.md ;;
+    *)         anchor_file=AGENTS.md ;;
+  esac
+fi
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mkdir -p "$target"

@@ -3,9 +3,17 @@
 A portable, evidence-first development and release workflow for AI coding agents. It
 contains the complete 19-skill workflow from `codex-dev-rigor-stack`, adapted to run
 without lifecycle hooks, a background runtime, trust activation, Stop interception, or a
-private evidence ledger — plus two optional drift-resistance layers: a small **anchor
-block** for the host's persistent instructions file, and **rigor-goals**, a stdlib-only
-CLI whose exit gate refuses to close a multi-story job without verification evidence.
+private evidence ledger — plus two drift-resistance layers that **install by default
+with everything else**: a small **anchor block** for the host's persistent instructions
+file, and **rigor-goals**, a stdlib-only CLI whose exit gate refuses to close a
+multi-story job without verification evidence.
+
+These are part of the stack, not extras. Skills alone are advice — a model can drift
+off them in a long session and nothing pushes back; the anchor and the goals gate are
+what make the discipline hold. There is no on-switch because they are never off. There
+IS an off-switch (`--no-anchor` / `--no-goals`, or deleting the anchor block) — and it
+belongs to the human owner alone. An agent never passes the opt-outs or disables the
+block on its own initiative; the anchor text itself carries that rule.
 
 ## The three tiers
 
@@ -64,20 +72,21 @@ Bash:
 Installation copies only the 19 directories under `skills/`. Existing directories with
 the same names are refused unless `-Force` or `--force` is supplied.
 
-### Optional: anchor block and rigor-goals
+### The anchor block and rigor-goals install by default
 
-```sh
-./install.sh .claude/skills --goals tools --anchor CLAUDE.md
-```
+A plain `./install.sh .claude/skills` (or `.\install.ps1 -Target ".claude\skills"`)
+installs all three tiers: the 19 skills, the `rigor-goals` tool (default:
+`<TARGET>/../tools/`), and the anchor block (default: `CLAUDE.md`, `GEMINI.md`, or
+`AGENTS.md` in the current directory, inferred from the target path). Run the installer
+from the project you are setting up.
 
-```powershell
-.\install.ps1 -Target ".claude\skills" -Goals tools -Anchor CLAUDE.md
-```
+`--anchor FILE` / `-Anchor` and `--goals DIR` / `-Goals` override the default locations.
+The anchor install is idempotent: on upgrade the marker-fenced block is replaced in
+place, hand edits outside the markers survive, and a diff is printed.
 
-`--anchor FILE` adds a marker-fenced block of the core discipline to the named
-instructions file — or, on upgrade, replaces the existing block in place (hand edits
-outside the markers survive; a diff is printed). `--goals DIR` copies the `rigor-goals`
-tool there.
+`--no-anchor` / `-NoAnchor` and `--no-goals` / `-NoGoals` are **owner-only opt-outs**.
+They exist so the human who owns the machine can turn the discipline off; an agent
+running the installer must never pass them on its own initiative.
 
 ### rigor-goals in 30 seconds
 
@@ -95,6 +104,13 @@ python3 tools/rigor_goals.py status
 The final story refuses to complete without `--verify-cmd` and `--verify-evidence` —
 that refusal is the point. State lives in `./.rigor/` (add it to `.gitignore` or commit
 it; your choice). A fresh session resumes with `status`.
+
+**Known limitation — the state is a file, not a fortress.** Any process that can delete
+files in the workspace can destroy the plan, and nothing in-repo can detect a deletion
+that also removes the ledger. Replacing a plan is loud (`create --force` prints what it
+destroys, and every ledger event carries a `plan_id`), but if other agents or tools share
+the same checkout, commit `./.rigor/` or back it up externally — the gate is only as
+durable as the files it lives in.
 
 ## Main entrypoints
 

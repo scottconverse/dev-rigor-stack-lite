@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.3.0 - 2026-07-15
+
+**The anchor block and rigor-goals now install by default.** They are part of
+the stack, not extras: a plain `install.sh TARGET` / `install.ps1 -Target`
+installs skills + the rigor-goals tool (default `<TARGET>/../tools/`) + the
+anchor block (default `CLAUDE.md`/`GEMINI.md`/`AGENTS.md` in the current
+directory, inferred from the target). `--no-goals`/`-NoGoals` and
+`--no-anchor`/`-NoAnchor` are owner-only opt-outs; the anchor text itself now
+states that only the human owner may disable the discipline.
+
+Also fixes everything found by the independent fix-wave review and the gate
+incident:
+
+- **User-supplied non-ASCII text no longer crashes the tool** (critical,
+  fix-wave review): the 0.2.1 ASCII change removed the stream guard entirely,
+  so an emoji in `--brief`/`--goal`/`--evidence` hard-crashed with
+  UnicodeEncodeError on cp1252 consoles — worse than the mojibake it replaced.
+  Corrected design: the tool's own strings are pure ASCII; user text passes
+  through and degrades to `?` instead of crashing. Test forces cp1252 via
+  PYTHONIOENCODING.
+- **Validator scans every shipped file** (fix-wave review): the 0.2.1 scan
+  skipped scripts/extensionless files and nested `SKILL.md`s; now all files at
+  all depths are checked, only the canonical top-level SKILL.md exempt.
+- **Plan replacement is loud and traceable** (gate incident): during the
+  release gate an agent sharing the checkout deleted `./.rigor/` and a later
+  `create` silently planted a new plan. `create --force` now prints the plan
+  it destroys (brief, plan id, progress, created); every plan gets a
+  `plan_id` carried on every ledger event. README documents the physical
+  limit: in-repo state cannot survive a deletion that also takes the ledger —
+  shared-checkout users should commit `./.rigor/` or back it up.
+- CHANGELOG/NOTICE wording corrected where 0.2.1 overstated the ASCII fix
+  ("all output" — true only of the tool's own strings).
+
 ## 0.2.1 - 2026-07-15
 
 Release-gate fixes. 0.2.0 was run through the stack's own gates (independent

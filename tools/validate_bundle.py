@@ -52,18 +52,20 @@ for name in sorted(expected):
             errors.append(f"{name}: hook-only term remains: {term}")
     # The hook-free claim covers EVERY file the installers copy, not just
     # SKILL.md: a hooks.json dropped anywhere in a skill dir would install
-    # wholesale and still validate. (Gate finding, 0.2.1.)
+    # wholesale and still validate. Scan ALL files (any extension, any depth);
+    # only the canonical top-level SKILL.md is exempt (already checked above).
+    # (Gate findings, 0.2.1 + fix-wave review.)
+    canonical = SKILLS / name / "SKILL.md"
     for member in sorted((SKILLS / name).rglob("*")):
-        if not member.is_file():
+        if not member.is_file() or member == canonical:
             continue
         if member.name in ("hooks.json", "settings.json", "settings.local.json"):
             errors.append(f"{name}: hook/config file must not ship in a skill dir: {member.relative_to(ROOT)}")
             continue
-        if member.suffix.lower() in (".md", ".txt", ".json", ".yaml", ".yml") and member.name != "SKILL.md":
-            body = member.read_text(encoding="utf-8", errors="replace")
-            for term in forbidden:
-                if term in body:
-                    errors.append(f"{name}: hook-only term in {member.relative_to(ROOT)}: {term}")
+        body = member.read_text(encoding="utf-8", errors="replace")
+        for term in forbidden:
+            if term in body:
+                errors.append(f"{name}: hook-only term in {member.relative_to(ROOT)}: {term}")
 
 # --- version sync: every version label in skills/ must match the manifest ---
 manifest_version = manifest.get("version", "")
