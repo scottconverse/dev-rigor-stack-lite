@@ -25,7 +25,7 @@ discipline's memory into places that do not decay:
 |---|---|---|---|
 | 1 | The 19 skills | none — invoked knowledge | — |
 | 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | reminder every turn | the host re-reads its instructions file each turn |
-| 3 | `rigor-goals` CLI | one hard gate at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the gate is a program, not a prompt |
+| 3 | `rigor-goals` CLI | one hard gate at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
 
 The anchor's one enforced habit — "multi-step work: run `rigor-goals create` FIRST" — is
 what feeds Tier 3. One reminder feeding one gate, instead of continuous forcing.
