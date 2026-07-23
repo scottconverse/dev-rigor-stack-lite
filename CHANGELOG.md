@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **VERIFY consumes the deterministic-detector harness** when a repo carries it
+  ([deterministic-detector](https://github.com/scottconverse/deterministic-detector):
+  randomized-order CI, advisory diff-scoped mutation reporting, and a same-turn
+  lint hook on hosts that support it). Consumption is proportional to blast
+  radius — low: lint feedback only; medium+: a green randomized-order CI run is
+  the test-evidence standard; high/release: the advisory mutation report must be
+  present in gate output with survivors dispositioned, and can never solely red
+  the gate. Required-status/branch-protection changes remain owner-only.
+  Degrades silently in repos without the harness.
+
 ## 0.3.2 - 2026-07-15
 
 Repairs the 0.3.1 rename, from a Codex-side compatibility report (both findings
