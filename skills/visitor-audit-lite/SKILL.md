@@ -9,7 +9,7 @@ description: >
   announcing a page/site/release as done, and after every deploy. CI is not a substitute.
 ---
 
-# Visitor Audit — PUBLIC SURFACE gate (Lite v0.3.2)
+# Visitor Audit — PUBLIC SURFACE gate (Lite v0.3.3)
 
 Verify the artifact as a first-time visitor experiences it, never through source diffs
 or CI proxies. This lane is distinct from product walkthrough: walkthrough asks whether

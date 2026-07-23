@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.3 - 2026-07-23
 
 - **VERIFY consumes the deterministic-detector harness** when a repo carries it
   ([deterministic-detector](https://github.com/scottconverse/deterministic-detector):
