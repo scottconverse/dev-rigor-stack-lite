@@ -19,6 +19,9 @@ Produce:
 
 - scope and explicit non-scope;
 - current behavior and evidence;
+- when relevant, a proportional inventory of project/package manifests and lockfiles,
+  CI workflows and canonical test/lint/type/build commands, the version authority and
+  every version reader, and existing integration or real-organization harnesses;
 - acceptance criteria and definition of done;
 - a test list with RED conditions and deterministic exit criteria;
 - blast-radius classification based on impact, not line count;

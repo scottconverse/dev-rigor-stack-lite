@@ -8,7 +8,7 @@ not replace screenshots, traces, logs, commands, or other raw evidence.
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "run_id": "unique-id",
   "stage": "plan|build|proof|review|walkthrough|visitor|merge|docs|release",
   "mode": "scoped|candidate|published|full",
@@ -17,9 +17,35 @@ not replace screenshots, traces, logs, commands, or other raw evidence.
   "artifact_ids": ["hash-or-release-asset-id"],
   "platform_scope": ["os/arch/version"],
   "started_at": "ISO-8601",
-  "environment_artifacts": ["path"]
+  "environment_artifacts": ["path"],
+  "worktree_state": "clean",
+  "dirty_diff_sha256": null,
+  "dirty_diff_evidence": null,
+  "lockfiles": [
+    {"path": "path/to/lockfile", "sha256": "sha256-of-exact-file-bytes"}
+  ],
+  "seeds": [
+    {"context": "randomized-suite", "seed": "seed-value", "evidence": "path"}
+  ]
 }
 ```
+
+Schema 1.1 is additive. Existing 1.0 manifests remain valid inputs; consumers must
+ignore unknown 1.1 fields. A 1.1 producer emits every identity field above, using empty
+arrays when no lockfile or randomized run applies.
+
+`worktree_state` is `clean` only when the recorded commit fully identifies the source.
+For `clean`, both dirty-diff fields are null. For `dirty`, both are required:
+`dirty_diff_evidence` points to a stable byte-for-byte artifact containing the complete
+uncommitted delta, including staged, unstaged, and relevant untracked files, and
+`dirty_diff_sha256` is the SHA-256 of that exact artifact. A dirty flag without the
+artifact and matching hash is not reproducible identity.
+
+Each detected dependency lockfile records its repository-relative path and the SHA-256
+of its exact bytes. Each randomized execution records its context, replayable seed, and
+raw evidence path. A 1.0 manifest cannot establish a claim that specifically depends on
+these 1.1 fields; record that claim as untested or unverifiable rather than upgrading
+the old evidence by inference.
 
 ## `claims.json`
 
@@ -99,8 +125,10 @@ blind pass, or absent required artifact makes `coverage_valid` false.
 }
 ```
 
-The receiving stage verifies commit/artifact identity and refuses stale or mismatched
-evidence. It may add evidence; it may not rewrite the upstream record.
+The receiving stage resolves `run_id` to the originating run manifest and verifies its
+commit and artifact identity. For schema 1.1 it also compares the complete applicable
+worktree, dirty-diff, lockfile, and seed identity and refuses missing, stale, or
+mismatched evidence. It may add evidence; it may not rewrite the upstream record.
 
 ## `gate-result.json`
 
@@ -117,5 +145,7 @@ evidence. It may add evidence; it may not rewrite the upstream record.
 }
 ```
 
-PASS requires strict-zero, valid coverage, exact artifact identity, and every mandatory
-stage for the selected scope. Missing/blocked coverage is not PASS.
+PASS requires a compatible manifest schema, strict-zero, valid coverage, exact artifact
+identity, and every mandatory stage for the selected scope. For schema 1.1, incomplete
+dirty-worktree identity or an applicable lockfile/seed mismatch makes the result INVALID.
+Missing/blocked coverage is not PASS.

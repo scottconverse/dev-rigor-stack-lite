@@ -14,7 +14,7 @@ description: >
 license: MIT
 ---
 
-# Standing dev rigor stack Lite v0.3.3
+# Standing dev rigor stack Lite v0.4.0
 
 Two altitudes. The **per-unit loop** (gates 1–5) applies to EVERY unit of work — a
 fix, a module, a feature. The **release gate** fires once per version, at the tag
@@ -87,6 +87,10 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
    TEST LIST up front. **Classify the unit's blast radius here** — that sets the
    review depth and fires the escalators (below). Blast radius, not diff size, is the
    sizing axis: a one-line change to auth is small in lines and large in blast.
+   When relevant to the unit, inventory project/package manifests and lockfiles; CI
+   workflows and canonical test/lint/type/build commands; the version authority and
+   every version reader; and existing integration or real-organization harnesses.
+   Keep discovery proportional: a trivial copy edit does not need this inventory.
 
 2. BUILD — `$dev-rigor-stack-lite-build` / `$coder-tdd-qa-lite`, test-first
    Write the failing tests from the test list FIRST (or reproduce-red for a bug),
@@ -277,6 +281,10 @@ retain ordinary evidence artifacts. If a lane is missing or unreadable, mark tha
 INVALID; do not silently claim the complete stack ran. Host capabilities and higher-priority
 instructions always govern tool use, delegation, approvals, merges, and publication.
 
+An external harness, such as a real-organization workflow, contributes evidence to the
+loop but never replaces PLAN, witnessed RED-to-GREEN, proof, review, or the MERGE gate.
+Classify unavailable or supplemental evidence honestly; do not promote it into a gate.
+
 **audit-lite / audit-team-lite vs. gauntletgate-lite** overlap by design — the same review
 discipline in two packagings. The standalone audits are the per-unit *review reports*
 (gate 4); gauntletgate-lite is the release-altitude *advancement gate*, and its `lite`/`full`
@@ -286,8 +294,11 @@ Same discipline, different altitude — a report vs. a gate.
 
 ## Cross-cutting, always on
 
-- Use bounded workers only when the host provides them and delegation is authorized. Keep
-  synthesis and the final gate decision with the coordinator. Otherwise use serial passes.
+- Use bounded leaf workers only when the host provides them and delegation is authorized.
+  Workers do not delegate or spawn sub-workers. Keep synthesis and the final gate decision
+  with the coordinator. Otherwise use serial passes.
+- Independent reviewers receive the acceptance contract, exact candidate identity, and raw
+  evidence artifacts. Exclude the builder's narrative or explanation from their context.
 - Worker tier calibration (fan-out only): every worker states its tier and moderates
   rigor by it — the paste-in wording is the fan-out preamble below.
 - Open-source-first: verify licenses; prefer MIT/Apache/MPL over BUSL/SSPL/closed.
@@ -304,10 +315,12 @@ apply are not optional, and a skip is stated with a reason, never silent.
 
 Fan-out worker preamble (paste the matching line at the top of each agent() prompt):
 
-[worker] You are a bounded worker. Your known failure mode is passing your own "looks
-right" review instead of running a check that can fail. For every claim, run the real
-check and paste the exact command and its verbatim output.
+[worker] You are a bounded leaf worker. Do not delegate or spawn sub-workers. Your known
+failure mode is passing your own "looks right" review instead of running a check that can
+fail. For every claim, run the real check and paste the exact command and its verbatim
+output.
 
-[mechanical worker] You are a worker on a mechanical task. Every result needs a named
-artifact — exact command + output. Do not claim "verified" from inspection. If this
-task turns out to need judgment or synthesis, stop and say so; do not guess.
+[mechanical worker] You are a bounded leaf worker on a mechanical task. Do not delegate
+or spawn sub-workers. Every result needs a named artifact — exact command + output. Do
+not claim "verified" from inspection. If this task turns out to need judgment or
+synthesis, stop and say so; do not guess.

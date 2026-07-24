@@ -78,6 +78,52 @@ for path in sorted(SKILLS.rglob("*.md")):
                 rel = path.relative_to(ROOT)
                 errors.append(f"{rel}:{line_no}: version v{found} != manifest {manifest_version}")
 
+# --- artifact contract: schema 1.1 candidate-identity fields ---
+ARTIFACT_CONTRACT = SKILLS / "dev-rigor-stack-lite" / "references" / "artifact-contracts.md"
+if not ARTIFACT_CONTRACT.is_file():
+    errors.append("artifact contract missing")
+else:
+    contract_text = ARTIFACT_CONTRACT.read_text(encoding="utf-8")
+    example = re.search(
+        r"## `run-manifest\.json`\s*```json\s*(\{.*?\})\s*```",
+        contract_text,
+        re.S,
+    )
+    if not example:
+        errors.append("artifact contract: run-manifest JSON example missing")
+    else:
+        try:
+            run_manifest = json.loads(example.group(1))
+        except json.JSONDecodeError as exc:
+            errors.append(f"artifact contract: run-manifest example is invalid JSON: {exc}")
+        else:
+            if run_manifest.get("schema_version") != "1.1":
+                errors.append("artifact contract: run-manifest schema_version must be 1.1")
+            identity_fields = {
+                "worktree_state",
+                "dirty_diff_sha256",
+                "dirty_diff_evidence",
+                "lockfiles",
+                "seeds",
+            }
+            missing_identity = sorted(identity_fields - run_manifest.keys())
+            if missing_identity:
+                errors.append(f"artifact contract: run-manifest missing identity fields {missing_identity}")
+            if run_manifest.get("worktree_state") not in {"clean", "dirty"}:
+                errors.append("artifact contract: worktree_state example must be clean or dirty")
+            lockfiles = run_manifest.get("lockfiles")
+            if not isinstance(lockfiles, list) or not lockfiles or not {
+                "path", "sha256"
+            }.issubset(lockfiles[0]):
+                errors.append("artifact contract: lockfiles example must contain path and sha256")
+            seeds = run_manifest.get("seeds")
+            if not isinstance(seeds, list) or not seeds or not {
+                "context", "seed", "evidence"
+            }.issubset(seeds[0]):
+                errors.append("artifact contract: seeds example must contain context, seed, and evidence")
+    if "Existing 1.0 manifests remain valid" not in contract_text:
+        errors.append("artifact contract: schema 1.0 compatibility note missing")
+
 # --- internal references resolve (0.3.2, Codex report) ---
 # A rename that leaves a dangling `../old-name/SKILL.md` read or a stale
 # `$old-name` entrypoint token ships a broken skill that still validates.
