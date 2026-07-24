@@ -105,6 +105,7 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
    survives if they cannot refute it. For a low-blast unit, VERIFY and REVIEW may
    collapse into one adversarial pass — don't run both formally over a one-liner.
 
+   <!-- SHARED-BLOCK: detector-proportionality -->
    **Deterministic-detector harness (when the repo has it — the
    [deterministic-detector](https://github.com/scottconverse/deterministic-detector)
    CI jobs, plus its editor hook on hosts that support it; degrade silently if
@@ -117,6 +118,11 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
    dispositioned (killed, equivalent, or accepted-with-reason) — it still cannot
    solely red the gate, and no agent ever touches required-status-check or
    branch-protection settings (owner-only, after burn-in).
+   <!-- /SHARED-BLOCK: detector-proportionality -->
+   <!-- The markers fence the rule shared with the dev-rigor-stack repo, whose
+   CI cross-diffs this block against its copy (host-adapted wording is
+   sanctioned via its tools/parity-substitutions.json; everything else must
+   match). Edit the rule only in lockstep with that repo. -->
 
 4. REVIEW — the coordinator picks the proportionate review lane for what this
    slice touched, and dispatches a bounded subagent when available. Otherwise, run the

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- SHARED-BLOCK parity markers fence the detector-proportionality rule in
+  `dev-rigor-stack-lite/SKILL.md`. The dev-rigor-stack repo's CI cross-diffs
+  the block against its copy on every push (host-adapted wording sanctioned
+  via a committed substitution map), so the shared rule can no longer drift
+  silently between the two stacks. Markers are HTML comments — no rendered or
+  behavioral change.
+
 ## 0.3.3 - 2026-07-23
 
 - **VERIFY consumes the deterministic-detector harness** when a repo carries it
