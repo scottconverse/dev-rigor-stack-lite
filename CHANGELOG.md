@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-07-24
+
+- **Candidate identity is reproducible across handoffs.** Run-manifest schema 1.1 adds
+  clean/dirty worktree state, a hash plus evidence artifact for the complete dirty
+  delta, detected lockfile hashes, and randomized-run seeds. Existing 1.0 manifests
+  remain valid; handoffs and gate results now state how 1.1 identity is consumed.
+- **Worker and reviewer independence is explicit at the coordinating boundary.**
+  Workers are bounded leaves that cannot delegate or spawn, and independent reviewers
+  receive the acceptance contract, exact candidate identity, and raw evidence rather
+  than the builder's narrative.
+- **PLAN discovery is conditional and proportionate.** Relevant units inventory
+  manifests, lockfiles, CI commands, version authority/readers, and existing external
+  harnesses without adding a phase or discovery script.
+- **External harnesses are supplemental evidence.** They cannot replace PLAN, witnessed
+  RED-to-GREEN, proof, review, or MERGE.
 - SHARED-BLOCK parity markers fence the detector-proportionality rule in
   `dev-rigor-stack-lite/SKILL.md`. The dev-rigor-stack repo's CI cross-diffs
   the block against its copy on every push (host-adapted wording sanctioned
