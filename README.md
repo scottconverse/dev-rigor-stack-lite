@@ -1,5 +1,11 @@
 # dev-rigor-stack-lite
 
+**[Website](https://scottconverse.github.io/dev-rigor-stack-lite/)** ·
+[Manual](docs/manual.md) ·
+[Architecture](docs/architecture.md) ·
+[Troubleshooting](docs/troubleshooting.md) ·
+[Releases](https://github.com/scottconverse/dev-rigor-stack-lite/releases)
+
 A portable, evidence-first development and release workflow for AI coding agents. It
 contains the complete 19-skill workflow from `codex-dev-rigor-stack`, adapted to run
 without lifecycle hooks, a background runtime, trust activation, Stop interception, or a

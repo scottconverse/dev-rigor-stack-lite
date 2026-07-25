@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dev-rigor-stack-lite — a delivery discipline your coding agent can't quietly drop</title>
+<meta name="description" content="A portable, evidence-first development and release workflow for AI coding agents. 19 skills, an anchor block, and a goal gate that refuses to close a job without verification evidence. MIT, no dependencies, no hooks.">
+<meta property="og:title" content="dev-rigor-stack-lite">
+<meta property="og:description" content="A portable, evidence-first delivery workflow for AI coding agents. Skills alone are advice — this adds two layers that resist drift.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='5' fill='%2317140F'/><path d='M8 16h5l2.5-5 3 10 2.5-5h5' stroke='%23E4571F' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+  :root{
+    --paper:#F6F2EA; --raised:#FCFAF6; --sunk:#EFEADF;
+    --ink:#17140F; --ink-2:#4A443A; --ink-3:#6F6959;
+    --rule:#DFD8C8; --rule-2:#C6BCA6;
+    --stamp:#B3400F; --stamp-soft:#F3E2D8;
+    --pass:#16653A; --fail:#A81E1E;
+    --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --wide:1120px; --read:68ch;
+    --r:6px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth; -webkit-text-size-adjust:100%}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:17px; line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{line-height:1.15; letter-spacing:-0.02em; margin:0; font-weight:700}
+  p{margin:0 0 1em}
+  a{color:var(--ink); text-decoration-color:var(--rule-2); text-underline-offset:3px}
+  a:hover{text-decoration-color:var(--stamp)}
+  :focus-visible{outline:2.5px solid var(--stamp); outline-offset:3px; border-radius:2px}
+  code,kbd{font-family:var(--mono); font-size:.86em}
+  .wrap{max-width:var(--wide); margin:0 auto; padding:0 24px}
+  .skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--paper);padding:12px 18px;z-index:99}
+  .skip:focus{left:8px;top:8px}
+
+  /* ---- nav ---- */
+  header.nav{position:sticky; top:0; z-index:50; background:rgba(246,242,234,.88);
+    backdrop-filter:saturate(1.4) blur(8px); border-bottom:1px solid var(--rule)}
+  .nav-in{display:flex; align-items:center; gap:28px; height:62px}
+  .brand{display:flex; align-items:center; gap:9px; font-family:var(--mono); font-size:14.5px;
+    font-weight:600; letter-spacing:-.01em; text-decoration:none; white-space:nowrap}
+  .brand svg{flex:none}
+  .brand .v{color:var(--stamp); font-size:12px}
+  .nav-links{display:flex; gap:22px; margin-left:auto; align-items:center}
+  .nav-links a{font-size:14.5px; color:var(--ink-2); text-decoration:none}
+  .nav-links a:hover{color:var(--ink)}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-size:15px; font-weight:600; padding:11px 20px; border-radius:var(--r);
+    text-decoration:none; border:1px solid transparent; cursor:pointer; transition:.15s}
+  .btn-1{background:var(--ink); color:var(--paper)}
+  .btn-1:hover{background:#2C2619}
+  .btn-2{background:transparent; color:var(--ink); border-color:var(--rule-2)}
+  .btn-2:hover{border-color:var(--ink); background:var(--raised)}
+  .btn-sm{padding:8px 15px; font-size:14px}
+  .menu-btn{display:none; margin-left:auto; background:none; border:1px solid var(--rule-2);
+    border-radius:var(--r); padding:7px 11px; font:inherit; font-size:14px; cursor:pointer; color:var(--ink)}
+  @media(max-width:860px){
+    .nav-links{position:fixed; inset:62px 0 auto 0; background:var(--raised); flex-direction:column;
+      align-items:stretch; gap:0; padding:8px 24px 20px; border-bottom:1px solid var(--rule);
+      margin-left:0; display:none}
+    .nav-links[data-open="true"]{display:flex}
+    .nav-links a{padding:13px 0; border-bottom:1px solid var(--rule); font-size:16px}
+    .nav-links .btn{margin-top:14px; border-bottom:none}
+    .menu-btn{display:block}
+  }
+
+  /* ---- hero ---- */
+  .hero{padding:78px 0 64px; border-bottom:1px solid var(--rule)}
+  .eyebrow{font-family:var(--mono); font-size:12.5px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--stamp); margin:0 0 18px; font-weight:600}
+  h1{font-size:clamp(2.3rem,5.4vw,3.85rem); max-width:19ch; letter-spacing:-.033em}
+  .lede{font-size:clamp(1.05rem,2vw,1.24rem); color:var(--ink-2); max-width:60ch; margin:22px 0 0}
+  .cta-row{display:flex; gap:12px; flex-wrap:wrap; margin-top:32px}
+  .hero-note{margin-top:16px; font-size:14px; color:var(--ink-3)}
+  .hero-note code{background:var(--sunk); padding:2px 6px; border-radius:4px}
+
+  /* ---- gate diagram (the one bold element) ---- */
+  .gatefig{margin-top:52px; background:var(--raised); border:1px solid var(--rule);
+    border-radius:10px; padding:26px 22px 20px; position:relative; overflow:hidden}
+  .gatefig figcaption{font-size:13.5px; color:var(--ink-3); margin-top:16px; text-align:center}
+  .gate-row{display:flex; align-items:stretch; gap:0; flex-wrap:nowrap; overflow-x:auto; padding-bottom:6px}
+  .gate{flex:1 1 0; min-width:118px; text-align:center; padding:14px 8px 12px; border:1px solid var(--rule);
+    border-right:none; background:var(--paper); position:relative}
+  .gate:first-child{border-radius:var(--r) 0 0 var(--r)}
+  .gate:last-child{border-right:1px solid var(--rule); border-radius:0 var(--r) var(--r) 0}
+  .gate .n{font-family:var(--mono); font-size:11px; color:var(--ink-3); display:block}
+  .gate .g{font-family:var(--mono); font-weight:600; font-size:14.5px; letter-spacing:.02em; margin-top:5px; display:block}
+  .gate .d{font-size:12.5px; color:var(--ink-2); margin-top:5px; display:block; line-height:1.4}
+  .gate.terminal{background:var(--sunk)}
+  .returns{display:flex; align-items:center; gap:9px; margin-top:14px; padding-top:14px;
+    border-top:1px dashed var(--rule-2); font-size:13.5px; color:var(--ink-2); justify-content:center; text-align:center}
+  .returns b{color:var(--stamp); font-family:var(--mono); font-size:12.5px; letter-spacing:.04em;
+    text-transform:uppercase; font-weight:600}
+
+  /* ---- proof strip ---- */
+  .strip{background:var(--ink); color:#EDE7DA; padding:22px 0}
+  .strip-in{display:flex; flex-wrap:wrap; gap:10px 34px; justify-content:center;
+    font-family:var(--mono); font-size:13.5px; letter-spacing:.01em}
+  .strip-in span{white-space:nowrap; color:#CFC7B6}
+  .strip-in b{color:#FFF; font-weight:600}
+
+  /* ---- generic section ---- */
+  section{padding:82px 0; border-bottom:1px solid var(--rule)}
+  .kicker{font-family:var(--mono); font-size:12.5px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--stamp); font-weight:600; margin:0 0 14px}
+  h2{font-size:clamp(1.75rem,3.4vw,2.4rem); max-width:22ch}
+  .sub{color:var(--ink-2); max-width:var(--read); margin-top:16px; font-size:1.04rem}
+  .split{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:56px; align-items:start}
+  @media(max-width:900px){.split{grid-template-columns:1fr; gap:34px}}
+
+  /* ---- tiers ---- */
+  .tier{display:grid; grid-template-columns:44px minmax(0,1fr); gap:20px; padding:22px 0; border-top:1px solid var(--rule)}
+  .tier:last-child{border-bottom:1px solid var(--rule)}
+  .tier-n{font-family:var(--mono); font-size:13px; color:var(--paper); background:var(--ink);
+    width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600}
+  .tier h3{font-size:1.12rem; margin-bottom:6px}
+  .tier p{color:var(--ink-2); font-size:15.5px; margin:0}
+  .tier .force{font-family:var(--mono); font-size:12px; color:var(--stamp); text-transform:uppercase;
+    letter-spacing:.07em; font-weight:600; margin-top:9px; display:block}
+
+  /* ---- code ---- */
+  .code{background:var(--ink); border-radius:8px; overflow:hidden; border:1px solid #2A2418}
+  .code-bar{display:flex; align-items:center; gap:9px; padding:9px 15px; border-bottom:1px solid #2A2418;
+    font-family:var(--mono); font-size:12px; color:#9A9182; letter-spacing:.03em}
+  .code-bar .dot{width:8px;height:8px;border-radius:50%;background:#3A3326}
+  .code pre{margin:0; padding:17px 18px; overflow-x:auto; font-family:var(--mono);
+    font-size:13.4px; line-height:1.72; color:#E9E2D3}
+  .code .cm{color:#8B8371}
+  .code .k{color:#F0A868}
+  .code .s{color:#B8D4A8}
+  .code .p{color:#E4571F}
+
+  /* ---- capability lanes ---- */
+  .lanes{display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr)); gap:1px;
+    background:var(--rule); border:1px solid var(--rule); border-radius:8px; overflow:hidden; margin-top:38px}
+  .lane{background:var(--raised); padding:24px 22px}
+  .lane h3{font-family:var(--mono); font-size:14px; letter-spacing:.01em; margin-bottom:9px}
+  .lane p{font-size:14.8px; color:var(--ink-2); margin:0}
+  .lane .cmd{display:block; font-family:var(--mono); font-size:12.5px; color:var(--stamp); margin-top:12px; word-break:break-all}
+
+  /* ---- table ---- */
+  table{width:100%; border-collapse:collapse; margin-top:32px; font-size:15px}
+  th,td{text-align:left; padding:13px 14px; border-bottom:1px solid var(--rule); vertical-align:top}
+  th{font-family:var(--mono); font-size:12.5px; text-transform:uppercase; letter-spacing:.07em;
+    color:var(--ink-3); font-weight:600; border-bottom:1px solid var(--rule-2)}
+  td code{background:var(--sunk); padding:2px 6px; border-radius:4px; white-space:nowrap}
+  .tbl-wrap{overflow-x:auto}
+
+  /* ---- steps ---- */
+  .steps{counter-reset:s; margin-top:36px}
+  .step{counter-increment:s; display:grid; grid-template-columns:38px minmax(0,1fr); gap:20px; padding-bottom:30px; position:relative}
+  .step::before{content:counter(s); font-family:var(--mono); font-size:13px; font-weight:600;
+    width:30px; height:30px; border:1px solid var(--rule-2); border-radius:50%; display:flex;
+    align-items:center; justify-content:center; background:var(--raised)}
+  .step:not(:last-child)::after{content:""; position:absolute; left:15px; top:34px; bottom:6px; width:1px; background:var(--rule)}
+  .step h3{font-size:1.05rem; margin-bottom:8px}
+  .step p{color:var(--ink-2); font-size:15.5px; margin:0 0 12px}
+
+  /* ---- receipt / stamp ---- */
+  .receipt{border:1px solid var(--rule-2); border-radius:8px; background:var(--raised);
+    padding:20px 22px; font-family:var(--mono); font-size:13.6px; position:relative}
+  .receipt .lbl{font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-3); display:block; margin-bottom:11px}
+  .receipt .line{color:var(--ink); line-height:1.9; word-break:break-word}
+  .receipt .tag{color:var(--stamp); font-weight:600}
+  .stampmark{position:absolute; top:14px; right:16px; border:2px solid var(--stamp); color:var(--stamp);
+    font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:.12em; padding:5px 10px;
+    border-radius:3px; transform:rotate(-6deg); opacity:.85}
+
+  /* ---- callout ---- */
+  .note{border-left:3px solid var(--stamp); background:var(--stamp-soft); padding:18px 22px;
+    border-radius:0 var(--r) var(--r) 0; margin-top:30px}
+  .note p{margin:0; font-size:15.4px; color:#5A2A12}
+  .note strong{color:#7A2E0C}
+
+  /* ---- limits ---- */
+  .limits{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:26px; margin-top:36px}
+  .limit h3{font-size:15.5px; font-family:var(--mono); margin-bottom:7px}
+  .limit p{font-size:14.8px; color:var(--ink-2); margin:0}
+
+  /* ---- final cta ---- */
+  .final{background:var(--ink); color:#EDE7DA; text-align:center; border:none}
+  .final h2{color:#FFF; margin:0 auto; max-width:20ch}
+  .final p{color:#B9B1A1; max-width:56ch; margin:18px auto 0}
+  .final .btn-1{background:var(--paper); color:var(--ink)}
+  .final .btn-1:hover{background:#FFF}
+  .final .btn-2{color:#EDE7DA; border-color:#4A4234}
+  .final .btn-2:hover{border-color:#8B8371; background:#231E14}
+  .final .cta-row{justify-content:center}
+
+  footer{padding:46px 0; font-size:14.5px; color:var(--ink-2); background:var(--paper)}
+  .foot{display:flex; flex-wrap:wrap; gap:16px 30px; align-items:center}
+  .foot a{color:var(--ink-2)}
+  .foot .sp{margin-left:auto; color:var(--ink-3); font-family:var(--mono); font-size:12.5px}
+  ul.plain{margin:14px 0 0; padding-left:20px; color:var(--ink-2); font-size:15.5px}
+  ul.plain li{margin-bottom:8px}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#17140F"/><path d="M8 16h5l2.5-5 3 10 2.5-5h5" stroke="#E4571F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      dev-rigor-stack-lite <span class="v">v0.4.0</span>
+    </a>
+    <button class="menu-btn" aria-expanded="false" aria-controls="navlinks">Menu</button>
+    <nav class="nav-links" id="navlinks" aria-label="Main">
+      <a href="#why">Why</a>
+      <a href="#tiers">How it holds</a>
+      <a href="#loop">The loop</a>
+      <a href="#install">Install</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#status">Status</a>
+      <a class="btn btn-1 btn-sm" href="https://github.com/scottconverse/dev-rigor-stack-lite">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div id="top" class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Portable agent skills · MIT · v0.4.0</p>
+    <h1>A delivery discipline your coding agent can't quietly drop.</h1>
+    <p class="lede">
+      Nineteen skills that route every unit of work through plan, build, verify, review and merge —
+      plus two layers that survive what skills alone don't: a reminder block your host re-reads every
+      turn, and a goal gate that refuses to close a job with no verification evidence named.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-1" href="#install">Install it</a>
+      <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite">Read the source</a>
+    </div>
+    <p class="hero-note">Works in Codex, Claude Code, Antigravity, and other Agent&nbsp;Skills hosts. Needs Git and Python&nbsp;3 — nothing else.</p>
+
+    <figure class="gatefig">
+      <div class="gate-row">
+        <div class="gate"><span class="n">gate 1</span><span class="g">PLAN</span><span class="d">Trace the code. Write the test list. Classify blast radius.</span></div>
+        <div class="gate"><span class="n">gate 2</span><span class="g">BUILD</span><span class="d">Watch each test fail before you make it pass.</span></div>
+        <div class="gate"><span class="n">gate 3</span><span class="g">VERIFY</span><span class="d">Try to break the claim. It survives only if you can't.</span></div>
+        <div class="gate"><span class="n">gate 4</span><span class="g">REVIEW</span><span class="d">A proportionate lane, from a fresh adversarial vantage.</span></div>
+        <div class="gate terminal"><span class="n">gate 5</span><span class="g">MERGE</span><span class="d">Readiness proven. Permission still comes from you.</span></div>
+      </div>
+      <p class="returns"><b>on red →</b> work returns to the gate that owns it. Never route around a gate; never merge or tag past one.</p>
+      <figcaption>The per-unit loop. A separate release gate fires once per version, at the tag boundary.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<div class="strip">
+  <div class="wrap strip-in">
+    <span><b>19</b> skills</span>
+    <span><b>0</b> runtime dependencies</span>
+    <span><b>No</b> hooks or background runtime</span>
+    <span><b>4</b> host families</span>
+    <span><b>Windows · macOS · Linux</b> install proven in CI</span>
+    <span><b>MIT</b></span>
+  </div>
+</div>
+
+<section id="why">
+  <div class="wrap split">
+    <div>
+      <p class="kicker">The problem</p>
+      <h2>Skills alone are advice, and advice decays.</h2>
+    </div>
+    <div>
+      <p class="sub" style="margin-top:0">
+        A model's attention to your standards fades across a long session and dies outright at context
+        compaction. Nothing pushes back. The work still looks finished — tests that were never seen
+        failing, a claim nobody tried to break, a gate quietly skipped because the session was long and
+        the change looked small.
+      </p>
+      <p class="sub">
+        Hooks fight that with per-turn injection, but hooks are host-specific and don't travel. This
+        bundle takes the other route: it moves the discipline into two places that don't decay — the
+        host's own instructions file, which is re-read every turn, and a file on disk, which survives
+        compaction and session death.
+      </p>
+      <p class="sub">
+        The result is portable. The same workflow runs in Codex, Claude Code, and Antigravity, with no
+        runtime to install and nothing host-specific to maintain.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="tiers">
+  <div class="wrap">
+    <p class="kicker">How it holds</p>
+    <h2>Three tiers, one of which is a program.</h2>
+    <p class="sub">Each tier applies a different amount of force. Only the third can actually refuse.</p>
+
+    <div style="margin-top:36px">
+      <div class="tier">
+        <div><div class="tier-n">1</div></div>
+        <div>
+          <h3>The 19 skills</h3>
+          <p>The full workflow — planning, test-first build, adversarial verification, five review lanes, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
+          <span class="force">Force: none — invoked knowledge</span>
+        </div>
+      </div>
+      <div class="tier">
+        <div><div class="tier-n">2</div></div>
+        <div>
+          <h3>The anchor block</h3>
+          <p>A marker-fenced block the installer writes into <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>GEMINI.md</code>. Ten lines of standing discipline the host re-reads every single turn, including the turn after compaction. Your own edits outside the markers survive upgrades.</p>
+          <span class="force">Force: a reminder, every turn</span>
+        </div>
+      </div>
+      <div class="tier">
+        <div><div class="tier-n">3</div></div>
+        <div>
+          <h3>The rigor-goals gate</h3>
+          <p>A dependency-free Python CLI holding multi-step plans in <code>./.rigor/</code> on disk. The final story will not close without a named verification command and its result. The refusal is a program, not a prompt — an agent can't talk its way past it.</p>
+          <span class="force">Force: one hard gate at "done"</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <p><strong>Be precise about what the gate is.</strong> <code>rigor-goals</code> records that verification evidence was named — it does not run your command or judge whether the result is true. It's a workflow-completeness gate, not independent proof enforcement. The honesty of the evidence remains the agent's obligation and the reviewer's job to check.</p>
+    </div>
+  </div>
+</section>
+
+<section id="loop">
+  <div class="wrap split">
+    <div>
+      <p class="kicker">The loop</p>
+      <h2>Every unit of work takes the same five gates.</h2>
+      <p class="sub">
+        A bug fix, a module, a refactor — the same route, scaled to what's at stake. Blast radius, not
+        diff size, sets the depth: a one-line change to authentication is small in lines and large in
+        blast. Low-risk units collapse verify and review into a single pass; a release runs the full
+        gauntlet. Skips are allowed, but a skip is always stated with a reason. Never silent.
+      </p>
+      <p class="sub">
+        Each gate is also a standalone entry point, so you can run one without the others.
+      </p>
+    </div>
+    <div>
+      <div class="receipt">
+        <span class="lbl">Every code deliverable ends with a receipt</span>
+        <div class="line">
+          <span class="tag">proved:</span> 14 tests pass; BUNDLE_VALID; 3 mutation probes rejected<br>
+          <span class="tag">level:</span> medium blast — shared validator, reviewed
+        </div>
+        <div class="stampmark">EVIDENCE</div>
+      </div>
+      <ul class="plain">
+        <li>"Wrote it" is not "ran it" is not "checked it's correct."</li>
+        <li>A test never seen failing is not a test.</li>
+        <li>A check that fails twice gets reported, not silently retried.</li>
+        <li>Passing a gate proves readiness — it never grants permission to merge or publish.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="lanes">
+  <div class="wrap">
+    <p class="kicker">The lanes</p>
+    <h2>Review depth you choose on purpose.</h2>
+    <p class="sub">Five review lanes, from a quick scoped read to a full simulated team. Each is invocable on its own.</p>
+    <div class="lanes">
+      <div class="lane">
+        <h3>Quick audit</h3>
+        <p>The default. A scoped diff, a slice, an end-of-unit read — one tight pass across correctness, docs, tests and runtime behavior.</p>
+        <span class="cmd">$dev-rigor-stack-lite-audit-lite</span>
+      </div>
+      <div class="lane">
+        <h3>Audit team</h3>
+        <p>Five roles — principal engineer, UI/UX, technical writer, test engineer, QA — with severity-ranked findings and a punch list. For high-blast units.</p>
+        <span class="cmd">$dev-rigor-stack-lite-audit-team</span>
+      </div>
+      <div class="lane">
+        <h3>Walkthrough</h3>
+        <p>Black-box newcomer truth: the installer lifecycle, every inventoried screen, control and state, then the white-box wiring behind them.</p>
+        <span class="cmd">$dev-rigor-stack-lite-walkthrough</span>
+      </div>
+      <div class="lane">
+        <h3>Visitor audit</h3>
+        <p>Your public surfaces as a stranger meets them — every page read as rendered, every link followed and counted, published checksums verified.</p>
+        <span class="cmd">$dev-rigor-stack-lite-visitor-audit</span>
+      </div>
+      <div class="lane">
+        <h3>Proof gate</h3>
+        <p>Adversarial verification. Skeptics try to refute the claim; it stands only if they can't.</p>
+        <span class="cmd">$dev-rigor-stack-lite-proof-gate</span>
+      </div>
+      <div class="lane">
+        <h3>GauntletGate</h3>
+        <p>The release-altitude advancement gate, in lite, walkthrough and full lanes, driving findings to zero before a tag.</p>
+        <span class="cmd">$dev-rigor-stack-lite-gauntletgate</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <p class="kicker">Quick start</p>
+    <h2>Installed and gating in about a minute.</h2>
+    <p class="sub">Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div></div>
+        <div>
+          <h3>Get the pinned release</h3>
+          <p>Pin to a tag so the bundle you install is the bundle that was tested.</p>
+          <div class="code">
+            <div class="code-bar"><span class="dot"></span> terminal</div>
+<pre><span class="k">git</span> clone --branch v0.4.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+<span class="k">cd</span> dev-rigor-stack-lite</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div></div>
+        <div>
+          <h3>Install into your host</h3>
+          <p>Pick the target for the agent you use. Run it from the project you're configuring, so the anchor lands in that project.</p>
+          <div class="code">
+            <div class="code-bar"><span class="dot"></span> powershell</div>
+<pre>powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span class="s">"$HOME\.codex\skills"</span>
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span class="s">".claude\skills"</span>
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span class="s">".agents\skills"</span></pre>
+          </div>
+          <p style="font-size:14px; color:var(--ink-3); margin:10px 0 14px"><code>-ExecutionPolicy Bypass</code> applies only to that one child process. It changes nothing for your user or machine.</p>
+          <div class="code">
+            <div class="code-bar"><span class="dot"></span> bash</div>
+<pre>./install.sh <span class="s">"$HOME/.codex/skills"</span>
+./install.sh .claude/skills
+./install.sh .agents/skills</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div></div>
+        <div>
+          <h3>Verify the bundle</h3>
+          <p>Confirms all 19 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
+          <div class="code">
+            <div class="code-bar"><span class="dot"></span> terminal</div>
+<pre><span class="k">python</span> tools/validate_bundle.py
+<span class="cm">→ BUNDLE_VALID: 19 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div></div>
+        <div>
+          <h3>Open a gated plan</h3>
+          <p>Multi-step work starts here. The last story won't close without evidence.</p>
+          <div class="code">
+            <div class="code-bar"><span class="dot"></span> terminal</div>
+<pre><span class="k">python3</span> tools/rigor_goals.py create --brief <span class="s">"ship feature X"</span> \
+  --goal <span class="s">"api::add the endpoint"</span> --goal <span class="s">"docs::update the manual"</span>
+<span class="k">python3</span> tools/rigor_goals.py next
+<span class="k">python3</span> tools/rigor_goals.py checkpoint --id G001 --status complete \
+  --evidence <span class="s">"test_api.py: 4 passed"</span>
+<span class="cm"># the final story additionally requires:</span>
+<span class="cm">#   --verify-cmd "..." --verify-evidence "..."</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <caption class="sr-only" style="position:absolute;left:-9999px">Install targets by host</caption>
+        <thead><tr><th scope="col">Host</th><th scope="col">Skills target</th><th scope="col">Anchor file</th></tr></thead>
+        <tbody>
+          <tr><td>OpenAI Codex</td><td><code>~/.codex/skills</code></td><td><code>AGENTS.md</code></td></tr>
+          <tr><td>Claude Code</td><td><code>.claude/skills</code> or <code>~/.claude/skills</code></td><td><code>CLAUDE.md</code></td></tr>
+          <tr><td>Google Antigravity</td><td><code>.agents/skills</code> or <code>~/.gemini/config/skills</code></td><td><code>AGENTS.md</code> / <code>GEMINI.md</code></td></tr>
+          <tr><td>Other Agent Skills hosts</td><td>any skills directory</td><td><code>AGENTS.md</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:14.5px;color:var(--ink-3);margin-top:16px">
+      The anchor and <code>rigor-goals</code> install by default — they're part of the stack, not extras.
+      An off-switch exists (<code>--no-anchor</code> / <code>--no-goals</code>) and belongs to the human owner alone.
+    </p>
+  </div>
+</section>
+
+<section id="evidence">
+  <div class="wrap split">
+    <div>
+      <p class="kicker">Evidence contracts</p>
+      <h2>Evidence that names exactly what was tested.</h2>
+      <p class="sub">
+        Each stage emits or consumes structured artifacts, so a handoff can't quietly lose what it was
+        proven against. Schema 1.1 records whether the tree was clean, a hash and artifact for any
+        uncommitted delta, dependency lockfile hashes, and the seeds of randomized runs.
+      </p>
+      <p class="sub">
+        A receiving stage verifies that identity and refuses stale or mismatched evidence. It may add
+        evidence; it may not rewrite the record upstream of it.
+      </p>
+      <p class="sub" style="font-size:15px">
+        The stack also consumes a
+        <a href="https://github.com/scottconverse/deterministic-detector">deterministic-detector</a>
+        harness when a repository carries one — proportionally, so a typo doesn't summon a mutation run.
+      </p>
+    </div>
+    <div>
+      <div class="code">
+        <div class="code-bar"><span class="dot"></span> run-manifest.json</div>
+<pre>{
+  <span class="p">"schema_version"</span>: <span class="s">"1.1"</span>,
+  <span class="p">"stage"</span>: <span class="s">"build"</span>,
+  <span class="p">"commit"</span>: <span class="s">"dbc1651…"</span>,
+  <span class="p">"worktree_state"</span>: <span class="s">"clean"</span>,
+  <span class="p">"dirty_diff_sha256"</span>: null,
+  <span class="p">"dirty_diff_evidence"</span>: null,
+  <span class="p">"lockfiles"</span>: [
+    { <span class="p">"path"</span>: <span class="s">"…"</span>, <span class="p">"sha256"</span>: <span class="s">"…"</span> }
+  ],
+  <span class="p">"seeds"</span>: [
+    { <span class="p">"context"</span>: <span class="s">"randomized-suite"</span>,
+      <span class="p">"seed"</span>: <span class="s">"…"</span>, <span class="p">"evidence"</span>: <span class="s">"…"</span> }
+  ]
+}</pre>
+      </div>
+      <p style="font-size:14px;color:var(--ink-3);margin-top:12px">Existing 1.0 manifests stay valid — 1.1 is additive, and old evidence is never upgraded by inference.</p>
+    </div>
+  </div>
+</section>
+
+<section id="status">
+  <div class="wrap">
+    <p class="kicker">Status &amp; limits</p>
+    <h2>Actively developed, and honest about its edges.</h2>
+    <p class="sub">
+      Released at v0.4.0 under MIT. The installer's fresh, refusal, forced and upgrade paths are
+      exercised in CI on Windows, Ubuntu and macOS, and the documented Windows command is executed
+      verbatim from a fresh Restricted-policy process on every push. These are the limits worth knowing
+      before you adopt it.
+    </p>
+    <div class="limits">
+      <div class="limit">
+        <h3>Instructional, not mechanical</h3>
+        <p>This edition has no lifecycle hooks, background runtime, or private ledger. Enforcement is the active agent following the skills, plus the anchor and the goal gate. The repository does not claim mechanical enforcement.</p>
+      </div>
+      <div class="limit">
+        <h3>Adherence varies by host</h3>
+        <p>The Markdown workflows are portable, but tool availability and how closely a model follows them differ by host and model. Missing capabilities are reported as blocked or unverifiable rather than passed.</p>
+      </div>
+      <div class="limit">
+        <h3>The plan is a file, not a fortress</h3>
+        <p>Any process that can delete files in the workspace can destroy <code>./.rigor/</code>. Replacing a plan is loud, but if agents share a checkout, commit the directory or back it up.</p>
+      </div>
+      <div class="limit">
+        <h3>One plan per working tree</h3>
+        <p>Concurrent tasks in a single checkout will fight over <code>./.rigor/</code>. Use separate worktrees for parallel work.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Put a gate between your agent and "done".</h2>
+    <p>Clone the pinned tag, run one installer command, and the next multi-step job your agent opens has to name its evidence before it can close.</p>
+    <div class="cta-row">
+      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/releases/tag/v0.4.0">Get v0.4.0</a>
+      <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Read the manual</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite">Repository</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Manual</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/architecture.md">Architecture</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/troubleshooting.md">Troubleshooting</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/CONTRIBUTING.md">Contributing</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/SECURITY.md">Security</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/issues">Issues</a>
+    <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/LICENSE">MIT License</a>
+    <span class="sp">v0.4.0</span>
+  </div>
+</footer>
+
+<script>
+  (function(){
+    var b=document.querySelector('.menu-btn'), n=document.getElementById('navlinks');
+    b.addEventListener('click',function(){
+      var open=n.getAttribute('data-open')==='true';
+      n.setAttribute('data-open',String(!open));
+      b.setAttribute('aria-expanded',String(!open));
+    });
+    n.addEventListener('click',function(e){
+      if(e.target.tagName==='A'&&window.innerWidth<=860){
+        n.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false');
+      }
+    });
+  })();
+</script>
+</body>
+</html>
