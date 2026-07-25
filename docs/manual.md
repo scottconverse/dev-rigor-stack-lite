@@ -312,6 +312,9 @@ Run this from the matching pinned source root after setting the three paths.
 For safety, the procedure refuses a link or junction anywhere in the source,
 target, goals, or anchor path:
 
+The Windows fence compares filesystem identity, so alternate spellings such as
+localhost UNC aliases cannot bypass its pinned-source refusal.
+
 ```powershell
 $Target = ".claude\skills"
 $GoalsFile = ".claude\tools\rigor_goals.py"
@@ -340,10 +343,114 @@ function Assert-PlainPath([string]$Path, [string]$Label) {
     $cursor = if ($null -eq $parent) { $null } else { $parent.FullName }
   }
 }
+if (-not ("DevRigorLiteRemovalFileIdentity" -as [type])) {
+  Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+public static class DevRigorLiteRemovalFileIdentity
+{
+    private const uint ShareAll = 0x00000001 | 0x00000002 | 0x00000004;
+    private const uint OpenExisting = 3;
+    private const uint BackupSemantics = 0x02000000;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileTime
+    {
+        public uint Low;
+        public uint High;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileInformation
+    {
+        public uint Attributes;
+        public FileTime CreationTime;
+        public FileTime LastAccessTime;
+        public FileTime LastWriteTime;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(
+        string path,
+        uint access,
+        uint share,
+        IntPtr securityAttributes,
+        uint creationDisposition,
+        uint flags,
+        IntPtr template);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetFileInformationByHandle(
+        SafeFileHandle handle,
+        out FileInformation information);
+
+    private static SafeFileHandle Open(string path)
+    {
+        SafeFileHandle handle = CreateFileW(
+            path,
+            0,
+            ShareAll,
+            IntPtr.Zero,
+            OpenExisting,
+            BackupSemantics,
+            IntPtr.Zero);
+        if (handle.IsInvalid)
+        {
+            int error = Marshal.GetLastWin32Error();
+            handle.Dispose();
+            throw new Win32Exception(error, "cannot open path for identity: " + path);
+        }
+        return handle;
+    }
+
+    private static FileInformation Read(SafeFileHandle handle, string path)
+    {
+        FileInformation information;
+        if (!GetFileInformationByHandle(handle, out information))
+        {
+            throw new Win32Exception(
+                Marshal.GetLastWin32Error(),
+                "cannot read path identity: " + path);
+        }
+        if (information.FileIndexHigh == 0 && information.FileIndexLow == 0)
+        {
+            throw new InvalidOperationException(
+                "filesystem returned no usable file ID for: " + path);
+        }
+        return information;
+    }
+
+    public static bool Same(string left, string right)
+    {
+        using (SafeFileHandle leftHandle = Open(left))
+        using (SafeFileHandle rightHandle = Open(right))
+        {
+            FileInformation leftInfo = Read(leftHandle, left);
+            FileInformation rightInfo = Read(rightHandle, right);
+            return
+                leftInfo.VolumeSerialNumber == rightInfo.VolumeSerialNumber &&
+                leftInfo.FileIndexHigh == rightInfo.FileIndexHigh &&
+                leftInfo.FileIndexLow == rightInfo.FileIndexLow;
+        }
+    }
+}
+'@
+}
 function Test-SamePath([string]$Left, [string]$Right) {
-  $leftPath = (Resolve-Path -LiteralPath $Left).Path.TrimEnd('\', '/')
-  $rightPath = (Resolve-Path -LiteralPath $Right).Path.TrimEnd('\', '/')
-  [StringComparer]::OrdinalIgnoreCase.Equals($leftPath, $rightPath)
+  [DevRigorLiteRemovalFileIdentity]::Same(
+    (Resolve-UserPath $Left),
+    (Resolve-UserPath $Right)
+  )
 }
 function Get-TreeInventory([string]$Root) {
   Assert-PlainPath $Root "tree root"

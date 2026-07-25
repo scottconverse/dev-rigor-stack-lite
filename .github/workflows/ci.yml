@@ -269,12 +269,24 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $evidence = Join-Path $env:RUNNER_TEMP 'removal-safety-windows'
+          $runnerTemp = (Resolve-Path -LiteralPath $env:RUNNER_TEMP).Path.TrimEnd('\', '/')
+          $evidence = [IO.Path]::GetFullPath(
+            (Join-Path $runnerTemp 'removal-safety-windows')
+          ).TrimEnd('\', '/')
+          if (-not $evidence.StartsWith(
+            $runnerTemp + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase
+          )) {
+            throw 'removal-safety evidence root escaped RUNNER_TEMP'
+          }
           $archive = Join-Path $evidence 'candidate.zip'
           $sourceAlias = Join-Path $evidence 'source-alias-candidate'
           $sourceJunction = Join-Path $evidence 'source-junction'
           $linkedGoals = Join-Path $evidence 'linked-goals-candidate'
-          New-Item -ItemType Directory -Force -Path $evidence, $sourceAlias, $linkedGoals | Out-Null
+          $uncAliasOwner = Join-Path $evidence 'unc-alias-owner'
+          New-Item -ItemType Directory -Force -Path (
+            $evidence, $sourceAlias, $linkedGoals, $uncAliasOwner
+          ) | Out-Null
 
           $checkoutSha = (& git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { throw 'could not resolve checked-out candidate identity' }
@@ -285,6 +297,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
           Expand-Archive -LiteralPath $archive -DestinationPath $sourceAlias
           Expand-Archive -LiteralPath $archive -DestinationPath $linkedGoals
+          Copy-Item -LiteralPath (Join-Path $sourceAlias 'skills') `
+            -Destination (Join-Path $uncAliasOwner 'skills') -Recurse
+          New-Item -ItemType Directory -Path (Join-Path $uncAliasOwner 'tools') | Out-Null
+          Copy-Item -LiteralPath (Join-Path $sourceAlias 'tools\rigor_goals.py') `
+            -Destination (Join-Path $uncAliasOwner 'tools\rigor_goals.py')
+          Copy-Item -LiteralPath (Join-Path $sourceAlias 'anchor\anchor.md') `
+            -Destination (Join-Path $uncAliasOwner 'CLAUDE.md')
 
           function Get-TreeManifest([string]$Root) {
             $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
@@ -301,6 +320,12 @@ jobs:
                     "FILE|$relative|$hash"
                   }
                 }
+            )
+          }
+          function Get-UncAliasFixtureManifest {
+            @(
+              Get-TreeManifest $sourceAlias | ForEach-Object { "SOURCE|$_" }
+              Get-TreeManifest $uncAliasOwner | ForEach-Object { "OWNER|$_" }
             )
           }
 
@@ -347,6 +372,145 @@ jobs:
           )
           if ($sourceAliasError -notmatch 'aliases pinned source') {
             throw 'source-alias refusal did not identify the safety boundary'
+          }
+
+          $driveRoot = [IO.Path]::GetPathRoot($sourceAlias)
+          if ($driveRoot -cnotmatch '^(?<drive>[A-Za-z]):\\$') {
+            throw "cannot form a local admin share for evidence path: $sourceAlias"
+          }
+          $adminShareRoot = "\\localhost\$($Matches['drive'])`$"
+          if (-not (Test-Path -LiteralPath $adminShareRoot -PathType Container)) {
+            throw "local admin share is inaccessible: $adminShareRoot"
+          }
+          $uncSourceAlias = Join-Path $adminShareRoot $sourceAlias.Substring($driveRoot.Length)
+          if (-not (Test-Path -LiteralPath $uncSourceAlias -PathType Container)) {
+            throw "UNC source alias is inaccessible: $uncSourceAlias"
+          }
+
+          function ConvertTo-PowerShellLiteral([string]$Value) {
+            "'" + $Value.Replace("'", "''") + "'"
+          }
+          function New-UncAliasRemovalScript(
+            [string]$Target,
+            [string]$GoalsFile,
+            [string]$AnchorFile
+          ) {
+            $script = $documented
+            $replacements = [ordered]@{
+              '$Target = ".claude\skills"' =
+                '$Target = ' + (ConvertTo-PowerShellLiteral $Target)
+              '$GoalsFile = ".claude\tools\rigor_goals.py"' =
+                '$GoalsFile = ' + (ConvertTo-PowerShellLiteral $GoalsFile)
+              '$AnchorFile = "CLAUDE.md"' =
+                '$AnchorFile = ' + (ConvertTo-PowerShellLiteral $AnchorFile)
+              '$confirmation = Read-Host "Type REMOVE 19 to continue"' =
+                '$confirmation = "UNC ALIAS REGRESSION - DO NOT REMOVE"'
+            }
+            foreach ($entry in $replacements.GetEnumerator()) {
+              $count = [regex]::Matches(
+                $script,
+                [regex]::Escape([string]$entry.Key)
+              ).Count
+              if ($count -ne 1) {
+                throw "expected one documented line for UNC fixture: $($entry.Key)"
+              }
+              $script = $script.Replace([string]$entry.Key, [string]$entry.Value)
+            }
+            $script
+          }
+          function Invoke-UncSourceAliasCase(
+            [string]$Label,
+            [string]$Field,
+            [string]$Target,
+            [string]$GoalsFile,
+            [string]$AnchorFile,
+            [string]$ExpectedError
+          ) {
+            $scriptPath = Join-Path $evidence "$Label-removal.ps1"
+            $script = New-UncAliasRemovalScript $Target $GoalsFile $AnchorFile
+            [IO.File]::WriteAllText(
+              $scriptPath,
+              $script,
+              (New-Object Text.UTF8Encoding($false))
+            )
+            $before = @(Get-UncAliasFixtureManifest)
+            $stdoutPath = Join-Path $evidence "$Label.stdout.log"
+            $stderrPath = Join-Path $evidence "$Label.stderr.log"
+            $process = Start-Process `
+              -FilePath 'powershell.exe' `
+              -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" `
+              -WorkingDirectory $sourceAlias `
+              -Wait `
+              -PassThru `
+              -RedirectStandardOutput $stdoutPath `
+              -RedirectStandardError $stderrPath
+            $after = @(Get-UncAliasFixtureManifest)
+            $zeroByteChange = @(Compare-Object $before $after).Count -eq 0
+            if (-not $zeroByteChange) {
+              throw "$Label UNC source-alias case changed fixture bytes"
+            }
+            if ($process.ExitCode -eq 0) {
+              throw "$Label UNC source-alias case unexpectedly succeeded"
+            }
+            $errorText = Get-Content -Raw -LiteralPath $stderrPath
+            [pscustomobject]@{
+              Label = $Label
+              Field = $Field
+              ExitCode = $process.ExitCode
+              ZeroByteChange = $zeroByteChange
+              ExpectedRefusal = $errorText.Contains($ExpectedError)
+              OrdinaryCancellation = $errorText.Contains('removal cancelled')
+            }
+          }
+
+          $uncOwnerSkills = Join-Path $uncAliasOwner 'skills'
+          $uncOwnerGoals = Join-Path $uncAliasOwner 'tools\rigor_goals.py'
+          $uncOwnerAnchor = Join-Path $uncAliasOwner 'CLAUDE.md'
+          $uncAliasResults = @(
+            Invoke-UncSourceAliasCase `
+              -Label 'unc-skills-alias' `
+              -Field 'UNC_SKILLS_ALIAS' `
+              -Target (Join-Path $uncSourceAlias 'skills') `
+              -GoalsFile $uncOwnerGoals `
+              -AnchorFile $uncOwnerAnchor `
+              -ExpectedError 'refusing skills target that aliases pinned source:'
+            Invoke-UncSourceAliasCase `
+              -Label 'unc-goals-alias' `
+              -Field 'UNC_GOALS_ALIAS' `
+              -Target $uncOwnerSkills `
+              -GoalsFile (Join-Path $uncSourceAlias 'tools\rigor_goals.py') `
+              -AnchorFile $uncOwnerAnchor `
+              -ExpectedError 'refusing goals file that aliases pinned source:'
+            Invoke-UncSourceAliasCase `
+              -Label 'unc-anchor-alias' `
+              -Field 'UNC_ANCHOR_ALIAS' `
+              -Target $uncOwnerSkills `
+              -GoalsFile $uncOwnerGoals `
+              -AnchorFile (Join-Path $uncSourceAlias 'anchor\anchor.md') `
+              -ExpectedError 'refusing anchor file that aliases pinned source:'
+          )
+          $uncAliasResultFields = @(
+            foreach ($result in $uncAliasResults) {
+              "$($result.Field)_EXIT=$($result.ExitCode)"
+              "$($result.Field)_ZERO_BYTE_CHANGE=$($result.ZeroByteChange)"
+              "$($result.Field)_EXPECTED_SOURCE_ALIAS_REFUSAL=$($result.ExpectedRefusal)"
+              "$($result.Field)_ORDINARY_CANCELLATION=$($result.OrdinaryCancellation)"
+            }
+          )
+          Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            "CANDIDATE_SHA=$env:CANDIDATE_SHA"
+            "CHECKOUT_SHA=$checkoutSha"
+            $uncAliasResultFields
+          )
+          $missedUncAliases = @(
+            $uncAliasResults | Where-Object {
+              -not $_.ExpectedRefusal -or $_.OrdinaryCancellation
+            }
+          )
+          if ($missedUncAliases.Count -ne 0) {
+            throw "documented removal missed UNC source aliases at the intended guard: $(
+              @($missedUncAliases.Label) -join ', '
+            )"
           }
 
           New-Item -ItemType Junction -Path $sourceJunction -Target $sourceAlias | Out-Null
@@ -444,6 +608,7 @@ jobs:
             )"
             "SOURCE_ALIAS_EXIT=$($sourceAliasProcess.ExitCode)"
             'SOURCE_ALIAS_ZERO_BYTE_CHANGE=True'
+            $uncAliasResultFields
             "JUNCTION_ALIAS_EXIT=$($junctionAliasProcess.ExitCode)"
             'JUNCTION_ALIAS_ZERO_BYTE_CHANGE=True'
             "LINKED_GOALS_EXIT=$($linkedProcess.ExitCode)"
