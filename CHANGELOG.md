@@ -4,6 +4,22 @@
 
 ## 0.4.0 - 2026-07-24
 
+- **The documented Windows install works under effective Restricted policy.**
+  PowerShell examples now launch the installer with a process-scoped execution-policy
+  bypass that changes no user or machine setting. CI extracts the rendered README
+  command verbatim and executes it from a fresh Restricted process.
+- **POSIX installer lifecycle evidence now covers Ubuntu and macOS.** CI installs from
+  a candidate archive and the public v0.3.3 tag archive, proves the downloaded prior
+  tree matches the pinned tag, proves overwrite refusal has zero byte impact, proves
+  forced reinstall is byte-idempotent, and exercises the upgrade while preserving
+  owner text. Per-platform download headers, identities, logs, and hashes are retained.
+- **Release documentation now covers the whole lifecycle.** The landing page links a
+  two-audience manual, architecture diagrams, troubleshooting, security, contributing,
+  license, and notices; install, verification, upgrade/repair, anchor placement, and
+  safe removal are documented without deleting owner-managed content. PowerShell
+  refuses linked path components, including ancestor junctions. Bash resolves ancestor
+  aliases, rejects final symlinks, and applies same-file fences that refuse any target,
+  goals file, or anchor that aliases the pinned source.
 - **Candidate identity is reproducible across handoffs.** Run-manifest schema 1.1 adds
   clean/dirty worktree state, a hash plus evidence artifact for the complete dirty
   delta, detected lockfile hashes, and randomized-run seeds. Existing 1.0 manifests
@@ -17,12 +33,18 @@
   harnesses without adding a phase or discovery script.
 - **External harnesses are supplemental evidence.** They cannot replace PLAN, witnessed
   RED-to-GREEN, proof, review, or MERGE.
+- **The workflow run-expression guard is removed.** It re-implemented a ceiling GitHub
+  Actions already enforces authoritatively at run time, which meant any local version
+  was an approximation with bypasses, and it required parsing YAML — outside a bundle
+  validator's remit, since `ci.yml` is not part of what anyone installs. The oversized
+  expressions it was added to police were shortened directly, which was the real fix.
+  `validate_bundle.py` returns to 195 lines from 427.
 - SHARED-BLOCK parity markers fence the detector-proportionality rule in
-  `dev-rigor-stack-lite/SKILL.md`. The dev-rigor-stack repo's CI cross-diffs
-  the block against its copy on every push (host-adapted wording sanctioned
-  via a committed substitution map), so the shared rule can no longer drift
-  silently between the two stacks. Markers are HTML comments — no rendered or
-  behavioral change.
+  `dev-rigor-stack-lite/SKILL.md`. The full dev-rigor-stack repo's main/PR CI
+  cross-diffs its copy against lite main, with host-adapted wording sanctioned via a
+  committed substitution map. Lite-only pushes do not invoke that cross-repository
+  workflow, so a lite release must carry direct parity evidence before publication.
+  Markers are HTML comments — no rendered or behavioral change.
 
 ## 0.3.3 - 2026-07-23
 

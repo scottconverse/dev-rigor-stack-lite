@@ -10,8 +10,13 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -102,6 +107,997 @@ jobs:
           & $installer -Target ".agents\skills" -NoGoals -NoAnchor
           if (Test-Path "$bare\.agents\tools") { throw 'opt-out still installed goals' }
           if (Test-Path "$bare\AGENTS.md") { throw 'opt-out still installed anchor' }
+      - name: Prepare shared Windows install verifier
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
+
+          $verifierSource = @'
+          [CmdletBinding()]
+          param(
+            [Parameter(Mandatory = $true)]
+            [string]$SourceRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string]$ProjectRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string]$EvidenceDirectory,
+
+            [Parameter(Mandatory = $true)]
+            [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+            [string]$Label
+          )
+
+          Set-StrictMode -Version 2.0
+          $ErrorActionPreference = 'Stop'
+          $utf8NoBom = New-Object Text.UTF8Encoding($false)
+
+          function Stop-InstallVerification([string]$Code, [string]$Detail) {
+            throw "INSTALL_VERIFY_${Code}: $Detail"
+          }
+
+          function Assert-ExistingPath(
+            [string]$Path,
+            [bool]$ExpectDirectory,
+            [string]$Description
+          ) {
+            if (-not (Test-Path -LiteralPath $Path)) {
+              Stop-InstallVerification 'MISSING_PATH' "$Description is missing"
+            }
+            $item = Get-Item -LiteralPath $Path -Force
+            if ($item.PSIsContainer -ne $ExpectDirectory) {
+              Stop-InstallVerification 'PATH_TYPE' "$Description has the wrong path type"
+            }
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+              Stop-InstallVerification 'REPARSE_POINT' "$Description is a reparse point"
+            }
+          }
+
+          function Write-EvidenceLines([string]$Path, [string[]]$Lines) {
+            [IO.File]::WriteAllLines($Path, $Lines, $utf8NoBom)
+          }
+
+          function Test-ExactSequence([string[]]$Left, [string[]]$Right) {
+            if ($Left.Count -ne $Right.Count) {
+              return $false
+            }
+            for ($index = 0; $index -lt $Left.Count; $index++) {
+              if ($Left[$index] -cne $Right[$index]) {
+                return $false
+              }
+            }
+            $true
+          }
+
+          function Get-TopLevelSkillNames([string]$Root, [string]$Description) {
+            Assert-ExistingPath $Root $true $Description
+            $names = @(
+              Get-ChildItem -LiteralPath $Root -Force | ForEach-Object {
+                if (($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                  Stop-InstallVerification 'REPARSE_POINT' (
+                    "$Description contains reparse point '$($_.Name)'"
+                  )
+                }
+                if (-not $_.PSIsContainer) {
+                  Stop-InstallVerification 'TOP_LEVEL_ENTRY' (
+                    "$Description contains non-directory '$($_.Name)'"
+                  )
+                }
+                $_.Name
+              }
+            )
+            $names = [string[]]$names
+            [Array]::Sort($names, [StringComparer]::Ordinal)
+            $names
+          }
+
+          function Get-NormalizedTreeManifest(
+            [string]$Root,
+            [string]$OutputPath,
+            [string]$Description
+          ) {
+            Assert-ExistingPath $Root $true $Description
+            $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+            $rootPrefix = $rootPath + [IO.Path]::DirectorySeparatorChar
+            $pending = New-Object Collections.Stack
+            $pending.Push($rootPath)
+            $records = New-Object Collections.Generic.List[string]
+
+            while ($pending.Count -gt 0) {
+              $directory = [string]$pending.Pop()
+              foreach ($item in @(Get-ChildItem -LiteralPath $directory -Force)) {
+                if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                  Stop-InstallVerification 'REPARSE_POINT' (
+                    "$Description contains reparse point '$($item.FullName)'"
+                  )
+                }
+                $fullPath = [IO.Path]::GetFullPath($item.FullName)
+                if (-not $fullPath.StartsWith(
+                  $rootPrefix,
+                  [StringComparison]::OrdinalIgnoreCase
+                )) {
+                  Stop-InstallVerification 'TREE_ESCAPE' (
+                    "$Description entry escaped its root: '$fullPath'"
+                  )
+                }
+                $relative = $fullPath.Substring($rootPrefix.Length).Replace('\', '/')
+                if ($item.PSIsContainer) {
+                  $records.Add("DIR|$relative")
+                  $pending.Push($fullPath)
+                } else {
+                  $hash = (
+                    Get-FileHash -Algorithm SHA256 -LiteralPath $fullPath
+                  ).Hash.ToLowerInvariant()
+                  $records.Add("FILE|$relative|$hash")
+                }
+              }
+            }
+
+            $manifest = [string[]]$records.ToArray()
+            [Array]::Sort($manifest, [StringComparer]::Ordinal)
+            Write-EvidenceLines $OutputPath $manifest
+            $manifest
+          }
+
+          function Test-ExactFileBytes([string]$Left, [string]$Right) {
+            $leftBytes = [IO.File]::ReadAllBytes($Left)
+            $rightBytes = [IO.File]::ReadAllBytes($Right)
+            if ($leftBytes.Length -ne $rightBytes.Length) {
+              return $false
+            }
+            for ($index = 0; $index -lt $leftBytes.Length; $index++) {
+              if ($leftBytes[$index] -ne $rightBytes[$index]) {
+                return $false
+              }
+            }
+            $true
+          }
+
+          $SourceRoot = [IO.Path]::GetFullPath($SourceRoot)
+          $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
+          New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
+          $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory)
+
+          $manifestPath = Join-Path $SourceRoot 'manifest.json'
+          Assert-ExistingPath $manifestPath $false 'source manifest'
+          try {
+            $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 |
+              ConvertFrom-Json
+          } catch {
+            Stop-InstallVerification 'MANIFEST_JSON' 'source manifest is not valid JSON'
+          }
+          $expectedSkills = [string[]]@($manifest.skills | ForEach-Object { [string]$_ })
+          if ([int]$manifest.skill_count -ne 19 -or $expectedSkills.Count -ne 19) {
+            Stop-InstallVerification 'MANIFEST_COUNT' (
+              "source manifest must declare exactly 19 skills; skill_count=$(
+                $manifest.skill_count
+              ), names=$($expectedSkills.Count)"
+            )
+          }
+          $seenExact = New-Object 'System.Collections.Generic.HashSet[string]' (
+            [StringComparer]::Ordinal
+          )
+          $seenWindows = New-Object 'System.Collections.Generic.HashSet[string]' (
+            [StringComparer]::OrdinalIgnoreCase
+          )
+          foreach ($name in $expectedSkills) {
+            if (
+              [string]::IsNullOrWhiteSpace($name) -or
+              $name -eq '.' -or
+              $name -eq '..' -or
+              $name.Contains('\') -or
+              $name.Contains('/')
+            ) {
+              Stop-InstallVerification 'MANIFEST_NAME' (
+                "source manifest contains invalid skill name '$name'"
+              )
+            }
+            if (-not $seenExact.Add($name)) {
+              Stop-InstallVerification 'MANIFEST_DUPLICATE' (
+                "source manifest repeats skill name '$name'"
+              )
+            }
+            if (-not $seenWindows.Add($name)) {
+              Stop-InstallVerification 'MANIFEST_CASE_COLLISION' (
+                "source manifest contains a Windows name collision at '$name'"
+              )
+            }
+          }
+          [Array]::Sort($expectedSkills, [StringComparer]::Ordinal)
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-expected-skills.txt"
+          ) $expectedSkills
+
+          $sourceSkills = Join-Path $SourceRoot 'skills'
+          $installedSkills = Join-Path $ProjectRoot '.claude\skills'
+          $sourceNames = [string[]]@(Get-TopLevelSkillNames $sourceSkills 'source skills')
+          $installedNames = [string[]]@(
+            Get-TopLevelSkillNames $installedSkills 'installed skills'
+          )
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-source-top-level.txt"
+          ) $sourceNames
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-installed-top-level.txt"
+          ) $installedNames
+
+          $sourceTree = [string[]]@(
+            Get-NormalizedTreeManifest `
+              $sourceSkills `
+              (Join-Path $EvidenceDirectory "$Label-source-tree.sha256") `
+              'source skills'
+          )
+          $installedTree = [string[]]@(
+            Get-NormalizedTreeManifest `
+              $installedSkills `
+              (Join-Path $EvidenceDirectory "$Label-installed-tree.sha256") `
+              'installed skills'
+          )
+
+          if (-not (Test-ExactSequence $expectedSkills $sourceNames)) {
+            Stop-InstallVerification 'SOURCE_NAME_SET' (
+              "source top-level names differ from manifest; expected=$(
+                $expectedSkills -join ','
+              ); actual=$($sourceNames -join ',')"
+            )
+          }
+          if (-not (Test-ExactSequence $expectedSkills $installedNames)) {
+            Stop-InstallVerification 'INSTALLED_NAME_SET' (
+              "installed top-level names differ from manifest; expected=$(
+                $expectedSkills -join ','
+              ); actual=$($installedNames -join ',')"
+            )
+          }
+          if (-not (Test-ExactSequence $sourceNames $installedNames)) {
+            Stop-InstallVerification 'TOP_LEVEL_MISMATCH' (
+              'source and installed top-level names differ'
+            )
+          }
+          if (-not (Test-ExactSequence $sourceTree $installedTree)) {
+            Stop-InstallVerification 'SKILL_TREE' (
+              'installed skill directory/file SHA256 manifest differs from source'
+            )
+          }
+
+          $sourceGoals = Join-Path $SourceRoot 'tools\rigor_goals.py'
+          $installedGoals = Join-Path $ProjectRoot '.claude\tools\rigor_goals.py'
+          $sourceAnchor = Join-Path $SourceRoot 'anchor\anchor.md'
+          $installedAnchor = Join-Path $ProjectRoot 'CLAUDE.md'
+          Assert-ExistingPath $sourceGoals $false 'source rigor-goals'
+          Assert-ExistingPath $installedGoals $false 'installed rigor-goals'
+          Assert-ExistingPath $sourceAnchor $false 'source anchor'
+          Assert-ExistingPath $installedAnchor $false 'installed anchor'
+
+          $sourceGoalsHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $sourceGoals
+          ).Hash.ToLowerInvariant()
+          $installedGoalsHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $installedGoals
+          ).Hash.ToLowerInvariant()
+          $sourceAnchorHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $sourceAnchor
+          ).Hash.ToLowerInvariant()
+          $installedAnchorHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $installedAnchor
+          ).Hash.ToLowerInvariant()
+
+          if (-not (Test-ExactFileBytes $sourceGoals $installedGoals)) {
+            Stop-InstallVerification 'GOALS_BYTES' (
+              'installed rigor-goals bytes differ from source'
+            )
+          }
+          if (-not (Test-ExactFileBytes $sourceAnchor $installedAnchor)) {
+            Stop-InstallVerification 'ANCHOR_BYTES' (
+              'installed anchor bytes differ from source'
+            )
+          }
+
+          $anchorText = [IO.File]::ReadAllText($installedAnchor)
+          $beginMarker = '<!-- dev-rigor-lite anchor v'
+          $endMarker = '<!-- /dev-rigor-lite anchor -->'
+          $beginCount = [regex]::Matches(
+            $anchorText,
+            [regex]::Escape($beginMarker)
+          ).Count
+          $endCount = [regex]::Matches(
+            $anchorText,
+            [regex]::Escape($endMarker)
+          ).Count
+          if ($beginCount -ne 1) {
+            Stop-InstallVerification 'ANCHOR_BEGIN_COUNT' (
+              "expected one anchor begin marker, found $beginCount"
+            )
+          }
+          if ($endCount -ne 1) {
+            Stop-InstallVerification 'ANCHOR_END_COUNT' (
+              "expected one anchor end marker, found $endCount"
+            )
+          }
+
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-byte-identities.txt"
+          ) @(
+            "SOURCE_GOALS_SHA256=$sourceGoalsHash"
+            "INSTALLED_GOALS_SHA256=$installedGoalsHash"
+            "SOURCE_ANCHOR_SHA256=$sourceAnchorHash"
+            "INSTALLED_ANCHOR_SHA256=$installedAnchorHash"
+            "ANCHOR_BEGIN_MARKERS=$beginCount"
+            "ANCHOR_END_MARKERS=$endCount"
+          )
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-result.txt"
+          ) @(
+            'RESULT=PASS'
+            'EXPECTED_SKILL_COUNT=19'
+            "SOURCE_TOP_LEVEL_COUNT=$($sourceNames.Count)"
+            "INSTALLED_TOP_LEVEL_COUNT=$($installedNames.Count)"
+            "NORMALIZED_TREE_RECORDS=$($sourceTree.Count)"
+            'REPARSE_POINTS=0'
+            'GOALS_BYTE_IDENTITY=True'
+            'ANCHOR_BYTE_IDENTITY=True'
+            "ANCHOR_BEGIN_MARKERS=$beginCount"
+            "ANCHOR_END_MARKERS=$endCount"
+          )
+          Write-Output (
+            "INSTALL_VERIFY_PASS label=$Label skills=19 tree_records=$($sourceTree.Count)"
+          )
+          '@
+          [IO.File]::WriteAllText(
+            $verifier,
+            $verifierSource,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          [void][scriptblock]::Create($verifierSource)
+
+      - name: README PowerShell install works under Restricted policy
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'readme-restricted-evidence'
+          $archive = Join-Path $evidence 'candidate.zip'
+          $candidate = Join-Path $evidence 'candidate'
+          $stdout = Join-Path $evidence 'restricted-process.stdout.log'
+          $stderr = Join-Path $evidence 'restricted-process.stderr.log'
+          $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
+          if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
+            throw 'shared install verifier is missing from RUNNER_TEMP'
+          }
+          New-Item -ItemType Directory -Force -Path $evidence, $candidate | Out-Null
+
+          $checkoutSha = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'could not resolve checked-out candidate identity' }
+          if ($checkoutSha -cne $env:CANDIDATE_SHA) {
+            throw "checkout identity mismatch: expected $env:CANDIDATE_SHA, got $checkoutSha"
+          }
+          & git archive --format=zip "--output=$archive" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
+          Expand-Archive -LiteralPath $archive -DestinationPath $candidate
+          $archiveHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+          $readmeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $candidate 'README.md')).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath (Join-Path $evidence 'identity.txt') -Encoding utf8 -Value @(
+            "EVENT_NAME=${{ github.event_name }}"
+            "EXPECTED_CANDIDATE_SHA=$env:CANDIDATE_SHA"
+            "CHECKOUT_SHA=$checkoutSha"
+            "CANDIDATE_ARCHIVE_SHA256=$archiveHash"
+            "ARCHIVED_README_SHA256=$readmeHash"
+          )
+          Set-Content -LiteralPath (Join-Path $evidence 'environment.txt') -Encoding utf8 -Value @(
+            "RUNNER_OS=$env:RUNNER_OS"
+            "RUNNER_ARCH=$env:RUNNER_ARCH"
+            "PSVERSION=$($PSVersionTable.PSVersion)"
+            "INITIAL_EXECUTION_POLICY=$(Get-ExecutionPolicy)"
+          )
+
+          $readme = Get-Content -Raw -LiteralPath (Join-Path $candidate 'README.md')
+          $block = [regex]::Match(
+            $readme,
+            '(?ms)^```powershell[^\r\n]*\r?\n(?<body>.*?)^```\s*$'
+          )
+          if (-not $block.Success) { throw 'README has no fenced powershell block' }
+          $commands = @(
+            $block.Groups['body'].Value -split '\r?\n' |
+              Where-Object { $_.Contains('-Target ".claude\skills"') }
+          )
+          if ($commands.Count -ne 1) {
+            throw "expected exactly one .claude\skills command in the first powershell block; found $($commands.Count)"
+          }
+          $readmeCommand = $commands[0]
+          Set-Content -LiteralPath (Join-Path $evidence 'extracted-readme-command.txt') -Value $readmeCommand -Encoding utf8
+          $allowedCommands = @(
+            '.\install.ps1 -Target ".claude\skills"'
+            'powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".claude\skills"'
+          )
+          if ($allowedCommands -cnotcontains $readmeCommand) {
+            throw 'refusing to execute a README command outside the regression allowlist'
+          }
+
+          $target = Join-Path $candidate '.claude\skills'
+          $targetBefore = Test-Path -LiteralPath $target
+          if ($targetBefore) { throw 'fresh archive unexpectedly contains the install target' }
+
+          $restrictedScript = @"
+          `$effectivePolicy = Get-ExecutionPolicy
+          Write-Output ('EFFECTIVE_POLICY=' + `$effectivePolicy)
+          if (`$effectivePolicy -ne 'Restricted') {
+              Write-Error ('expected Restricted, got ' + `$effectivePolicy)
+              exit 90
+          }
+          $readmeCommand
+          if (-not `$?) {
+              exit 91
+          }
+          if (`$null -ne `$LASTEXITCODE -and `$LASTEXITCODE -ne 0) {
+              exit `$LASTEXITCODE
+          }
+          `$effectivePolicyAfter = Get-ExecutionPolicy
+          Write-Output ('EFFECTIVE_POLICY_AFTER=' + `$effectivePolicyAfter)
+          if (`$effectivePolicyAfter -ne 'Restricted') {
+              Write-Error ('process-scoped command changed outer policy to ' + `$effectivePolicyAfter)
+              exit 92
+          }
+          "@
+          $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($restrictedScript))
+          $process = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList @(
+              '-NoLogo',
+              '-NoProfile',
+              '-ExecutionPolicy', 'Restricted',
+              '-EncodedCommand', $encoded
+            ) `
+            -WorkingDirectory $candidate `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdout `
+            -RedirectStandardError $stderr
+
+          $stdoutText = Get-Content -Raw -LiteralPath $stdout
+          $stderrText = Get-Content -Raw -LiteralPath $stderr
+          Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            "EXTRACTED_LINE=$readmeCommand"
+            "TARGET_BEFORE=$targetBefore"
+            "PROCESS_EXIT_CODE=$($process.ExitCode)"
+            "TARGET_AFTER=$(Test-Path -LiteralPath $target)"
+            ''
+            '--- COMPLETE STDOUT ---'
+            $stdoutText
+            '--- COMPLETE STDERR ---'
+            $stderrText
+          )
+          Write-Output $stdoutText
+          Write-Output $stderrText
+
+          if ($stdoutText -notmatch 'EFFECTIVE_POLICY=Restricted') {
+            throw 'fresh process did not prove effective Restricted policy'
+          }
+          if ($stdoutText -notmatch 'EFFECTIVE_POLICY_AFTER=Restricted') {
+            throw 'outer process did not remain Restricted after the documented command'
+          }
+          if ($process.ExitCode -ne 0) {
+            throw "verbatim README command failed under Restricted policy with exit $($process.ExitCode)"
+          }
+          if (-not (Test-Path -LiteralPath $target)) { throw 'README command did not create the target' }
+          $skillCount = @(Get-ChildItem -LiteralPath $target -Directory).Count
+          if ($skillCount -ne 19) { throw "expected 19 installed skill directories, found $skillCount" }
+          if (-not (Test-Path -LiteralPath (Join-Path $candidate '.claude\tools\rigor_goals.py'))) {
+            throw 'README command did not install rigor-goals'
+          }
+          $anchor = Join-Path $candidate 'CLAUDE.md'
+          $anchorCount = @(
+            Select-String -LiteralPath $anchor -SimpleMatch '<!-- dev-rigor-lite anchor v' -AllMatches
+          ).Count
+          if ($anchorCount -ne 1) { throw "expected one CLAUDE.md anchor begin marker, found $anchorCount" }
+          $anchorEndCount = @(
+            Select-String -LiteralPath $anchor -SimpleMatch '<!-- /dev-rigor-lite anchor -->' -AllMatches
+          ).Count
+          if ($anchorEndCount -ne 1) { throw "expected one CLAUDE.md anchor end marker, found $anchorEndCount" }
+          Add-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            "SKILL_COUNT=$skillCount"
+            'GOALS_PRESENT=True'
+            "ANCHOR_BEGIN_MARKERS=$anchorCount"
+            "ANCHOR_END_MARKERS=$anchorEndCount"
+          )
+
+          $verificationEvidence = Join-Path $evidence 'install-verification'
+          & $verifier `
+            -SourceRoot $candidate `
+            -ProjectRoot $candidate `
+            -EvidenceDirectory (Join-Path $verificationEvidence 'positive') `
+            -Label 'readme-positive'
+
+          $mutationWork = Join-Path $env:RUNNER_TEMP 'readme-restricted-mutations'
+          $wrongNameProject = Join-Path $mutationWork 'wrong-name-project'
+          $byteDriftProject = Join-Path $mutationWork 'byte-drift-project'
+          New-Item -ItemType Directory -Force -Path (
+            $wrongNameProject, $byteDriftProject
+          ) | Out-Null
+          Copy-Item -LiteralPath (Join-Path $candidate '.claude') `
+            -Destination $wrongNameProject -Recurse
+          Copy-Item -LiteralPath (Join-Path $candidate 'CLAUDE.md') `
+            -Destination (Join-Path $wrongNameProject 'CLAUDE.md')
+          Copy-Item -LiteralPath (Join-Path $candidate '.claude') `
+            -Destination $byteDriftProject -Recurse
+          Copy-Item -LiteralPath (Join-Path $candidate 'CLAUDE.md') `
+            -Destination (Join-Path $byteDriftProject 'CLAUDE.md')
+
+          $wrongNameEvidence = Join-Path $verificationEvidence 'mutation-wrong-name'
+          New-Item -ItemType Directory -Force -Path $wrongNameEvidence | Out-Null
+          $renamedSkill = Join-Path $wrongNameProject '.claude\skills\visitor-audit-lite'
+          $wrongSkill = Join-Path $wrongNameProject '.claude\skills\wrong-skill-placeholder'
+          Move-Item -LiteralPath $renamedSkill -Destination $wrongSkill
+          $wrongNameCount = @(
+            Get-ChildItem -LiteralPath (
+              Join-Path $wrongNameProject '.claude\skills'
+            ) -Directory
+          ).Count
+          if ($wrongNameCount -ne 19) {
+            throw "wrong-name mutation did not preserve 19 directories: $wrongNameCount"
+          }
+          $wrongNameError = $null
+          try {
+            & $verifier `
+              -SourceRoot $candidate `
+              -ProjectRoot $wrongNameProject `
+              -EvidenceDirectory $wrongNameEvidence `
+              -Label 'wrong-name'
+            throw 'wrong-name mutation unexpectedly passed the install verifier'
+          } catch {
+            $wrongNameError = $_.Exception.Message
+            if (-not $wrongNameError.StartsWith(
+              'INSTALL_VERIFY_INSTALLED_NAME_SET:',
+              [StringComparison]::Ordinal
+            )) {
+              throw
+            }
+          }
+          [IO.File]::WriteAllLines(
+            (Join-Path $wrongNameEvidence 'mutation-result.txt'),
+            @(
+              'RESULT=EXPECTED_REJECTION'
+              'MUTATION=visitor-audit-lite->wrong-skill-placeholder'
+              "INSTALLED_TOP_LEVEL_COUNT=$wrongNameCount"
+              "ERROR=$wrongNameError"
+            ),
+            (New-Object Text.UTF8Encoding($false))
+          )
+
+          $byteDriftEvidence = Join-Path $verificationEvidence 'mutation-byte-drift'
+          New-Item -ItemType Directory -Force -Path $byteDriftEvidence | Out-Null
+          $driftFile = Join-Path (
+            $byteDriftProject
+          ) '.claude\skills\quick-audit-lite\SKILL.md'
+          $beforeDriftHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $driftFile
+          ).Hash.ToLowerInvariant()
+          [IO.File]::AppendAllText(
+            $driftFile,
+            "`nBYTE_DRIFT_MUTATION`n",
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $afterDriftHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $driftFile
+          ).Hash.ToLowerInvariant()
+          if ($beforeDriftHash -ceq $afterDriftHash) {
+            throw 'byte-drift mutation did not change the selected SKILL.md'
+          }
+          $byteDriftError = $null
+          try {
+            & $verifier `
+              -SourceRoot $candidate `
+              -ProjectRoot $byteDriftProject `
+              -EvidenceDirectory $byteDriftEvidence `
+              -Label 'byte-drift'
+            throw 'byte-drift mutation unexpectedly passed the install verifier'
+          } catch {
+            $byteDriftError = $_.Exception.Message
+            if (-not $byteDriftError.StartsWith(
+              'INSTALL_VERIFY_SKILL_TREE:',
+              [StringComparison]::Ordinal
+            )) {
+              throw
+            }
+          }
+          [IO.File]::WriteAllLines(
+            (Join-Path $byteDriftEvidence 'mutation-result.txt'),
+            @(
+              'RESULT=EXPECTED_REJECTION'
+              'MUTATION=quick-audit-lite/SKILL.md byte append'
+              "BEFORE_SHA256=$beforeDriftHash"
+              "AFTER_SHA256=$afterDriftHash"
+              "ERROR=$byteDriftError"
+            ),
+            (New-Object Text.UTF8Encoding($false))
+          )
+          Add-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            'INSTALL_VERIFIER_POSITIVE_PASS=True'
+            'WRONG_NAME_MUTATION_REJECTED=True'
+            'BYTE_DRIFT_MUTATION_REJECTED=True'
+          )
+
+          $expected = 'powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".claude\skills"'
+          if ($readmeCommand -cne $expected) {
+            throw "README command drifted after behavioral execution. Expected '$expected'; got '$readmeCommand'"
+          }
+      - name: Preserve README Restricted-policy evidence
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: readme-restricted-windows
+          path: ${{ runner.temp }}\readme-restricted-evidence
+          if-no-files-found: error
+          include-hidden-files: true
+      - name: Documented PowerShell removal refuses source aliases and links
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerTemp = (Resolve-Path -LiteralPath $env:RUNNER_TEMP).Path.TrimEnd('\', '/')
+          $evidence = [IO.Path]::GetFullPath(
+            (Join-Path $runnerTemp 'removal-safety-windows')
+          ).TrimEnd('\', '/')
+          if (-not $evidence.StartsWith(
+            $runnerTemp + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase
+          )) {
+            throw 'removal-safety evidence root escaped RUNNER_TEMP'
+          }
+          $archive = Join-Path $evidence 'candidate.zip'
+          $sourceAlias = Join-Path $evidence 'source-alias-candidate'
+          $sourceJunction = Join-Path $evidence 'source-junction'
+          $linkedGoals = Join-Path $evidence 'linked-goals-candidate'
+          $uncAliasOwner = Join-Path $evidence 'unc-alias-owner'
+          New-Item -ItemType Directory -Force -Path (
+            $evidence, $sourceAlias, $linkedGoals, $uncAliasOwner
+          ) | Out-Null
+
+          $checkoutSha = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'could not resolve checked-out candidate identity' }
+          if ($checkoutSha -cne $env:CANDIDATE_SHA) {
+            throw "checkout identity mismatch: expected $env:CANDIDATE_SHA, got $checkoutSha"
+          }
+          & git archive --format=zip "--output=$archive" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
+          Expand-Archive -LiteralPath $archive -DestinationPath $sourceAlias
+          Expand-Archive -LiteralPath $archive -DestinationPath $linkedGoals
+          Copy-Item -LiteralPath (Join-Path $sourceAlias 'skills') `
+            -Destination (Join-Path $uncAliasOwner 'skills') -Recurse
+          New-Item -ItemType Directory -Path (Join-Path $uncAliasOwner 'tools') | Out-Null
+          Copy-Item -LiteralPath (Join-Path $sourceAlias 'tools\rigor_goals.py') `
+            -Destination (Join-Path $uncAliasOwner 'tools\rigor_goals.py')
+          Copy-Item -LiteralPath (Join-Path $sourceAlias 'anchor\anchor.md') `
+            -Destination (Join-Path $uncAliasOwner 'CLAUDE.md')
+
+          function Get-TreeManifest([string]$Root) {
+            $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
+              [IO.Path]::DirectorySeparatorChar
+            @(
+              Get-ChildItem -LiteralPath $Root -Recurse -Force |
+                Sort-Object FullName |
+                ForEach-Object {
+                  $relative = $_.FullName.Substring($base.Length).Replace('\', '/')
+                  if ($_.PSIsContainer) {
+                    "DIR|$relative"
+                  } else {
+                    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
+                    "FILE|$relative|$hash"
+                  }
+                }
+            )
+          }
+          function Get-UncAliasFixtureManifest {
+            @(
+              Get-TreeManifest $sourceAlias | ForEach-Object { "SOURCE|$_" }
+              Get-TreeManifest $uncAliasOwner | ForEach-Object { "OWNER|$_" }
+            )
+          }
+
+          $manual = Get-Content -Raw -LiteralPath (Join-Path $sourceAlias 'docs\manual.md')
+          $match = [regex]::Match(
+            $manual,
+            '(?ms)^#### PowerShell removal\s+.*?^```powershell\r?\n(?<body>.*?)^```\s*$'
+          )
+          if (-not $match.Success) { throw 'documented PowerShell removal block not found' }
+          $documented = $match.Groups['body'].Value
+          [void][scriptblock]::Create($documented)
+          $automated = $documented -replace (
+            '\$confirmation = Read-Host "Type REMOVE 19 to continue"'
+          ), '$confirmation = "REMOVE 19"'
+
+          $sourceAliasScript = $automated `
+            -replace '\$Target = "\.claude\\skills"', '$Target = "skills"' `
+            -replace '\$GoalsFile = "\.claude\\tools\\rigor_goals\.py"', '$GoalsFile = "tools\rigor_goals.py"' `
+            -replace '\$AnchorFile = "CLAUDE\.md"', '$AnchorFile = "anchor\anchor.md"'
+          $sourceAliasScriptPath = Join-Path $evidence 'source-alias-removal.ps1'
+          [IO.File]::WriteAllText(
+            $sourceAliasScriptPath,
+            $sourceAliasScript,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $before = @(Get-TreeManifest $sourceAlias)
+          $sourceAliasProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$sourceAliasScriptPath`"" `
+            -WorkingDirectory $sourceAlias `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'source-alias.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'source-alias.stderr.log')
+          $after = @(Get-TreeManifest $sourceAlias)
+          if ($sourceAliasProcess.ExitCode -eq 0) {
+            throw 'documented removal accepted a pinned-source alias'
+          }
+          if (@(Compare-Object $before $after).Count -ne 0) {
+            throw 'source-alias refusal changed candidate bytes'
+          }
+          $sourceAliasError = Get-Content -Raw -LiteralPath (
+            Join-Path $evidence 'source-alias.stderr.log'
+          )
+          if ($sourceAliasError -notmatch 'aliases pinned source') {
+            throw 'source-alias refusal did not identify the safety boundary'
+          }
+
+          $driveRoot = [IO.Path]::GetPathRoot($sourceAlias)
+          if ($driveRoot -cnotmatch '^(?<drive>[A-Za-z]):\\$') {
+            throw "cannot form a local admin share for evidence path: $sourceAlias"
+          }
+          $adminShareRoot = "\\localhost\$($Matches['drive'])`$"
+          if (-not (Test-Path -LiteralPath $adminShareRoot -PathType Container)) {
+            throw "local admin share is inaccessible: $adminShareRoot"
+          }
+          $uncSourceAlias = Join-Path $adminShareRoot $sourceAlias.Substring($driveRoot.Length)
+          if (-not (Test-Path -LiteralPath $uncSourceAlias -PathType Container)) {
+            throw "UNC source alias is inaccessible: $uncSourceAlias"
+          }
+
+          function ConvertTo-PowerShellLiteral([string]$Value) {
+            "'" + $Value.Replace("'", "''") + "'"
+          }
+          function New-UncAliasRemovalScript(
+            [string]$Target,
+            [string]$GoalsFile,
+            [string]$AnchorFile
+          ) {
+            $script = $documented
+            $replacements = [ordered]@{
+              '$Target = ".claude\skills"' =
+                '$Target = ' + (ConvertTo-PowerShellLiteral $Target)
+              '$GoalsFile = ".claude\tools\rigor_goals.py"' =
+                '$GoalsFile = ' + (ConvertTo-PowerShellLiteral $GoalsFile)
+              '$AnchorFile = "CLAUDE.md"' =
+                '$AnchorFile = ' + (ConvertTo-PowerShellLiteral $AnchorFile)
+              '$confirmation = Read-Host "Type REMOVE 19 to continue"' =
+                '$confirmation = "UNC ALIAS REGRESSION - DO NOT REMOVE"'
+            }
+            foreach ($entry in $replacements.GetEnumerator()) {
+              $count = [regex]::Matches(
+                $script,
+                [regex]::Escape([string]$entry.Key)
+              ).Count
+              if ($count -ne 1) {
+                throw "expected one documented line for UNC fixture: $($entry.Key)"
+              }
+              $script = $script.Replace([string]$entry.Key, [string]$entry.Value)
+            }
+            $script
+          }
+          function Invoke-UncSourceAliasCase(
+            [string]$Label,
+            [string]$Field,
+            [string]$Target,
+            [string]$GoalsFile,
+            [string]$AnchorFile,
+            [string]$ExpectedError
+          ) {
+            $scriptPath = Join-Path $evidence "$Label-removal.ps1"
+            $script = New-UncAliasRemovalScript $Target $GoalsFile $AnchorFile
+            [IO.File]::WriteAllText(
+              $scriptPath,
+              $script,
+              (New-Object Text.UTF8Encoding($false))
+            )
+            $before = @(Get-UncAliasFixtureManifest)
+            $stdoutPath = Join-Path $evidence "$Label.stdout.log"
+            $stderrPath = Join-Path $evidence "$Label.stderr.log"
+            $process = Start-Process `
+              -FilePath 'powershell.exe' `
+              -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`"" `
+              -WorkingDirectory $sourceAlias `
+              -Wait `
+              -PassThru `
+              -RedirectStandardOutput $stdoutPath `
+              -RedirectStandardError $stderrPath
+            $after = @(Get-UncAliasFixtureManifest)
+            $zeroByteChange = @(Compare-Object $before $after).Count -eq 0
+            if (-not $zeroByteChange) {
+              throw "$Label UNC source-alias case changed fixture bytes"
+            }
+            if ($process.ExitCode -eq 0) {
+              throw "$Label UNC source-alias case unexpectedly succeeded"
+            }
+            $errorText = Get-Content -Raw -LiteralPath $stderrPath
+            [pscustomobject]@{
+              Label = $Label
+              Field = $Field
+              ExitCode = $process.ExitCode
+              ZeroByteChange = $zeroByteChange
+              ExpectedRefusal = $errorText.Contains($ExpectedError)
+              OrdinaryCancellation = $errorText.Contains('removal cancelled')
+            }
+          }
+
+          $uncOwnerSkills = Join-Path $uncAliasOwner 'skills'
+          $uncOwnerGoals = Join-Path $uncAliasOwner 'tools\rigor_goals.py'
+          $uncOwnerAnchor = Join-Path $uncAliasOwner 'CLAUDE.md'
+          $uncAliasResults = @(
+            Invoke-UncSourceAliasCase `
+              -Label 'unc-skills-alias' `
+              -Field 'UNC_SKILLS_ALIAS' `
+              -Target (Join-Path $uncSourceAlias 'skills') `
+              -GoalsFile $uncOwnerGoals `
+              -AnchorFile $uncOwnerAnchor `
+              -ExpectedError 'refusing skills target that aliases pinned source:'
+            Invoke-UncSourceAliasCase `
+              -Label 'unc-goals-alias' `
+              -Field 'UNC_GOALS_ALIAS' `
+              -Target $uncOwnerSkills `
+              -GoalsFile (Join-Path $uncSourceAlias 'tools\rigor_goals.py') `
+              -AnchorFile $uncOwnerAnchor `
+              -ExpectedError 'refusing goals file that aliases pinned source:'
+            Invoke-UncSourceAliasCase `
+              -Label 'unc-anchor-alias' `
+              -Field 'UNC_ANCHOR_ALIAS' `
+              -Target $uncOwnerSkills `
+              -GoalsFile $uncOwnerGoals `
+              -AnchorFile (Join-Path $uncSourceAlias 'anchor\anchor.md') `
+              -ExpectedError 'refusing anchor file that aliases pinned source:'
+          )
+          $uncAliasResultFields = @(
+            foreach ($result in $uncAliasResults) {
+              "$($result.Field)_EXIT=$($result.ExitCode)"
+              "$($result.Field)_ZERO_BYTE_CHANGE=$($result.ZeroByteChange)"
+              "$($result.Field)_EXPECTED_SOURCE_ALIAS_REFUSAL=$($result.ExpectedRefusal)"
+              "$($result.Field)_ORDINARY_CANCELLATION=$($result.OrdinaryCancellation)"
+            }
+          )
+          Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            "CANDIDATE_SHA=$env:CANDIDATE_SHA"
+            "CHECKOUT_SHA=$checkoutSha"
+            $uncAliasResultFields
+          )
+          $missedUncAliases = @(
+            $uncAliasResults | Where-Object {
+              -not $_.ExpectedRefusal -or $_.OrdinaryCancellation
+            }
+          )
+          if ($missedUncAliases.Count -ne 0) {
+            throw "documented removal missed UNC source aliases at the intended guard: $(
+              @($missedUncAliases.Label) -join ', '
+            )"
+          }
+
+          New-Item -ItemType Junction -Path $sourceJunction -Target $sourceAlias | Out-Null
+          $junctionAliasScript = $automated
+          $junctionAliasScript = $junctionAliasScript.Replace(
+            '$Target = ".claude\skills"',
+            "`$Target = `"$sourceJunction\skills`""
+          )
+          $junctionAliasScript = $junctionAliasScript.Replace(
+            '$GoalsFile = ".claude\tools\rigor_goals.py"',
+            "`$GoalsFile = `"$sourceJunction\tools\rigor_goals.py`""
+          )
+          $junctionAliasScript = $junctionAliasScript.Replace(
+            '$AnchorFile = "CLAUDE.md"',
+            "`$AnchorFile = `"$sourceJunction\anchor\anchor.md`""
+          )
+          $junctionAliasScriptPath = Join-Path $evidence 'junction-alias-removal.ps1'
+          [IO.File]::WriteAllText(
+            $junctionAliasScriptPath,
+            $junctionAliasScript,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $before = @(Get-TreeManifest $sourceAlias)
+          $junctionAliasProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$junctionAliasScriptPath`"" `
+            -WorkingDirectory $sourceAlias `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'junction-alias.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'junction-alias.stderr.log')
+          [IO.Directory]::Delete($sourceJunction)
+          $after = @(Get-TreeManifest $sourceAlias)
+          if ($junctionAliasProcess.ExitCode -eq 0) {
+            throw 'documented removal accepted an ancestor-junction alias to pinned source'
+          }
+          if (@(Compare-Object $before $after).Count -ne 0) {
+            throw 'ancestor-junction refusal changed candidate bytes'
+          }
+          $junctionAliasError = Get-Content -Raw -LiteralPath (
+            Join-Path $evidence 'junction-alias.stderr.log'
+          )
+          if ($junctionAliasError -notmatch 'refusing linked .*path component') {
+            throw 'ancestor-junction refusal did not identify the linked path component'
+          }
+
+          Push-Location $linkedGoals
+          try {
+            & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+              -File (Join-Path $linkedGoals 'install.ps1') `
+              -Target '.claude\skills'
+            if ($LASTEXITCODE -ne 0) { throw 'linked-goals fixture install failed' }
+          } finally {
+            Pop-Location
+          }
+          $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
+          if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
+            throw 'shared install verifier is missing from RUNNER_TEMP'
+          }
+          & $verifier `
+            -SourceRoot $linkedGoals `
+            -ProjectRoot $linkedGoals `
+            -EvidenceDirectory (Join-Path $evidence 'install-verification') `
+            -Label 'linked-goals-fresh'
+          $ownerGoals = Join-Path $linkedGoals 'owner-goals.py'
+          $installedGoals = Join-Path $linkedGoals '.claude\tools\rigor_goals.py'
+          Copy-Item -LiteralPath (Join-Path $linkedGoals 'tools\rigor_goals.py') `
+            -Destination $ownerGoals
+          Remove-Item -LiteralPath $installedGoals -Force
+          New-Item -ItemType HardLink -Path $installedGoals -Target $ownerGoals | Out-Null
+          $linkedScriptPath = Join-Path $evidence 'linked-goals-removal.ps1'
+          [IO.File]::WriteAllText(
+            $linkedScriptPath,
+            $automated,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $before = @(Get-TreeManifest $linkedGoals)
+          $linkedProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$linkedScriptPath`"" `
+            -WorkingDirectory $linkedGoals `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'linked-goals.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'linked-goals.stderr.log')
+          $after = @(Get-TreeManifest $linkedGoals)
+          if ($linkedProcess.ExitCode -eq 0) {
+            throw 'documented removal accepted a hard-linked goals file'
+          }
+          if (@(Compare-Object $before $after).Count -ne 0) {
+            throw 'hard-link refusal changed candidate bytes'
+          }
+          $linkedError = Get-Content -Raw -LiteralPath (
+            Join-Path $evidence 'linked-goals.stderr.log'
+          )
+          if ($linkedError -notmatch 'refusing linked goals file') {
+            throw 'hard-link refusal did not identify the linked goals file'
+          }
+          Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            "CANDIDATE_SHA=$env:CANDIDATE_SHA"
+            "CHECKOUT_SHA=$checkoutSha"
+            "CANDIDATE_ARCHIVE_SHA256=$(
+              (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+            )"
+            "SOURCE_ALIAS_EXIT=$($sourceAliasProcess.ExitCode)"
+            'SOURCE_ALIAS_ZERO_BYTE_CHANGE=True'
+            $uncAliasResultFields
+            "JUNCTION_ALIAS_EXIT=$($junctionAliasProcess.ExitCode)"
+            'JUNCTION_ALIAS_ZERO_BYTE_CHANGE=True'
+            "LINKED_GOALS_EXIT=$($linkedProcess.ExitCode)"
+            'LINKED_GOALS_ZERO_BYTE_CHANGE=True'
+            'DOCUMENTED_POWERSHELL_REMOVAL_SAFETY_PASS'
+          )
+      - name: Preserve documented PowerShell removal-safety evidence
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: documented-removal-safety-windows
+          path: ${{ runner.temp }}\removal-safety-windows
+          if-no-files-found: error
+          include-hidden-files: true
       - name: Relative paths resolve against $PWD (gate regression)
         if: runner.os == 'Windows'
         shell: powershell
@@ -114,3 +1110,516 @@ jobs:
           & $installer -Target '.claude\skills' -Anchor 'CLAUDE.md'
           if (-not (Test-Path "$proj\.claude\skills\dev-rigor-stack-lite")) { throw 'skills did not land in the cd-ed project' }
           if (-not (Test-Path "$proj\CLAUDE.md")) { throw 'anchor did not land in the cd-ed project' }
+
+  posix-installer-lifecycle:
+    name: POSIX installer lifecycle (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      V033_SHA: 824bc12a6612da50a150bcb3ef524002fac9452e
+      V033_ARCHIVE_URL: https://github.com/scottconverse/dev-rigor-stack-lite/archive/refs/tags/v0.3.3.tar.gz
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Exercise archived install.sh lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          evidence="$RUNNER_TEMP/posix-installer-lifecycle-evidence"
+          work="$RUNNER_TEMP/posix-installer-lifecycle-work"
+          candidate_archive="$work/candidate.tar"
+          v033_archive="$work/v0.3.3-public.tar.gz"
+          v033_reference_archive="$work/v0.3.3-pinned-reference.tar"
+          candidate="$work/candidate"
+          v033_extract="$work/v0.3.3-public"
+          v033="$v033_extract/dev-rigor-stack-lite-0.3.3"
+          v033_reference="$work/v0.3.3-pinned-reference"
+          fresh="$work/fresh-project"
+          upgrade="$work/upgrade-project"
+          mkdir -p \
+            "$evidence" \
+            "$candidate" \
+            "$v033_extract" \
+            "$v033_reference" \
+            "$fresh" \
+            "$upgrade"
+          exec > >(tee "$evidence/lifecycle.log") 2>&1
+
+          byte_manifest() {
+            root=$1
+            output=$2
+            python - "$root" "$output" <<'PY'
+          import hashlib
+          import os
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          if not root.is_dir():
+              raise SystemExit(f"manifest root is not a directory: {root}")
+
+          records = []
+          for path in sorted(root.rglob("*"), key=lambda item: item.as_posix()):
+              relative = path.relative_to(root).as_posix()
+              if path.is_symlink():
+                  target = os.readlink(path)
+                  digest = hashlib.sha256(target.encode("utf-8")).hexdigest()
+                  records.append(f"LINK {digest}  {relative} -> {target}")
+              elif path.is_dir():
+                  records.append(f"DIR  {relative}")
+              elif path.is_file():
+                  digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                  records.append(f"FILE {digest}  {relative}")
+              else:
+                  raise SystemExit(f"unsupported filesystem entry: {path}")
+
+          output.write_text("\n".join(records) + "\n", encoding="utf-8")
+          PY
+          }
+
+          file_hash() {
+            python - "$1" <<'PY'
+          import hashlib
+          import sys
+          from pathlib import Path
+
+          print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())
+          PY
+          }
+
+          verify_skills() {
+            source_root=$1
+            target=$2
+            label=$3
+            python - "$source_root/manifest.json" "$target" "$label" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest_path = Path(sys.argv[1])
+          target = Path(sys.argv[2])
+          label = sys.argv[3]
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          expected = sorted(manifest["skills"])
+          actual = sorted(path.name for path in target.iterdir() if path.is_dir())
+          if manifest.get("skill_count") != 19 or len(expected) != 19:
+              raise SystemExit(f"{label}: source manifest does not declare exactly 19 skills")
+          if actual != expected:
+              raise SystemExit(
+                  f"{label}: installed directories differ from manifest\n"
+                  f"expected={expected}\nactual={actual}"
+              )
+          print(f"{label}: exact manifest skill set present ({len(actual)})")
+          PY
+          }
+
+          verify_anchor() {
+            source_root=$1
+            installed_anchor=$2
+            label=$3
+            python - "$source_root/anchor/anchor.md" "$installed_anchor" "$label" <<'PY'
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1]).read_bytes()
+          installed = Path(sys.argv[2]).read_bytes()
+          label = sys.argv[3]
+          begin = b"<!-- dev-rigor-lite anchor"
+          end = b"<!-- /dev-rigor-lite anchor -->"
+          if installed.count(begin) != 1:
+              raise SystemExit(f"{label}: expected one begin marker, found {installed.count(begin)}")
+          if installed.count(end) != 1:
+              raise SystemExit(f"{label}: expected one end marker, found {installed.count(end)}")
+          if installed.count(source) != 1:
+              raise SystemExit(f"{label}: managed anchor bytes do not match candidate source exactly once")
+          print(f"{label}: one marker pair and exact managed-anchor source bytes")
+          PY
+          }
+
+          verify_identity() {
+            source_root=$1
+            project=$2
+            installed_manifest=$3
+            label=$4
+            source_manifest=$5
+
+            verify_skills "$source_root" "$project/.claude/skills" "$label"
+            byte_manifest "$source_root/skills" "$source_manifest"
+            byte_manifest "$project/.claude/skills" "$installed_manifest"
+            cmp "$source_manifest" "$installed_manifest"
+            cmp "$source_root/tools/rigor_goals.py" "$project/.claude/tools/rigor_goals.py"
+            verify_anchor "$source_root" "$project/CLAUDE.md" "$label"
+            printf '%s\n' "$label: skills, rigor-goals, and managed anchor match source bytes"
+          }
+
+          checkout_sha=$(git rev-parse HEAD)
+          resolved_v033=$(git rev-parse "$V033_SHA^{commit}")
+          if [ "$checkout_sha" != "$CANDIDATE_SHA" ]; then
+            printf 'checkout identity mismatch: expected %s, got %s\n' "$CANDIDATE_SHA" "$checkout_sha" >&2
+            exit 1
+          fi
+          if [ "$resolved_v033" != "$V033_SHA" ]; then
+            printf 'v0.3.3 identity mismatch: expected %s, got %s\n' "$V033_SHA" "$resolved_v033" >&2
+            exit 1
+          fi
+
+          {
+            printf 'event_name=%s\n' "${{ github.event_name }}"
+            printf 'candidate_sha=%s\n' "$CANDIDATE_SHA"
+            printf 'checkout_sha=%s\n' "$checkout_sha"
+            printf 'v0.3.3_pinned_sha=%s\n' "$V033_SHA"
+            printf 'v0.3.3_resolved_sha=%s\n' "$resolved_v033"
+            printf 'v0.3.3_public_archive_url=%s\n' "$V033_ARCHIVE_URL"
+          } > "$evidence/identities.txt"
+          {
+            printf 'runner_os=%s\n' "$RUNNER_OS"
+            printf 'runner_arch=%s\n' "$RUNNER_ARCH"
+            printf 'uname='
+            uname -a
+            printf 'python='
+            python --version 2>&1
+            printf 'git='
+            git --version
+            printf 'curl='
+            curl --version | sed -n '1p'
+            printf 'bash='
+            bash --version | sed -n '1p'
+            if command -v sw_vers >/dev/null 2>&1; then
+              sw_vers
+            elif [ -f /etc/os-release ]; then
+              cat /etc/os-release
+            fi
+          } > "$evidence/environment.txt"
+
+          git archive --format=tar --output="$candidate_archive" "$CANDIDATE_SHA"
+          curl \
+            --fail \
+            --location \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --dump-header "$evidence/v0.3.3-public-download-headers.txt" \
+            --output "$v033_archive" \
+            "$V033_ARCHIVE_URL"
+          git -c core.autocrlf=false -c core.eol=lf archive \
+            --format=tar \
+            --output="$v033_reference_archive" \
+            "$V033_SHA"
+          tar -xf "$candidate_archive" -C "$candidate"
+          tar -xzf "$v033_archive" -C "$v033_extract"
+          tar -xf "$v033_reference_archive" -C "$v033_reference"
+          if [ ! -d "$v033" ]; then
+            printf 'public v0.3.3 archive did not contain the expected tag root: %s\n' "$v033" >&2
+            exit 1
+          fi
+          public_top_level_count=$(
+            find "$v033_extract" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '
+          )
+          if [ "$public_top_level_count" -ne 1 ]; then
+            printf 'public v0.3.3 archive had %s top-level directories, expected 1\n' \
+              "$public_top_level_count" >&2
+            exit 1
+          fi
+          byte_manifest "$v033" "$evidence/v0.3.3-public-tree.sha256"
+          byte_manifest "$v033_reference" "$evidence/v0.3.3-pinned-reference-tree.sha256"
+          cmp \
+            "$evidence/v0.3.3-public-tree.sha256" \
+            "$evidence/v0.3.3-pinned-reference-tree.sha256"
+          python - "$v033/manifest.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if manifest.get("version") != "0.3.3":
+              raise SystemExit(
+                  f"public archive manifest version is {manifest.get('version')!r}, expected '0.3.3'"
+              )
+          print("public v0.3.3 archive matches the pinned tag tree and manifest version")
+          PY
+          {
+            printf '%s  candidate.tar\n' "$(file_hash "$candidate_archive")"
+            printf '%s  v0.3.3-public.tar.gz\n' "$(file_hash "$v033_archive")"
+            printf '%s  v0.3.3-pinned-reference.tar\n' "$(file_hash "$v033_reference_archive")"
+          } > "$evidence/archive-sha256.txt"
+          byte_manifest "$candidate/skills" "$evidence/candidate-source-skills.sha256"
+          byte_manifest "$v033/skills" "$evidence/v0.3.3-source-skills.sha256"
+
+          printf '%s\n' 'CASE fresh default install'
+          (
+            cd "$fresh"
+            "$candidate/install.sh" ".claude/skills"
+          ) > "$evidence/fresh-install.stdout.log" 2> "$evidence/fresh-install.stderr.log"
+          verify_identity \
+            "$candidate" \
+            "$fresh" \
+            "$evidence/fresh-installed-skills.sha256" \
+            "candidate fresh install" \
+            "$evidence/fresh-source-skills.sha256"
+
+          printf '%s\n' 'CASE no-force overwrite refusal'
+          byte_manifest "$fresh" "$evidence/fresh-project-before-no-force.sha256"
+          set +e
+          (
+            cd "$fresh"
+            "$candidate/install.sh" ".claude/skills"
+          ) > "$evidence/no-force.stdout.log" 2> "$evidence/no-force.stderr.log"
+          no_force_status=$?
+          set -e
+          printf '%s\n' "$no_force_status" > "$evidence/no-force.exit-code.txt"
+          if [ "$no_force_status" -eq 0 ]; then
+            printf '%s\n' 'no-force reinstall unexpectedly succeeded' >&2
+            exit 1
+          fi
+          if ! grep -qF 'skill already exists:' "$evidence/no-force.stderr.log"; then
+            printf '%s\n' 'no-force failure did not report the expected overwrite refusal' >&2
+            exit 1
+          fi
+          byte_manifest "$fresh" "$evidence/fresh-project-after-no-force.sha256"
+          cmp \
+            "$evidence/fresh-project-before-no-force.sha256" \
+            "$evidence/fresh-project-after-no-force.sha256"
+          verify_identity \
+            "$candidate" \
+            "$fresh" \
+            "$evidence/no-force-installed-skills.sha256" \
+            "candidate after no-force refusal" \
+            "$evidence/no-force-source-skills.sha256"
+          printf 'no-force refused with exit %s and zero project byte change\n' "$no_force_status"
+
+          printf '%s\n' 'CASE force reinstall'
+          byte_manifest "$fresh" "$evidence/fresh-project-before-force.sha256"
+          (
+            cd "$fresh"
+            "$candidate/install.sh" ".claude/skills" --force
+          ) > "$evidence/force-reinstall.stdout.log" 2> "$evidence/force-reinstall.stderr.log"
+          byte_manifest "$fresh" "$evidence/fresh-project-after-force.sha256"
+          cmp \
+            "$evidence/fresh-project-before-force.sha256" \
+            "$evidence/fresh-project-after-force.sha256"
+          verify_identity \
+            "$candidate" \
+            "$fresh" \
+            "$evidence/force-installed-skills.sha256" \
+            "candidate force reinstall" \
+            "$evidence/force-source-skills.sha256"
+          printf '%s\n' 'force reinstall was byte-idempotent with one managed anchor'
+
+          printf '%s\n' 'CASE v0.3.3 to candidate upgrade'
+          (
+            cd "$upgrade"
+            "$v033/install.sh" ".claude/skills"
+          ) > "$evidence/v0.3.3-install.stdout.log" 2> "$evidence/v0.3.3-install.stderr.log"
+          verify_identity \
+            "$v033" \
+            "$upgrade" \
+            "$evidence/v0.3.3-installed-skills.sha256" \
+            "v0.3.3 fresh install" \
+            "$evidence/v0.3.3-identity-source-skills.sha256"
+
+          {
+            printf '%s\n' 'OWNER_SENTINEL_BEFORE_v0.3.3_TO_CANDIDATE'
+            cat "$upgrade/CLAUDE.md"
+            printf '%s\n' 'OWNER_SENTINEL_AFTER_v0.3.3_TO_CANDIDATE'
+          } > "$upgrade/CLAUDE.md.owner"
+          mv "$upgrade/CLAUDE.md.owner" "$upgrade/CLAUDE.md"
+          mkdir -p "$upgrade/.claude/skills/audit-lite"
+          # The literal backticks identify the retired lite copy.
+          # shellcheck disable=SC2016
+          printf '%s\n' 'Legacy lite fixture. Escalate to `audit-team-lite` if findings warrant.' \
+            > "$upgrade/.claude/skills/audit-lite/SKILL.md"
+          byte_manifest "$upgrade" "$evidence/upgrade-project-before-candidate.sha256"
+
+          (
+            cd "$upgrade"
+            "$candidate/install.sh" ".claude/skills" --force
+          ) > "$evidence/candidate-upgrade.stdout.log" 2> "$evidence/candidate-upgrade.stderr.log"
+          byte_manifest "$upgrade" "$evidence/upgrade-project-after-candidate.sha256"
+
+          python - "$upgrade/CLAUDE.md" <<'PY'
+          import sys
+          from pathlib import Path
+
+          text = Path(sys.argv[1]).read_text(encoding="utf-8")
+          sentinels = (
+              "OWNER_SENTINEL_BEFORE_v0.3.3_TO_CANDIDATE",
+              "OWNER_SENTINEL_AFTER_v0.3.3_TO_CANDIDATE",
+          )
+          for sentinel in sentinels:
+              if text.count(sentinel) != 1:
+                  raise SystemExit(
+                      f"owner sentinel {sentinel!r} count is {text.count(sentinel)}, expected 1"
+                  )
+          print("owner text before and after the managed block survived candidate upgrade")
+          PY
+          if [ -e "$upgrade/.claude/skills/audit-lite" ]; then
+            printf '%s\n' 'stale lite-owned audit-lite survived candidate upgrade' >&2
+            exit 1
+          fi
+          if [ ! -d "$upgrade/.claude/skills/quick-audit-lite" ]; then
+            printf '%s\n' 'quick-audit-lite missing after candidate upgrade' >&2
+            exit 1
+          fi
+          verify_identity \
+            "$candidate" \
+            "$upgrade" \
+            "$evidence/upgrade-installed-skills.sha256" \
+            "v0.3.3 to candidate upgrade" \
+            "$evidence/upgrade-source-skills.sha256"
+          printf '%s\n' 'upgrade preserved owner text, removed stale audit-lite, and matches candidate bytes'
+
+          printf '%s\n' 'POSIX_INSTALLER_LIFECYCLE_PASS'
+      - name: Documented Bash removal refuses source aliases and symlinks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          evidence="$RUNNER_TEMP/posix-installer-lifecycle-evidence/removal-safety"
+          work="$RUNNER_TEMP/posix-installer-lifecycle-work"
+          candidate="$work/candidate"
+          documented="$work/documented-removal.sh"
+          source_alias_script="$work/source-alias-removal.sh"
+          source_alias="$work/removal-source-alias"
+          linked_goals="$work/removal-linked-goals"
+          mkdir -p "$evidence" "$source_alias" "$linked_goals"
+
+          python - "$candidate/docs/manual.md" "$documented" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          manual = Path(sys.argv[1]).read_text(encoding="utf-8")
+          match = re.search(
+              r"(?ms)^#### Bash removal\s+.*?^```sh\r?\n(?P<body>.*?)^```\s*$",
+              manual,
+          )
+          if match is None:
+              raise SystemExit("documented Bash removal block not found")
+          Path(sys.argv[2]).write_text(match.group("body"), encoding="utf-8", newline="\n")
+          PY
+          bash -n "$documented"
+
+          cat > "$work/tree_manifest.py" <<'PY'
+          import hashlib
+          import os
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          records = []
+          for path in sorted(root.rglob("*"), key=lambda item: item.as_posix()):
+              relative = path.relative_to(root).as_posix()
+              if path.is_symlink():
+                  target = os.readlink(path)
+                  digest = hashlib.sha256(target.encode("utf-8")).hexdigest()
+                  records.append(f"LINK {digest}  {relative} -> {target}")
+              elif path.is_dir():
+                  records.append(f"DIR  {relative}")
+              elif path.is_file():
+                  digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                  records.append(f"FILE {digest}  {relative}")
+              else:
+                  raise SystemExit(f"unsupported filesystem entry: {path}")
+          output.write_text("\n".join(records) + "\n", encoding="utf-8")
+          PY
+
+          cp -a "$candidate/." "$source_alias/"
+          python - "$documented" "$source_alias_script" <<'PY'
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1]).read_text(encoding="utf-8")
+          replacements = {
+              "TARGET=.claude/skills": "TARGET=skills",
+              "GOALS_FILE=.claude/tools/rigor_goals.py": "GOALS_FILE=tools/rigor_goals.py",
+              "ANCHOR_FILE=CLAUDE.md": "ANCHOR_FILE=anchor/anchor.md",
+          }
+          for old, new in replacements.items():
+              if source.count(old) != 1:
+                  raise SystemExit(f"expected one documented assignment: {old}")
+              source = source.replace(old, new, 1)
+          Path(sys.argv[2]).write_text(source, encoding="utf-8", newline="\n")
+          PY
+          python "$work/tree_manifest.py" \
+            "$source_alias" \
+            "$evidence/source-alias-before.sha256"
+          set +e
+          (
+            cd "$source_alias"
+            printf 'REMOVE 19\n' | bash "$source_alias_script"
+          ) > "$evidence/source-alias.stdout.log" 2> "$evidence/source-alias.stderr.log"
+          source_alias_status=$?
+          set -e
+          printf '%s\n' "$source_alias_status" > "$evidence/source-alias.exit-code.txt"
+          if [ "$source_alias_status" -eq 0 ]; then
+            printf '%s\n' 'documented removal accepted a pinned-source alias' >&2
+            exit 1
+          fi
+          grep -qF 'aliases pinned source' "$evidence/source-alias.stderr.log"
+          python "$work/tree_manifest.py" \
+            "$source_alias" \
+            "$evidence/source-alias-after.sha256"
+          cmp \
+            "$evidence/source-alias-before.sha256" \
+            "$evidence/source-alias-after.sha256"
+
+          cp -a "$candidate/." "$linked_goals/"
+          (
+            cd "$linked_goals"
+            ./install.sh .claude/skills
+          ) > "$evidence/linked-goals-install.stdout.log" \
+            2> "$evidence/linked-goals-install.stderr.log"
+          cp "$linked_goals/tools/rigor_goals.py" "$linked_goals/owner-goals.py"
+          rm "$linked_goals/.claude/tools/rigor_goals.py"
+          ln -s "$linked_goals/owner-goals.py" \
+            "$linked_goals/.claude/tools/rigor_goals.py"
+          python "$work/tree_manifest.py" \
+            "$linked_goals" \
+            "$evidence/linked-goals-before.sha256"
+          set +e
+          (
+            cd "$linked_goals"
+            printf 'REMOVE 19\n' | bash "$documented"
+          ) > "$evidence/linked-goals.stdout.log" 2> "$evidence/linked-goals.stderr.log"
+          linked_goals_status=$?
+          set -e
+          printf '%s\n' "$linked_goals_status" > "$evidence/linked-goals.exit-code.txt"
+          if [ "$linked_goals_status" -eq 0 ]; then
+            printf '%s\n' 'documented removal accepted a symlinked goals file' >&2
+            exit 1
+          fi
+          grep -qF 'refusing linked goals file' "$evidence/linked-goals.stderr.log"
+          python "$work/tree_manifest.py" \
+            "$linked_goals" \
+            "$evidence/linked-goals-after.sha256"
+          cmp \
+            "$evidence/linked-goals-before.sha256" \
+            "$evidence/linked-goals-after.sha256"
+
+          {
+            printf 'candidate_sha=%s\n' "$CANDIDATE_SHA"
+            printf 'source_alias_exit=%s\n' "$source_alias_status"
+            printf 'source_alias_zero_byte_change=true\n'
+            printf 'linked_goals_exit=%s\n' "$linked_goals_status"
+            printf 'linked_goals_zero_byte_change=true\n'
+            printf 'DOCUMENTED_BASH_REMOVAL_SAFETY_PASS\n'
+          } > "$evidence/result.log"
+      - name: Preserve POSIX installer lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: posix-installer-lifecycle-${{ matrix.os }}
+          path: ${{ runner.temp }}/posix-installer-lifecycle-evidence
+          if-no-files-found: error

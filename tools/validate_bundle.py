@@ -11,6 +11,7 @@ expected = set(manifest["skills"])
 actual = {path.name for path in SKILLS.iterdir() if path.is_dir()}
 errors = []
 
+
 if manifest.get("hooks") is not False:
     errors.append("manifest must declare hooks=false")
 if actual != expected:

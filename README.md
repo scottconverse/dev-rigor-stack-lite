@@ -18,8 +18,8 @@ block on its own initiative; the anchor text itself carries that rule.
 ## The three tiers
 
 Model attention decays over a long session and dies at context compaction; hooks fight
-that with per-turn injection but are host-specific. Lite v2 instead moves the
-discipline's memory into places that do not decay:
+that with per-turn injection but are host-specific. The Lite architecture instead moves
+the discipline's memory into places that do not decay:
 
 | Tier | What | Force | Why it resists drift |
 |---|---|---|---|
@@ -51,15 +51,35 @@ The bundle uses the portable Agent Skills layout: one directory per skill with a
 The Markdown workflows are portable; tool availability and instruction adherence vary by
 host and model. This repository does not claim mechanical enforcement.
 
-## Install
+## Fast start
+
+Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell.
+
+### 1. Acquire the pinned release source
+
+```console
+git clone --branch v0.4.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+cd dev-rigor-stack-lite
+```
+
+### 2. Install
+
+Choose one target below. Run project-local commands from the project you are configuring
+so its default anchor lands in that project. The relative commands shown here configure
+the pinned checkout itself. To configure a different project, change to that project and
+invoke the pinned installer by its absolute path; the [manual](docs/manual.md) shows both
+forms.
 
 PowerShell:
 
 ```powershell
-.\install.ps1 -Target "$HOME\.codex\skills"
-.\install.ps1 -Target ".claude\skills"
-.\install.ps1 -Target ".agents\skills"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target "$HOME\.codex\skills"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".claude\skills"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".agents\skills"
 ```
+
+`-ExecutionPolicy Bypass` applies only to that child PowerShell process; it does not
+change the execution policy for the user or machine.
 
 Bash:
 
@@ -69,16 +89,39 @@ Bash:
 ./install.sh .agents/skills
 ```
 
+### 3. Verify
+
+```console
+python tools/validate_bundle.py
+```
+
+On systems where Python 3 is named `python3`, use that command instead.
+
+### 4. Start a multi-step unit
+
+```console
+python .claude/tools/rigor_goals.py create --brief "ship the unit" --goal "build::implement and test"
+```
+
+Adjust the tool path for the target you installed. See the
+[manual](docs/manual.md) for all hosts and the complete lifecycle.
+
 Installation copies only the 19 directories under `skills/`. Existing directories with
 the same names are refused unless `-Force` or `--force` is supplied.
 
 ### The anchor block and rigor-goals install by default
 
-A plain `./install.sh .claude/skills` (or `.\install.ps1 -Target ".claude\skills"`)
-installs all three tiers: the 19 skills, the `rigor-goals` tool (default:
-`<TARGET>/../tools/`), and the anchor block (default: `CLAUDE.md`, `GEMINI.md`, or
-`AGENTS.md` in the current directory, inferred from the target path). Run the installer
-from the project you are setting up.
+A plain `./install.sh .claude/skills` (or the process-scoped PowerShell form above)
+installs all three tiers: the 19 skills, the `rigor-goals` tool, and the anchor block.
+Defaults are inferred from the target:
+
+| Target pattern | Default goals location | Default anchor location |
+|---|---|---|
+| `$HOME/.codex/skills` | `$HOME/.codex/tools` | `AGENTS.md` in the current directory |
+| `.claude/skills` | `.claude/tools` | `CLAUDE.md` in the current directory |
+| `.agents/skills` (Antigravity project) | `.agents/tools` | `AGENTS.md` in the current directory |
+| `$HOME/.gemini/config/skills` (Antigravity user) | `$HOME/.gemini/config/tools` | `$HOME/.gemini/config/AGENTS.md`, beside the skills directory |
+| `.gemini/skills` (Gemini CLI) | `.gemini/tools` | `GEMINI.md` in the current directory |
 
 `--anchor FILE` / `-Anchor` and `--goals DIR` / `-Goals` override the default locations.
 The anchor install is idempotent: on upgrade the marker-fenced block is replaced in
@@ -87,6 +130,13 @@ place, hand edits outside the markers survive, and a diff is printed.
 `--no-anchor` / `-NoAnchor` and `--no-goals` / `-NoGoals` are **owner-only opt-outs**.
 They exist so the human who owns the machine can turn the discipline off; an agent
 running the installer must never pass them on its own initiative.
+
+For an upgrade or same-version repair, acquire the intended source version and rerun the
+same command with `--force` or `-Force`. This replaces managed skill/tool bytes while
+preserving text outside the anchor markers. Safe removal must delete only the 19
+manifest-owned skill directories, the one managed tool file, and the single
+marker-fenced anchor span; follow the preview-and-preserve procedure in the
+[manual](docs/manual.md).
 
 ### rigor-goals in 30 seconds
 
@@ -146,6 +196,16 @@ the same skills directory.)
 ```sh
 python tools/validate_bundle.py
 ```
+
+## Documentation
+
+- [User and operator manual](docs/manual.md)
+- [Architecture and trust boundaries](docs/architecture.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [License](LICENSE) and [third-party notice](NOTICE.md)
 
 ## Provenance
 
