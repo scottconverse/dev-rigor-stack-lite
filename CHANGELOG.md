@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **The SHARED-BLOCK parity fence is removed from the detector-proportionality rule.**
+  The rule text is unchanged and stays in VERIFY; only the fence and its
+  edit-in-lockstep instruction are gone. The cross-repo check that justified them
+  lives in the `dev-rigor-stack` repo's CI, and that repo is frozen and now private —
+  so the check cannot run, while the instruction it implied still constrained every
+  edit to this file. A guard that cannot fail but reads as a guarantee is the
+  verification theater this stack exists to reject, so it goes. `dev-rigor-stack`'s
+  own workflow is left untouched: if that repo is ever revived, its check firing and
+  reporting drift would be correct. The 0.4.0 entry below describing the old
+  arrangement is left as written — it was true when written.
+
 ## 0.4.0 - 2026-07-24
 
 - **The documented Windows install works under effective Restricted policy.**
