@@ -17,7 +17,8 @@
   two-audience manual, architecture diagrams, troubleshooting, security, contributing,
   license, and notices; install, verification, upgrade/repair, anchor placement, and
   safe removal are documented without deleting owner-managed content. Removal refuses
-  linked inputs and any target, goals file, or anchor that aliases the pinned source.
+  linked inputs, including an ancestor link or junction, and any target, goals file,
+  or anchor that aliases the pinned source.
 - **Candidate identity is reproducible across handoffs.** Run-manifest schema 1.1 adds
   clean/dirty worktree state, a hash plus evidence artifact for the complete dirty
   delta, detected lockfile hashes, and randomized-run seeds. Existing 1.0 manifests

@@ -272,6 +272,7 @@ jobs:
           $evidence = Join-Path $env:RUNNER_TEMP 'removal-safety-windows'
           $archive = Join-Path $evidence 'candidate.zip'
           $sourceAlias = Join-Path $evidence 'source-alias-candidate'
+          $sourceJunction = Join-Path $evidence 'source-junction'
           $linkedGoals = Join-Path $evidence 'linked-goals-candidate'
           New-Item -ItemType Directory -Force -Path $evidence, $sourceAlias, $linkedGoals | Out-Null
 
@@ -348,6 +349,50 @@ jobs:
             throw 'source-alias refusal did not identify the safety boundary'
           }
 
+          New-Item -ItemType Junction -Path $sourceJunction -Target $sourceAlias | Out-Null
+          $junctionAliasScript = $automated
+          $junctionAliasScript = $junctionAliasScript.Replace(
+            '$Target = ".claude\skills"',
+            "`$Target = `"$sourceJunction\skills`""
+          )
+          $junctionAliasScript = $junctionAliasScript.Replace(
+            '$GoalsFile = ".claude\tools\rigor_goals.py"',
+            "`$GoalsFile = `"$sourceJunction\tools\rigor_goals.py`""
+          )
+          $junctionAliasScript = $junctionAliasScript.Replace(
+            '$AnchorFile = "CLAUDE.md"',
+            "`$AnchorFile = `"$sourceJunction\anchor\anchor.md`""
+          )
+          $junctionAliasScriptPath = Join-Path $evidence 'junction-alias-removal.ps1'
+          [IO.File]::WriteAllText(
+            $junctionAliasScriptPath,
+            $junctionAliasScript,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $before = @(Get-TreeManifest $sourceAlias)
+          $junctionAliasProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$junctionAliasScriptPath`"" `
+            -WorkingDirectory $sourceAlias `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'junction-alias.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'junction-alias.stderr.log')
+          [IO.Directory]::Delete($sourceJunction)
+          $after = @(Get-TreeManifest $sourceAlias)
+          if ($junctionAliasProcess.ExitCode -eq 0) {
+            throw 'documented removal accepted an ancestor-junction alias to pinned source'
+          }
+          if (@(Compare-Object $before $after).Count -ne 0) {
+            throw 'ancestor-junction refusal changed candidate bytes'
+          }
+          $junctionAliasError = Get-Content -Raw -LiteralPath (
+            Join-Path $evidence 'junction-alias.stderr.log'
+          )
+          if ($junctionAliasError -notmatch 'refusing linked .*path component') {
+            throw 'ancestor-junction refusal did not identify the linked path component'
+          }
+
           Push-Location $linkedGoals
           try {
             & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
@@ -399,6 +444,8 @@ jobs:
             )"
             "SOURCE_ALIAS_EXIT=$($sourceAliasProcess.ExitCode)"
             'SOURCE_ALIAS_ZERO_BYTE_CHANGE=True'
+            "JUNCTION_ALIAS_EXIT=$($junctionAliasProcess.ExitCode)"
+            'JUNCTION_ALIAS_ZERO_BYTE_CHANGE=True'
             "LINKED_GOALS_EXIT=$($linkedProcess.ExitCode)"
             'LINKED_GOALS_ZERO_BYTE_CHANGE=True'
             'DOCUMENTED_POWERSHELL_REMOVAL_SAFETY_PASS'

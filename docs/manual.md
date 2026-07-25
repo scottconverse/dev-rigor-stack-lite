@@ -293,7 +293,9 @@ Both procedures below enforce these preconditions before deletion:
   tree and is not a symbolic link or junction;
 - the skills target, goals file, and anchor file are real, non-linked entries;
   the two files are not hard links; and none aliases the pinned source
-  `skills/`, `tools/rigor_goals.py`, or `anchor/anchor.md`;
+  `skills/`, `tools/rigor_goals.py`, or `anchor/anchor.md`; PowerShell refuses
+  a link or junction in any existing path component, while Bash resolves
+  ancestor aliases before its same-file checks;
 - the installed goals file byte-matches `tools/rigor_goals.py`;
 - the host instructions file is valid UTF-8 and contains exactly one ordered
   marker pair; and
@@ -306,7 +308,9 @@ the deletion.
 
 #### PowerShell removal
 
-Run this from the matching pinned source root after setting the three paths:
+Run this from the matching pinned source root after setting the three paths.
+For safety, the procedure refuses a link or junction anywhere in the source,
+target, goals, or anchor path:
 
 ```powershell
 $Target = ".claude\skills"
@@ -318,17 +322,22 @@ function Resolve-UserPath([string]$Path) {
   $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
 function Assert-PlainPath([string]$Path, [string]$Label) {
-  $item = Get-Item -LiteralPath $Path -Force
-  $linkType = if ($item.PSObject.Properties["LinkType"]) {
-    [string]$item.LinkType
-  } else {
-    ""
-  }
-  if (
-    ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
-    -not [string]::IsNullOrEmpty($linkType)
-  ) {
-    throw "refusing linked $Label`: $Path"
+  $cursor = Resolve-UserPath $Path
+  while ($null -ne $cursor) {
+    $item = Get-Item -LiteralPath $cursor -Force
+    $linkType = if ($item.PSObject.Properties["LinkType"]) {
+      [string]$item.LinkType
+    } else {
+      ""
+    }
+    if (
+      ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+      -not [string]::IsNullOrEmpty($linkType)
+    ) {
+      throw "refusing linked $Label path component: $cursor"
+    }
+    $parent = [IO.Directory]::GetParent($cursor)
+    $cursor = if ($null -eq $parent) { $null } else { $parent.FullName }
   }
 }
 function Test-SamePath([string]$Left, [string]$Right) {
@@ -366,6 +375,10 @@ $sourceAnchor = Join-Path $root "anchor\anchor.md"
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
   throw "run from the matching pinned source root"
 }
+Assert-PlainPath $root "pinned source root"
+Assert-PlainPath $manifestPath "pinned manifest"
+Assert-PlainPath $sourceGoals "pinned goals file"
+Assert-PlainPath $sourceAnchor "pinned anchor file"
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $names = @($manifest.skills)
 $unique = @($names | Sort-Object -Unique)
