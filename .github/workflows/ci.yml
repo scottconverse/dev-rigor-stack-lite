@@ -107,18 +107,12 @@ jobs:
           & $installer -Target ".agents\skills" -NoGoals -NoAnchor
           if (Test-Path "$bare\.agents\tools") { throw 'opt-out still installed goals' }
           if (Test-Path "$bare\AGENTS.md") { throw 'opt-out still installed anchor' }
-      - name: README PowerShell install works under Restricted policy
+      - name: Prepare shared Windows install verifier
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          $evidence = Join-Path $env:RUNNER_TEMP 'readme-restricted-evidence'
-          $archive = Join-Path $evidence 'candidate.zip'
-          $candidate = Join-Path $evidence 'candidate'
-          $stdout = Join-Path $evidence 'restricted-process.stdout.log'
-          $stderr = Join-Path $evidence 'restricted-process.stderr.log'
           $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
-          New-Item -ItemType Directory -Force -Path $evidence, $candidate | Out-Null
 
           $verifierSource = @'
           [CmdletBinding()]
@@ -457,6 +451,22 @@ jobs:
             (New-Object Text.UTF8Encoding($false))
           )
           [void][scriptblock]::Create($verifierSource)
+
+      - name: README PowerShell install works under Restricted policy
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'readme-restricted-evidence'
+          $archive = Join-Path $evidence 'candidate.zip'
+          $candidate = Join-Path $evidence 'candidate'
+          $stdout = Join-Path $evidence 'restricted-process.stdout.log'
+          $stderr = Join-Path $evidence 'restricted-process.stderr.log'
+          $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
+          if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
+            throw 'shared install verifier is missing from RUNNER_TEMP'
+          }
+          New-Item -ItemType Directory -Force -Path $evidence, $candidate | Out-Null
 
           $checkoutSha = (& git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { throw 'could not resolve checked-out candidate identity' }

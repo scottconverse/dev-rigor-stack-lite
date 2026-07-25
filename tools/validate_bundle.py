@@ -11,6 +11,239 @@ expected = set(manifest["skills"])
 actual = {path.name for path in SKILLS.iterdir() if path.is_dir()}
 errors = []
 
+# GitHub compiles a run scalar containing ${{ ... }} into one format(...)
+# expression, whose service-side ceiling is 21,000 characters. Keep a margin so
+# ordinary edits cannot produce a candidate that only fails after it reaches CI.
+RUN_EXPRESSION_LIMIT = 20_000
+OPEN_EXPRESSION = "${{"
+
+
+def utf16_code_units(value):
+    """Return .NET-style UTF-16 String.Length for a Python string."""
+    return len(value.encode("utf-16-le", errors="surrogatepass")) // 2
+
+
+def split_github_template(raw):
+    """Mirror GitHub's literal/expression segmentation for a scalar."""
+    segments = []
+    cursor = 0
+    while True:
+        start = raw.find(OPEN_EXPRESSION, cursor)
+        if start < 0:
+            if cursor < len(raw):
+                segments.append(("literal", raw[cursor:]))
+            return segments
+        if start > cursor:
+            segments.append(("literal", raw[cursor:start]))
+        in_string = False
+        index = start + len(OPEN_EXPRESSION)
+        end = -1
+        while index < len(raw):
+            char = raw[index]
+            if char == "'":
+                in_string = not in_string
+            elif not in_string and char == "}" and raw[index - 1] == "}":
+                end = index
+                index += 1
+                break
+            index += 1
+        if end < start:
+            raise ValueError("expression is not closed")
+        expression = raw[start + len(OPEN_EXPRESSION):end - 1].strip()
+        if not expression:
+            raise ValueError("expression is empty")
+        segments.append(("expression", expression))
+        cursor = index
+
+
+def github_run_expression_length(raw):
+    """Return the service-side expression length (or scalar length if literal)."""
+    if OPEN_EXPRESSION not in raw:
+        return utf16_code_units(raw)
+    parts = []
+    arguments = []
+    for kind, value in split_github_template(raw):
+        if kind == "literal":
+            parts.append(
+                value.replace("'", "''").replace("{", "{{").replace("}", "}}")
+            )
+        else:
+            parts.append("{" + str(len(arguments)) + "}")
+            arguments.append(value)
+    compiled = "format('" + "".join(parts) + "'"
+    compiled += "".join(", " + argument for argument in arguments) + ")"
+    return utf16_code_units(compiled)
+
+
+def workflow_run_scalars(path):
+    """Read run scalars without a YAML dependency; return (line, value) pairs."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    runs = []
+    index = 0
+    header = re.compile(
+        r"^(?P<indent> *)(?P<item>-\s+)?(?P<key>[A-Za-z0-9_-]+):"
+        r"\s*(?P<value>.*)$"
+    )
+    block = re.compile(
+        r"^(?P<style>[|>])"
+        r"(?P<mods>(?:[1-9][+-]?|[+-][1-9]?|))"
+        r"(?:[ \t]+(?:#.*)?)?$"
+    )
+    while index < len(lines):
+        match = header.match(lines[index])
+        if not match:
+            index += 1
+            continue
+        key = match.group("key")
+        value = match.group("value")
+        block_match = block.match(value)
+        if key == "run" and value.startswith(("|", ">")) and not block_match:
+            raise ValueError(
+                f"line {index + 1}: invalid run block-scalar header {value!r}"
+            )
+        if not block_match:
+            if key == "run":
+                if value.startswith('"') and value.endswith('"'):
+                    try:
+                        value = json.loads(value)
+                    except json.JSONDecodeError as exc:
+                        raise ValueError(
+                            f"line {index + 1}: invalid double-quoted run scalar: {exc}"
+                        ) from exc
+                elif value.startswith("'") and value.endswith("'"):
+                    value = value[1:-1].replace("''", "'")
+                runs.append((index + 1, value))
+            index += 1
+            continue
+
+        header_indent = len(match.group("indent")) + len(match.group("item") or "")
+        content_start = index + 1
+        content_end = content_start
+        while content_end < len(lines):
+            candidate = lines[content_end]
+            if candidate.strip() and len(candidate) - len(candidate.lstrip(" ")) <= header_indent:
+                break
+            content_end += 1
+
+        if key == "run":
+            content = lines[content_start:content_end]
+            nonblank_indents = [
+                len(line) - len(line.lstrip(" ")) for line in content if line.strip()
+            ]
+            modifiers = block_match.group("mods")
+            indent_modifier = next(
+                (int(char) for char in modifiers if char.isdigit()),
+                None,
+            )
+            if indent_modifier is None:
+                content_indent = min(nonblank_indents, default=header_indent + 1)
+            else:
+                content_indent = header_indent + indent_modifier
+                if any(indent < content_indent for indent in nonblank_indents):
+                    raise ValueError(
+                        f"line {index + 1}: run block is less indented than "
+                        f"its |{indent_modifier} or >{indent_modifier} indicator"
+                    )
+            if content_indent <= header_indent:
+                raise ValueError(f"line {index + 1}: run block is not indented")
+            scalar_lines = [
+                line[content_indent:] if line.strip() else "" for line in content
+            ]
+            scalar = "\n".join(scalar_lines)
+            if "-" in modifiers:
+                scalar = scalar.rstrip("\n")
+            elif "+" in modifiers:
+                scalar += "\n"
+            else:
+                scalar = scalar.rstrip("\n") + "\n"
+            runs.append((index + 1, scalar))
+        index = content_end
+    return runs
+
+
+def run_expression_guard_self_tests():
+    """Exercise the guard's boundary and YAML block-scalar edge cases."""
+    failures = []
+    expression = "${{ github.event_name }}"
+    length_cases = [
+        ("20,000 UTF-16 units pass", "a" * 19_968 + expression, 20_000, False),
+        ("20,001 UTF-16 units reject", "a" * 19_969 + expression, 20_001, True),
+        ("astral characters count as two units", "\U0001f600" * 10_500 + expression, 21_032, True),
+    ]
+    for label, raw, expected_length, expected_rejected in length_cases:
+        actual_length = github_run_expression_length(raw)
+        actual_rejected = actual_length > RUN_EXPRESSION_LIMIT
+        if (actual_length, actual_rejected) != (expected_length, expected_rejected):
+            failures.append(
+                f"run-expression self-test {label}: expected length/rejected "
+                f"{expected_length}/{expected_rejected}, got "
+                f"{actual_length}/{actual_rejected}"
+            )
+
+    class MemoryWorkflow:
+        def __init__(self, text):
+            self.text = text
+
+        def read_text(self, encoding):
+            if encoding != "utf-8":
+                raise AssertionError(f"unexpected encoding {encoding}")
+            return self.text
+
+    scalar_cases = [
+        ("literal trailing whitespace", "- run: | \n    echo x\n", [(1, "echo x\n")]),
+        ("literal inline comment", "- run: | # comment\n    echo x\n", [(1, "echo x\n")]),
+        ("explicit indentation", "- run: |2\n      echo x\n", [(1, "  echo x\n")]),
+        ("folded strip trailing whitespace", "- run: >-  \n    echo x\n", [(1, "echo x")]),
+    ]
+    for label, source, expected_runs in scalar_cases:
+        actual_runs = workflow_run_scalars(MemoryWorkflow(source))
+        if actual_runs != expected_runs:
+            failures.append(
+                f"run-expression self-test {label}: expected {expected_runs!r}, "
+                f"got {actual_runs!r}"
+            )
+
+    invalid_cases = [
+        ("duplicate indentation modifier", "- run: |22\n    echo x\n"),
+        ("duplicate chomping modifier", "- run: |++\n    echo x\n"),
+        ("zero indentation modifier", "- run: |0\n    echo x\n"),
+    ]
+    for label, source in invalid_cases:
+        try:
+            workflow_run_scalars(MemoryWorkflow(source))
+        except ValueError:
+            continue
+        failures.append(f"run-expression self-test {label}: invalid header was accepted")
+
+    return failures
+
+
+errors.extend(run_expression_guard_self_tests())
+
+
+workflow_paths = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+workflow_paths += sorted((ROOT / ".github" / "workflows").glob("*.yaml"))
+for workflow_path in workflow_paths:
+    try:
+        run_scalars = workflow_run_scalars(workflow_path)
+    except (OSError, ValueError) as exc:
+        errors.append(f"{workflow_path.relative_to(ROOT)}: run-scalar parser error: {exc}")
+        continue
+    for line_no, run_scalar in run_scalars:
+        try:
+            checked_length = github_run_expression_length(run_scalar)
+        except ValueError as exc:
+            errors.append(
+                f"{workflow_path.relative_to(ROOT)}:{line_no}: "
+                f"run-expression parser error: {exc}"
+            )
+            continue
+        if checked_length > RUN_EXPRESSION_LIMIT:
+            errors.append(
+                f"{workflow_path.relative_to(ROOT)}:{line_no}: run expression length "
+                f"{checked_length} exceeds the {RUN_EXPRESSION_LIMIT}-character guard"
+            )
+
 if manifest.get("hooks") is not False:
     errors.append("manifest must declare hooks=false")
 if actual != expected:
