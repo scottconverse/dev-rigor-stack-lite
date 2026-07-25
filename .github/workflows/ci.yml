@@ -259,7 +259,7 @@ jobs:
           }
       - name: Preserve README Restricted-policy evidence
         if: runner.os == 'Windows' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: readme-restricted-windows
           path: ${{ runner.temp }}\readme-restricted-evidence
@@ -617,7 +617,7 @@ jobs:
           )
       - name: Preserve documented PowerShell removal-safety evidence
         if: runner.os == 'Windows' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: documented-removal-safety-windows
           path: ${{ runner.temp }}\removal-safety-windows
@@ -1142,7 +1142,7 @@ jobs:
           } > "$evidence/result.log"
       - name: Preserve POSIX installer lifecycle evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: posix-installer-lifecycle-${{ matrix.os }}
           path: ${{ runner.temp }}/posix-installer-lifecycle-evidence

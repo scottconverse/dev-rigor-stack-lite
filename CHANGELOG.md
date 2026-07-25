@@ -16,9 +16,10 @@
 - **Release documentation now covers the whole lifecycle.** The landing page links a
   two-audience manual, architecture diagrams, troubleshooting, security, contributing,
   license, and notices; install, verification, upgrade/repair, anchor placement, and
-  safe removal are documented without deleting owner-managed content. Removal refuses
-  linked inputs, including an ancestor link or junction, and any target, goals file,
-  or anchor that aliases the pinned source.
+  safe removal are documented without deleting owner-managed content. PowerShell
+  refuses linked path components, including ancestor junctions. Bash resolves ancestor
+  aliases, rejects final symlinks, and applies same-file fences that refuse any target,
+  goals file, or anchor that aliases the pinned source.
 - **Candidate identity is reproducible across handoffs.** Run-manifest schema 1.1 adds
   clean/dirty worktree state, a hash plus evidence artifact for the complete dirty
   delta, detected lockfile hashes, and randomized-run seeds. Existing 1.0 manifests
