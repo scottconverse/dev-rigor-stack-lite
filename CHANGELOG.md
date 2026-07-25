@@ -4,6 +4,18 @@
 
 ## 0.4.0 - 2026-07-24
 
+- **The documented Windows install works under effective Restricted policy.**
+  PowerShell examples now launch the installer with a process-scoped execution-policy
+  bypass that changes no user or machine setting. CI extracts the rendered README
+  command verbatim and executes it from a fresh Restricted process.
+- **POSIX installer lifecycle evidence now covers Ubuntu and macOS.** CI installs from
+  source archives, proves overwrite refusal has zero byte impact, proves forced
+  reinstall is byte-idempotent, and exercises a v0.3.3 upgrade while preserving owner
+  text. Per-platform logs, identities, and hashes are retained as artifacts.
+- **Release documentation now covers the whole lifecycle.** The landing page links a
+  two-audience manual, architecture diagrams, troubleshooting, security, contributing,
+  license, and notices; install, verification, upgrade/repair, anchor placement, and
+  safe removal are documented without deleting owner-managed content.
 - **Candidate identity is reproducible across handoffs.** Run-manifest schema 1.1 adds
   clean/dirty worktree state, a hash plus evidence artifact for the complete dirty
   delta, detected lockfile hashes, and randomized-run seeds. Existing 1.0 manifests
@@ -18,11 +30,11 @@
 - **External harnesses are supplemental evidence.** They cannot replace PLAN, witnessed
   RED-to-GREEN, proof, review, or MERGE.
 - SHARED-BLOCK parity markers fence the detector-proportionality rule in
-  `dev-rigor-stack-lite/SKILL.md`. The dev-rigor-stack repo's CI cross-diffs
-  the block against its copy on every push (host-adapted wording sanctioned
-  via a committed substitution map), so the shared rule can no longer drift
-  silently between the two stacks. Markers are HTML comments — no rendered or
-  behavioral change.
+  `dev-rigor-stack-lite/SKILL.md`. The full dev-rigor-stack repo's main/PR CI
+  cross-diffs its copy against lite main, with host-adapted wording sanctioned via a
+  committed substitution map. Lite-only pushes do not invoke that cross-repository
+  workflow, so a lite release must carry direct parity evidence before publication.
+  Markers are HTML comments — no rendered or behavioral change.
 
 ## 0.3.3 - 2026-07-23
 

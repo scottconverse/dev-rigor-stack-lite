@@ -123,10 +123,11 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
    solely red the gate, and no agent ever touches required-status-check or
    branch-protection settings (owner-only, after burn-in).
    <!-- /SHARED-BLOCK: detector-proportionality -->
-   <!-- The markers fence the rule shared with the dev-rigor-stack repo, whose
-   CI cross-diffs this block against its copy (host-adapted wording is
-   sanctioned via its tools/parity-substitutions.json; everything else must
-   match). Edit the rule only in lockstep with that repo. -->
+   <!-- The markers fence the rule shared with the dev-rigor-stack repo. That
+   repo's main/PR CI cross-diffs its copy against lite main (host-adapted wording
+   is sanctioned via its tools/parity-substitutions.json; everything else must
+   match). Lite-only pushes do not trigger that workflow, so releases require
+   direct parity evidence. Edit the rule only in lockstep with that repo. -->
 
 4. REVIEW — the coordinator picks the proportionate review lane for what this
    slice touched, and dispatches a bounded subagent when available. Otherwise, run the
