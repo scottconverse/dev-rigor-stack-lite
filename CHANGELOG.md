@@ -33,6 +33,12 @@
   harnesses without adding a phase or discovery script.
 - **External harnesses are supplemental evidence.** They cannot replace PLAN, witnessed
   RED-to-GREEN, proof, review, or MERGE.
+- **The workflow run-expression guard is removed.** It re-implemented a ceiling GitHub
+  Actions already enforces authoritatively at run time, which meant any local version
+  was an approximation with bypasses, and it required parsing YAML — outside a bundle
+  validator's remit, since `ci.yml` is not part of what anyone installs. The oversized
+  expressions it was added to police were shortened directly, which was the real fix.
+  `validate_bundle.py` returns to 195 lines from 427.
 - SHARED-BLOCK parity markers fence the detector-proportionality rule in
   `dev-rigor-stack-lite/SKILL.md`. The full dev-rigor-stack repo's main/PR CI
   cross-diffs its copy against lite main, with host-adapted wording sanctioned via a
