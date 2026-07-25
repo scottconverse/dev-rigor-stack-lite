@@ -291,6 +291,9 @@ Both procedures below enforce these preconditions before deletion:
 - `manifest.json` contains 19 unique, path-safe names and `skill_count` is 19;
 - each exact installed skill tree byte-matches the corresponding pinned source
   tree and is not a symbolic link or junction;
+- the skills target, goals file, and anchor file are real, non-linked entries;
+  the two files are not hard links; and none aliases the pinned source
+  `skills/`, `tools/rigor_goals.py`, or `anchor/anchor.md`;
 - the installed goals file byte-matches `tools/rigor_goals.py`;
 - the host instructions file is valid UTF-8 and contains exactly one ordered
   marker pair; and
@@ -314,7 +317,27 @@ $ErrorActionPreference = "Stop"
 function Resolve-UserPath([string]$Path) {
   $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
 }
+function Assert-PlainPath([string]$Path, [string]$Label) {
+  $item = Get-Item -LiteralPath $Path -Force
+  $linkType = if ($item.PSObject.Properties["LinkType"]) {
+    [string]$item.LinkType
+  } else {
+    ""
+  }
+  if (
+    ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+    -not [string]::IsNullOrEmpty($linkType)
+  ) {
+    throw "refusing linked $Label`: $Path"
+  }
+}
+function Test-SamePath([string]$Left, [string]$Right) {
+  $leftPath = (Resolve-Path -LiteralPath $Left).Path.TrimEnd('\', '/')
+  $rightPath = (Resolve-Path -LiteralPath $Right).Path.TrimEnd('\', '/')
+  [StringComparer]::OrdinalIgnoreCase.Equals($leftPath, $rightPath)
+}
 function Get-TreeInventory([string]$Root) {
+  Assert-PlainPath $Root "tree root"
   $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
     [IO.Path]::DirectorySeparatorChar
   @(
@@ -355,7 +378,15 @@ foreach ($name in $names) {
   }
 }
 
-$targetPath = (Resolve-Path -LiteralPath $Target).Path
+$targetInput = Resolve-UserPath $Target
+if (-not (Test-Path -LiteralPath $targetInput -PathType Container)) {
+  throw "missing skills target: $targetInput"
+}
+Assert-PlainPath $targetInput "skills target"
+$targetPath = (Resolve-Path -LiteralPath $targetInput).Path
+if (Test-SamePath $targetPath $sourceSkills) {
+  throw "refusing skills target that aliases pinned source: $targetPath"
+}
 $skillPaths = @()
 foreach ($name in $names) {
   $source = Join-Path $sourceSkills $name
@@ -382,6 +413,14 @@ if (-not (Test-Path -LiteralPath $goalsPath -PathType Leaf)) {
 }
 if (-not (Test-Path -LiteralPath $anchorPath -PathType Leaf)) {
   throw "missing anchor file: $anchorPath"
+}
+Assert-PlainPath $goalsPath "goals file"
+Assert-PlainPath $anchorPath "anchor file"
+if (Test-SamePath $goalsPath $sourceGoals) {
+  throw "refusing goals file that aliases pinned source: $goalsPath"
+}
+if (Test-SamePath $anchorPath $sourceAnchor) {
+  throw "refusing anchor file that aliases pinned source: $anchorPath"
 }
 
 $sourceGoalsHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourceGoals).Hash
@@ -471,6 +510,8 @@ manifest-driven checks. Set absolute paths if the installation is outside the
 matching pinned source root:
 
 ```sh
+set -eu
+
 ROOT=$(pwd -P)
 TARGET=.claude/skills
 GOALS_FILE=.claude/tools/rigor_goals.py
@@ -485,9 +526,43 @@ import pathlib
 import re
 
 root = pathlib.Path(os.environ["ROOT"]).resolve(strict=True)
-target = pathlib.Path(os.environ["TARGET"]).resolve(strict=True)
-goals = pathlib.Path(os.environ["GOALS_FILE"]).resolve(strict=False)
-anchor = pathlib.Path(os.environ["ANCHOR_FILE"]).resolve(strict=False)
+
+def operator_path(value, label):
+    path = pathlib.Path(value).expanduser()
+    if not path.is_absolute():
+        path = pathlib.Path.cwd() / path
+    path = pathlib.Path(os.path.abspath(path))
+    if path.is_symlink():
+        raise SystemExit(f"refusing linked {label}: {path}")
+    return path
+
+target_input = operator_path(os.environ["TARGET"], "skills target")
+goals_input = operator_path(os.environ["GOALS_FILE"], "goals file")
+anchor_input = operator_path(os.environ["ANCHOR_FILE"], "anchor file")
+if not target_input.is_dir():
+    raise SystemExit(f"missing skills target: {target_input}")
+if not goals_input.is_file():
+    raise SystemExit(f"missing goals file: {goals_input}")
+if not anchor_input.is_file():
+    raise SystemExit(f"missing anchor file: {anchor_input}")
+if os.lstat(goals_input).st_nlink != 1:
+    raise SystemExit(f"refusing hard-linked goals file: {goals_input}")
+if os.lstat(anchor_input).st_nlink != 1:
+    raise SystemExit(f"refusing hard-linked anchor file: {anchor_input}")
+
+target = target_input.resolve(strict=True)
+goals = goals_input.resolve(strict=True)
+anchor = anchor_input.resolve(strict=True)
+source_skills = (root / "skills").resolve(strict=True)
+source_goals = (root / "tools" / "rigor_goals.py").resolve(strict=True)
+source_anchor = (root / "anchor" / "anchor.md").resolve(strict=True)
+if os.path.samefile(target, source_skills):
+    raise SystemExit(f"refusing skills target that aliases pinned source: {target}")
+if os.path.samefile(goals, source_goals):
+    raise SystemExit(f"refusing goals file that aliases pinned source: {goals}")
+if os.path.samefile(anchor, source_anchor):
+    raise SystemExit(f"refusing anchor file that aliases pinned source: {anchor}")
+
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
 assert manifest["skill_count"] == 19
@@ -520,9 +595,43 @@ if os.environ.get("CONFIRMATION") != "REMOVE 19":
     raise SystemExit("removal cancelled")
 
 root = pathlib.Path(os.environ["ROOT"]).resolve(strict=True)
-target = pathlib.Path(os.environ["TARGET"]).resolve(strict=True)
-goals = pathlib.Path(os.environ["GOALS_FILE"]).resolve(strict=False)
-anchor = pathlib.Path(os.environ["ANCHOR_FILE"]).resolve(strict=False)
+
+def operator_path(value, label):
+    path = pathlib.Path(value).expanduser()
+    if not path.is_absolute():
+        path = pathlib.Path.cwd() / path
+    path = pathlib.Path(os.path.abspath(path))
+    if path.is_symlink():
+        raise SystemExit(f"refusing linked {label}: {path}")
+    return path
+
+target_input = operator_path(os.environ["TARGET"], "skills target")
+goals_input = operator_path(os.environ["GOALS_FILE"], "goals file")
+anchor_input = operator_path(os.environ["ANCHOR_FILE"], "anchor file")
+if not target_input.is_dir():
+    raise SystemExit(f"missing skills target: {target_input}")
+if not goals_input.is_file():
+    raise SystemExit(f"missing goals file: {goals_input}")
+if not anchor_input.is_file():
+    raise SystemExit(f"missing anchor file: {anchor_input}")
+if os.lstat(goals_input).st_nlink != 1:
+    raise SystemExit(f"refusing hard-linked goals file: {goals_input}")
+if os.lstat(anchor_input).st_nlink != 1:
+    raise SystemExit(f"refusing hard-linked anchor file: {anchor_input}")
+
+target = target_input.resolve(strict=True)
+goals = goals_input.resolve(strict=True)
+anchor = anchor_input.resolve(strict=True)
+source_skills = (root / "skills").resolve(strict=True)
+source_goals = (root / "tools" / "rigor_goals.py").resolve(strict=True)
+source_anchor = (root / "anchor" / "anchor.md").resolve(strict=True)
+if os.path.samefile(target, source_skills):
+    raise SystemExit(f"refusing skills target that aliases pinned source: {target}")
+if os.path.samefile(goals, source_goals):
+    raise SystemExit(f"refusing goals file that aliases pinned source: {goals}")
+if os.path.samefile(anchor, source_anchor):
+    raise SystemExit(f"refusing anchor file that aliases pinned source: {anchor}")
+
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
 if manifest.get("skill_count") != 19 or len(names) != 19 or len(set(names)) != 19:
@@ -556,7 +665,6 @@ for name in names:
         raise SystemExit(f"installed skill differs from pinned source: {installed}")
     skill_paths.append(installed)
 
-source_goals = root / "tools" / "rigor_goals.py"
 if not goals.is_file() or goals.is_symlink():
     raise SystemExit(f"refusing missing or linked goals file: {goals}")
 if not anchor.is_file() or anchor.is_symlink():

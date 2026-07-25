@@ -9,13 +9,15 @@
   bypass that changes no user or machine setting. CI extracts the rendered README
   command verbatim and executes it from a fresh Restricted process.
 - **POSIX installer lifecycle evidence now covers Ubuntu and macOS.** CI installs from
-  source archives, proves overwrite refusal has zero byte impact, proves forced
-  reinstall is byte-idempotent, and exercises a v0.3.3 upgrade while preserving owner
-  text. Per-platform logs, identities, and hashes are retained as artifacts.
+  a candidate archive and the public v0.3.3 tag archive, proves the downloaded prior
+  tree matches the pinned tag, proves overwrite refusal has zero byte impact, proves
+  forced reinstall is byte-idempotent, and exercises the upgrade while preserving
+  owner text. Per-platform download headers, identities, logs, and hashes are retained.
 - **Release documentation now covers the whole lifecycle.** The landing page links a
   two-audience manual, architecture diagrams, troubleshooting, security, contributing,
   license, and notices; install, verification, upgrade/repair, anchor placement, and
-  safe removal are documented without deleting owner-managed content.
+  safe removal are documented without deleting owner-managed content. Removal refuses
+  linked inputs and any target, goals file, or anchor that aliases the pinned source.
 - **Candidate identity is reproducible across handoffs.** Run-manifest schema 1.1 adds
   clean/dirty worktree state, a hash plus evidence artifact for the complete dirty
   delta, detected lockfile hashes, and randomized-run seeds. Existing 1.0 manifests

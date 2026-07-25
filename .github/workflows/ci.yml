@@ -264,6 +264,152 @@ jobs:
           name: readme-restricted-windows
           path: ${{ runner.temp }}\readme-restricted-evidence
           if-no-files-found: error
+      - name: Documented PowerShell removal refuses source aliases and links
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'removal-safety-windows'
+          $archive = Join-Path $evidence 'candidate.zip'
+          $sourceAlias = Join-Path $evidence 'source-alias-candidate'
+          $linkedGoals = Join-Path $evidence 'linked-goals-candidate'
+          New-Item -ItemType Directory -Force -Path $evidence, $sourceAlias, $linkedGoals | Out-Null
+
+          $checkoutSha = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'could not resolve checked-out candidate identity' }
+          if ($checkoutSha -cne $env:CANDIDATE_SHA) {
+            throw "checkout identity mismatch: expected $env:CANDIDATE_SHA, got $checkoutSha"
+          }
+          & git archive --format=zip "--output=$archive" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
+          Expand-Archive -LiteralPath $archive -DestinationPath $sourceAlias
+          Expand-Archive -LiteralPath $archive -DestinationPath $linkedGoals
+
+          function Get-TreeManifest([string]$Root) {
+            $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
+              [IO.Path]::DirectorySeparatorChar
+            @(
+              Get-ChildItem -LiteralPath $Root -Recurse -Force |
+                Sort-Object FullName |
+                ForEach-Object {
+                  $relative = $_.FullName.Substring($base.Length).Replace('\', '/')
+                  if ($_.PSIsContainer) {
+                    "DIR|$relative"
+                  } else {
+                    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
+                    "FILE|$relative|$hash"
+                  }
+                }
+            )
+          }
+
+          $manual = Get-Content -Raw -LiteralPath (Join-Path $sourceAlias 'docs\manual.md')
+          $match = [regex]::Match(
+            $manual,
+            '(?ms)^#### PowerShell removal\s+.*?^```powershell\r?\n(?<body>.*?)^```\s*$'
+          )
+          if (-not $match.Success) { throw 'documented PowerShell removal block not found' }
+          $documented = $match.Groups['body'].Value
+          [void][scriptblock]::Create($documented)
+          $automated = $documented -replace (
+            '\$confirmation = Read-Host "Type REMOVE 19 to continue"'
+          ), '$confirmation = "REMOVE 19"'
+
+          $sourceAliasScript = $automated `
+            -replace '\$Target = "\.claude\\skills"', '$Target = "skills"' `
+            -replace '\$GoalsFile = "\.claude\\tools\\rigor_goals\.py"', '$GoalsFile = "tools\rigor_goals.py"' `
+            -replace '\$AnchorFile = "CLAUDE\.md"', '$AnchorFile = "anchor\anchor.md"'
+          $sourceAliasScriptPath = Join-Path $evidence 'source-alias-removal.ps1'
+          [IO.File]::WriteAllText(
+            $sourceAliasScriptPath,
+            $sourceAliasScript,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $before = @(Get-TreeManifest $sourceAlias)
+          $sourceAliasProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$sourceAliasScriptPath`"" `
+            -WorkingDirectory $sourceAlias `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'source-alias.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'source-alias.stderr.log')
+          $after = @(Get-TreeManifest $sourceAlias)
+          if ($sourceAliasProcess.ExitCode -eq 0) {
+            throw 'documented removal accepted a pinned-source alias'
+          }
+          if (@(Compare-Object $before $after).Count -ne 0) {
+            throw 'source-alias refusal changed candidate bytes'
+          }
+          $sourceAliasError = Get-Content -Raw -LiteralPath (
+            Join-Path $evidence 'source-alias.stderr.log'
+          )
+          if ($sourceAliasError -notmatch 'aliases pinned source') {
+            throw 'source-alias refusal did not identify the safety boundary'
+          }
+
+          Push-Location $linkedGoals
+          try {
+            & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+              -File (Join-Path $linkedGoals 'install.ps1') `
+              -Target '.claude\skills'
+            if ($LASTEXITCODE -ne 0) { throw 'linked-goals fixture install failed' }
+          } finally {
+            Pop-Location
+          }
+          $ownerGoals = Join-Path $linkedGoals 'owner-goals.py'
+          $installedGoals = Join-Path $linkedGoals '.claude\tools\rigor_goals.py'
+          Copy-Item -LiteralPath (Join-Path $linkedGoals 'tools\rigor_goals.py') `
+            -Destination $ownerGoals
+          Remove-Item -LiteralPath $installedGoals -Force
+          New-Item -ItemType HardLink -Path $installedGoals -Target $ownerGoals | Out-Null
+          $linkedScriptPath = Join-Path $evidence 'linked-goals-removal.ps1'
+          [IO.File]::WriteAllText(
+            $linkedScriptPath,
+            $automated,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $before = @(Get-TreeManifest $linkedGoals)
+          $linkedProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$linkedScriptPath`"" `
+            -WorkingDirectory $linkedGoals `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'linked-goals.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'linked-goals.stderr.log')
+          $after = @(Get-TreeManifest $linkedGoals)
+          if ($linkedProcess.ExitCode -eq 0) {
+            throw 'documented removal accepted a hard-linked goals file'
+          }
+          if (@(Compare-Object $before $after).Count -ne 0) {
+            throw 'hard-link refusal changed candidate bytes'
+          }
+          $linkedError = Get-Content -Raw -LiteralPath (
+            Join-Path $evidence 'linked-goals.stderr.log'
+          )
+          if ($linkedError -notmatch 'refusing linked goals file') {
+            throw 'hard-link refusal did not identify the linked goals file'
+          }
+          Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            "CANDIDATE_SHA=$env:CANDIDATE_SHA"
+            "CHECKOUT_SHA=$checkoutSha"
+            "CANDIDATE_ARCHIVE_SHA256=$(
+              (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
+            )"
+            "SOURCE_ALIAS_EXIT=$($sourceAliasProcess.ExitCode)"
+            'SOURCE_ALIAS_ZERO_BYTE_CHANGE=True'
+            "LINKED_GOALS_EXIT=$($linkedProcess.ExitCode)"
+            'LINKED_GOALS_ZERO_BYTE_CHANGE=True'
+            'DOCUMENTED_POWERSHELL_REMOVAL_SAFETY_PASS'
+          )
+      - name: Preserve documented PowerShell removal-safety evidence
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documented-removal-safety-windows
+          path: ${{ runner.temp }}\removal-safety-windows
+          if-no-files-found: error
       - name: Relative paths resolve against $PWD (gate regression)
         if: runner.os == 'Windows'
         shell: powershell
@@ -287,6 +433,7 @@ jobs:
     env:
       CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       V033_SHA: 824bc12a6612da50a150bcb3ef524002fac9452e
+      V033_ARCHIVE_URL: https://github.com/scottconverse/dev-rigor-stack-lite/archive/refs/tags/v0.3.3.tar.gz
     steps:
       - uses: actions/checkout@v7
         with:
@@ -303,12 +450,21 @@ jobs:
           evidence="$RUNNER_TEMP/posix-installer-lifecycle-evidence"
           work="$RUNNER_TEMP/posix-installer-lifecycle-work"
           candidate_archive="$work/candidate.tar"
-          v033_archive="$work/v0.3.3.tar"
+          v033_archive="$work/v0.3.3-public.tar.gz"
+          v033_reference_archive="$work/v0.3.3-pinned-reference.tar"
           candidate="$work/candidate"
-          v033="$work/v0.3.3"
+          v033_extract="$work/v0.3.3-public"
+          v033="$v033_extract/dev-rigor-stack-lite-0.3.3"
+          v033_reference="$work/v0.3.3-pinned-reference"
           fresh="$work/fresh-project"
           upgrade="$work/upgrade-project"
-          mkdir -p "$evidence" "$candidate" "$v033" "$fresh" "$upgrade"
+          mkdir -p \
+            "$evidence" \
+            "$candidate" \
+            "$v033_extract" \
+            "$v033_reference" \
+            "$fresh" \
+            "$upgrade"
           exec > >(tee "$evidence/lifecycle.log") 2>&1
 
           byte_manifest() {
@@ -436,6 +592,7 @@ jobs:
             printf 'checkout_sha=%s\n' "$checkout_sha"
             printf 'v0.3.3_pinned_sha=%s\n' "$V033_SHA"
             printf 'v0.3.3_resolved_sha=%s\n' "$resolved_v033"
+            printf 'v0.3.3_public_archive_url=%s\n' "$V033_ARCHIVE_URL"
           } > "$evidence/identities.txt"
           {
             printf 'runner_os=%s\n' "$RUNNER_OS"
@@ -446,6 +603,8 @@ jobs:
             python --version 2>&1
             printf 'git='
             git --version
+            printf 'curl='
+            curl --version | sed -n '1p'
             printf 'bash='
             bash --version | sed -n '1p'
             if command -v sw_vers >/dev/null 2>&1; then
@@ -456,12 +615,55 @@ jobs:
           } > "$evidence/environment.txt"
 
           git archive --format=tar --output="$candidate_archive" "$CANDIDATE_SHA"
-          git archive --format=tar --output="$v033_archive" "$V033_SHA"
+          curl \
+            --fail \
+            --location \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --dump-header "$evidence/v0.3.3-public-download-headers.txt" \
+            --output "$v033_archive" \
+            "$V033_ARCHIVE_URL"
+          git -c core.autocrlf=false -c core.eol=lf archive \
+            --format=tar \
+            --output="$v033_reference_archive" \
+            "$V033_SHA"
           tar -xf "$candidate_archive" -C "$candidate"
-          tar -xf "$v033_archive" -C "$v033"
+          tar -xzf "$v033_archive" -C "$v033_extract"
+          tar -xf "$v033_reference_archive" -C "$v033_reference"
+          if [ ! -d "$v033" ]; then
+            printf 'public v0.3.3 archive did not contain the expected tag root: %s\n' "$v033" >&2
+            exit 1
+          fi
+          public_top_level_count=$(
+            find "$v033_extract" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '
+          )
+          if [ "$public_top_level_count" -ne 1 ]; then
+            printf 'public v0.3.3 archive had %s top-level directories, expected 1\n' \
+              "$public_top_level_count" >&2
+            exit 1
+          fi
+          byte_manifest "$v033" "$evidence/v0.3.3-public-tree.sha256"
+          byte_manifest "$v033_reference" "$evidence/v0.3.3-pinned-reference-tree.sha256"
+          cmp \
+            "$evidence/v0.3.3-public-tree.sha256" \
+            "$evidence/v0.3.3-pinned-reference-tree.sha256"
+          python - "$v033/manifest.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if manifest.get("version") != "0.3.3":
+              raise SystemExit(
+                  f"public archive manifest version is {manifest.get('version')!r}, expected '0.3.3'"
+              )
+          print("public v0.3.3 archive matches the pinned tag tree and manifest version")
+          PY
           {
             printf '%s  candidate.tar\n' "$(file_hash "$candidate_archive")"
-            printf '%s  v0.3.3.tar\n' "$(file_hash "$v033_archive")"
+            printf '%s  v0.3.3-public.tar.gz\n' "$(file_hash "$v033_archive")"
+            printf '%s  v0.3.3-pinned-reference.tar\n' "$(file_hash "$v033_reference_archive")"
           } > "$evidence/archive-sha256.txt"
           byte_manifest "$candidate/skills" "$evidence/candidate-source-skills.sha256"
           byte_manifest "$v033/skills" "$evidence/v0.3.3-source-skills.sha256"
@@ -590,6 +792,142 @@ jobs:
           printf '%s\n' 'upgrade preserved owner text, removed stale audit-lite, and matches candidate bytes'
 
           printf '%s\n' 'POSIX_INSTALLER_LIFECYCLE_PASS'
+      - name: Documented Bash removal refuses source aliases and symlinks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          evidence="$RUNNER_TEMP/posix-installer-lifecycle-evidence/removal-safety"
+          work="$RUNNER_TEMP/posix-installer-lifecycle-work"
+          candidate="$work/candidate"
+          documented="$work/documented-removal.sh"
+          source_alias_script="$work/source-alias-removal.sh"
+          source_alias="$work/removal-source-alias"
+          linked_goals="$work/removal-linked-goals"
+          mkdir -p "$evidence" "$source_alias" "$linked_goals"
+
+          python - "$candidate/docs/manual.md" "$documented" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          manual = Path(sys.argv[1]).read_text(encoding="utf-8")
+          match = re.search(
+              r"(?ms)^#### Bash removal\s+.*?^```sh\r?\n(?P<body>.*?)^```\s*$",
+              manual,
+          )
+          if match is None:
+              raise SystemExit("documented Bash removal block not found")
+          Path(sys.argv[2]).write_text(match.group("body"), encoding="utf-8", newline="\n")
+          PY
+          bash -n "$documented"
+
+          cat > "$work/tree_manifest.py" <<'PY'
+          import hashlib
+          import os
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          output = Path(sys.argv[2])
+          records = []
+          for path in sorted(root.rglob("*"), key=lambda item: item.as_posix()):
+              relative = path.relative_to(root).as_posix()
+              if path.is_symlink():
+                  target = os.readlink(path)
+                  digest = hashlib.sha256(target.encode("utf-8")).hexdigest()
+                  records.append(f"LINK {digest}  {relative} -> {target}")
+              elif path.is_dir():
+                  records.append(f"DIR  {relative}")
+              elif path.is_file():
+                  digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                  records.append(f"FILE {digest}  {relative}")
+              else:
+                  raise SystemExit(f"unsupported filesystem entry: {path}")
+          output.write_text("\n".join(records) + "\n", encoding="utf-8")
+          PY
+
+          cp -a "$candidate/." "$source_alias/"
+          python - "$documented" "$source_alias_script" <<'PY'
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1]).read_text(encoding="utf-8")
+          replacements = {
+              "TARGET=.claude/skills": "TARGET=skills",
+              "GOALS_FILE=.claude/tools/rigor_goals.py": "GOALS_FILE=tools/rigor_goals.py",
+              "ANCHOR_FILE=CLAUDE.md": "ANCHOR_FILE=anchor/anchor.md",
+          }
+          for old, new in replacements.items():
+              if source.count(old) != 1:
+                  raise SystemExit(f"expected one documented assignment: {old}")
+              source = source.replace(old, new, 1)
+          Path(sys.argv[2]).write_text(source, encoding="utf-8", newline="\n")
+          PY
+          python "$work/tree_manifest.py" \
+            "$source_alias" \
+            "$evidence/source-alias-before.sha256"
+          set +e
+          (
+            cd "$source_alias"
+            printf 'REMOVE 19\n' | bash "$source_alias_script"
+          ) > "$evidence/source-alias.stdout.log" 2> "$evidence/source-alias.stderr.log"
+          source_alias_status=$?
+          set -e
+          printf '%s\n' "$source_alias_status" > "$evidence/source-alias.exit-code.txt"
+          if [ "$source_alias_status" -eq 0 ]; then
+            printf '%s\n' 'documented removal accepted a pinned-source alias' >&2
+            exit 1
+          fi
+          grep -qF 'aliases pinned source' "$evidence/source-alias.stderr.log"
+          python "$work/tree_manifest.py" \
+            "$source_alias" \
+            "$evidence/source-alias-after.sha256"
+          cmp \
+            "$evidence/source-alias-before.sha256" \
+            "$evidence/source-alias-after.sha256"
+
+          cp -a "$candidate/." "$linked_goals/"
+          (
+            cd "$linked_goals"
+            ./install.sh .claude/skills
+          ) > "$evidence/linked-goals-install.stdout.log" \
+            2> "$evidence/linked-goals-install.stderr.log"
+          cp "$linked_goals/tools/rigor_goals.py" "$linked_goals/owner-goals.py"
+          rm "$linked_goals/.claude/tools/rigor_goals.py"
+          ln -s "$linked_goals/owner-goals.py" \
+            "$linked_goals/.claude/tools/rigor_goals.py"
+          python "$work/tree_manifest.py" \
+            "$linked_goals" \
+            "$evidence/linked-goals-before.sha256"
+          set +e
+          (
+            cd "$linked_goals"
+            printf 'REMOVE 19\n' | bash "$documented"
+          ) > "$evidence/linked-goals.stdout.log" 2> "$evidence/linked-goals.stderr.log"
+          linked_goals_status=$?
+          set -e
+          printf '%s\n' "$linked_goals_status" > "$evidence/linked-goals.exit-code.txt"
+          if [ "$linked_goals_status" -eq 0 ]; then
+            printf '%s\n' 'documented removal accepted a symlinked goals file' >&2
+            exit 1
+          fi
+          grep -qF 'refusing linked goals file' "$evidence/linked-goals.stderr.log"
+          python "$work/tree_manifest.py" \
+            "$linked_goals" \
+            "$evidence/linked-goals-after.sha256"
+          cmp \
+            "$evidence/linked-goals-before.sha256" \
+            "$evidence/linked-goals-after.sha256"
+
+          {
+            printf 'candidate_sha=%s\n' "$CANDIDATE_SHA"
+            printf 'source_alias_exit=%s\n' "$source_alias_status"
+            printf 'source_alias_zero_byte_change=true\n'
+            printf 'linked_goals_exit=%s\n' "$linked_goals_status"
+            printf 'linked_goals_zero_byte_change=true\n'
+            printf 'DOCUMENTED_BASH_REMOVAL_SAFETY_PASS\n'
+          } > "$evidence/result.log"
       - name: Preserve POSIX installer lifecycle evidence
         if: always()
         uses: actions/upload-artifact@v4
