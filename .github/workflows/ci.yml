@@ -117,7 +117,346 @@ jobs:
           $candidate = Join-Path $evidence 'candidate'
           $stdout = Join-Path $evidence 'restricted-process.stdout.log'
           $stderr = Join-Path $evidence 'restricted-process.stderr.log'
+          $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
           New-Item -ItemType Directory -Force -Path $evidence, $candidate | Out-Null
+
+          $verifierSource = @'
+          [CmdletBinding()]
+          param(
+            [Parameter(Mandatory = $true)]
+            [string]$SourceRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string]$ProjectRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string]$EvidenceDirectory,
+
+            [Parameter(Mandatory = $true)]
+            [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]
+            [string]$Label
+          )
+
+          Set-StrictMode -Version 2.0
+          $ErrorActionPreference = 'Stop'
+          $utf8NoBom = New-Object Text.UTF8Encoding($false)
+
+          function Stop-InstallVerification([string]$Code, [string]$Detail) {
+            throw "INSTALL_VERIFY_${Code}: $Detail"
+          }
+
+          function Assert-ExistingPath(
+            [string]$Path,
+            [bool]$ExpectDirectory,
+            [string]$Description
+          ) {
+            if (-not (Test-Path -LiteralPath $Path)) {
+              Stop-InstallVerification 'MISSING_PATH' "$Description is missing"
+            }
+            $item = Get-Item -LiteralPath $Path -Force
+            if ($item.PSIsContainer -ne $ExpectDirectory) {
+              Stop-InstallVerification 'PATH_TYPE' "$Description has the wrong path type"
+            }
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+              Stop-InstallVerification 'REPARSE_POINT' "$Description is a reparse point"
+            }
+          }
+
+          function Write-EvidenceLines([string]$Path, [string[]]$Lines) {
+            [IO.File]::WriteAllLines($Path, $Lines, $utf8NoBom)
+          }
+
+          function Test-ExactSequence([string[]]$Left, [string[]]$Right) {
+            if ($Left.Count -ne $Right.Count) {
+              return $false
+            }
+            for ($index = 0; $index -lt $Left.Count; $index++) {
+              if ($Left[$index] -cne $Right[$index]) {
+                return $false
+              }
+            }
+            $true
+          }
+
+          function Get-TopLevelSkillNames([string]$Root, [string]$Description) {
+            Assert-ExistingPath $Root $true $Description
+            $names = @(
+              Get-ChildItem -LiteralPath $Root -Force | ForEach-Object {
+                if (($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                  Stop-InstallVerification 'REPARSE_POINT' (
+                    "$Description contains reparse point '$($_.Name)'"
+                  )
+                }
+                if (-not $_.PSIsContainer) {
+                  Stop-InstallVerification 'TOP_LEVEL_ENTRY' (
+                    "$Description contains non-directory '$($_.Name)'"
+                  )
+                }
+                $_.Name
+              }
+            )
+            $names = [string[]]$names
+            [Array]::Sort($names, [StringComparer]::Ordinal)
+            $names
+          }
+
+          function Get-NormalizedTreeManifest(
+            [string]$Root,
+            [string]$OutputPath,
+            [string]$Description
+          ) {
+            Assert-ExistingPath $Root $true $Description
+            $rootPath = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/')
+            $rootPrefix = $rootPath + [IO.Path]::DirectorySeparatorChar
+            $pending = New-Object Collections.Stack
+            $pending.Push($rootPath)
+            $records = New-Object Collections.Generic.List[string]
+
+            while ($pending.Count -gt 0) {
+              $directory = [string]$pending.Pop()
+              foreach ($item in @(Get-ChildItem -LiteralPath $directory -Force)) {
+                if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                  Stop-InstallVerification 'REPARSE_POINT' (
+                    "$Description contains reparse point '$($item.FullName)'"
+                  )
+                }
+                $fullPath = [IO.Path]::GetFullPath($item.FullName)
+                if (-not $fullPath.StartsWith(
+                  $rootPrefix,
+                  [StringComparison]::OrdinalIgnoreCase
+                )) {
+                  Stop-InstallVerification 'TREE_ESCAPE' (
+                    "$Description entry escaped its root: '$fullPath'"
+                  )
+                }
+                $relative = $fullPath.Substring($rootPrefix.Length).Replace('\', '/')
+                if ($item.PSIsContainer) {
+                  $records.Add("DIR|$relative")
+                  $pending.Push($fullPath)
+                } else {
+                  $hash = (
+                    Get-FileHash -Algorithm SHA256 -LiteralPath $fullPath
+                  ).Hash.ToLowerInvariant()
+                  $records.Add("FILE|$relative|$hash")
+                }
+              }
+            }
+
+            $manifest = [string[]]$records.ToArray()
+            [Array]::Sort($manifest, [StringComparer]::Ordinal)
+            Write-EvidenceLines $OutputPath $manifest
+            $manifest
+          }
+
+          function Test-ExactFileBytes([string]$Left, [string]$Right) {
+            $leftBytes = [IO.File]::ReadAllBytes($Left)
+            $rightBytes = [IO.File]::ReadAllBytes($Right)
+            if ($leftBytes.Length -ne $rightBytes.Length) {
+              return $false
+            }
+            for ($index = 0; $index -lt $leftBytes.Length; $index++) {
+              if ($leftBytes[$index] -ne $rightBytes[$index]) {
+                return $false
+              }
+            }
+            $true
+          }
+
+          $SourceRoot = [IO.Path]::GetFullPath($SourceRoot)
+          $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
+          New-Item -ItemType Directory -Force -Path $EvidenceDirectory | Out-Null
+          $EvidenceDirectory = [IO.Path]::GetFullPath($EvidenceDirectory)
+
+          $manifestPath = Join-Path $SourceRoot 'manifest.json'
+          Assert-ExistingPath $manifestPath $false 'source manifest'
+          try {
+            $manifest = Get-Content -Raw -LiteralPath $manifestPath -Encoding UTF8 |
+              ConvertFrom-Json
+          } catch {
+            Stop-InstallVerification 'MANIFEST_JSON' 'source manifest is not valid JSON'
+          }
+          $expectedSkills = [string[]]@($manifest.skills | ForEach-Object { [string]$_ })
+          if ([int]$manifest.skill_count -ne 19 -or $expectedSkills.Count -ne 19) {
+            Stop-InstallVerification 'MANIFEST_COUNT' (
+              "source manifest must declare exactly 19 skills; skill_count=$(
+                $manifest.skill_count
+              ), names=$($expectedSkills.Count)"
+            )
+          }
+          $seenExact = New-Object 'System.Collections.Generic.HashSet[string]' (
+            [StringComparer]::Ordinal
+          )
+          $seenWindows = New-Object 'System.Collections.Generic.HashSet[string]' (
+            [StringComparer]::OrdinalIgnoreCase
+          )
+          foreach ($name in $expectedSkills) {
+            if (
+              [string]::IsNullOrWhiteSpace($name) -or
+              $name -eq '.' -or
+              $name -eq '..' -or
+              $name.Contains('\') -or
+              $name.Contains('/')
+            ) {
+              Stop-InstallVerification 'MANIFEST_NAME' (
+                "source manifest contains invalid skill name '$name'"
+              )
+            }
+            if (-not $seenExact.Add($name)) {
+              Stop-InstallVerification 'MANIFEST_DUPLICATE' (
+                "source manifest repeats skill name '$name'"
+              )
+            }
+            if (-not $seenWindows.Add($name)) {
+              Stop-InstallVerification 'MANIFEST_CASE_COLLISION' (
+                "source manifest contains a Windows name collision at '$name'"
+              )
+            }
+          }
+          [Array]::Sort($expectedSkills, [StringComparer]::Ordinal)
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-expected-skills.txt"
+          ) $expectedSkills
+
+          $sourceSkills = Join-Path $SourceRoot 'skills'
+          $installedSkills = Join-Path $ProjectRoot '.claude\skills'
+          $sourceNames = [string[]]@(Get-TopLevelSkillNames $sourceSkills 'source skills')
+          $installedNames = [string[]]@(
+            Get-TopLevelSkillNames $installedSkills 'installed skills'
+          )
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-source-top-level.txt"
+          ) $sourceNames
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-installed-top-level.txt"
+          ) $installedNames
+
+          $sourceTree = [string[]]@(
+            Get-NormalizedTreeManifest `
+              $sourceSkills `
+              (Join-Path $EvidenceDirectory "$Label-source-tree.sha256") `
+              'source skills'
+          )
+          $installedTree = [string[]]@(
+            Get-NormalizedTreeManifest `
+              $installedSkills `
+              (Join-Path $EvidenceDirectory "$Label-installed-tree.sha256") `
+              'installed skills'
+          )
+
+          if (-not (Test-ExactSequence $expectedSkills $sourceNames)) {
+            Stop-InstallVerification 'SOURCE_NAME_SET' (
+              "source top-level names differ from manifest; expected=$(
+                $expectedSkills -join ','
+              ); actual=$($sourceNames -join ',')"
+            )
+          }
+          if (-not (Test-ExactSequence $expectedSkills $installedNames)) {
+            Stop-InstallVerification 'INSTALLED_NAME_SET' (
+              "installed top-level names differ from manifest; expected=$(
+                $expectedSkills -join ','
+              ); actual=$($installedNames -join ',')"
+            )
+          }
+          if (-not (Test-ExactSequence $sourceNames $installedNames)) {
+            Stop-InstallVerification 'TOP_LEVEL_MISMATCH' (
+              'source and installed top-level names differ'
+            )
+          }
+          if (-not (Test-ExactSequence $sourceTree $installedTree)) {
+            Stop-InstallVerification 'SKILL_TREE' (
+              'installed skill directory/file SHA256 manifest differs from source'
+            )
+          }
+
+          $sourceGoals = Join-Path $SourceRoot 'tools\rigor_goals.py'
+          $installedGoals = Join-Path $ProjectRoot '.claude\tools\rigor_goals.py'
+          $sourceAnchor = Join-Path $SourceRoot 'anchor\anchor.md'
+          $installedAnchor = Join-Path $ProjectRoot 'CLAUDE.md'
+          Assert-ExistingPath $sourceGoals $false 'source rigor-goals'
+          Assert-ExistingPath $installedGoals $false 'installed rigor-goals'
+          Assert-ExistingPath $sourceAnchor $false 'source anchor'
+          Assert-ExistingPath $installedAnchor $false 'installed anchor'
+
+          $sourceGoalsHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $sourceGoals
+          ).Hash.ToLowerInvariant()
+          $installedGoalsHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $installedGoals
+          ).Hash.ToLowerInvariant()
+          $sourceAnchorHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $sourceAnchor
+          ).Hash.ToLowerInvariant()
+          $installedAnchorHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $installedAnchor
+          ).Hash.ToLowerInvariant()
+
+          if (-not (Test-ExactFileBytes $sourceGoals $installedGoals)) {
+            Stop-InstallVerification 'GOALS_BYTES' (
+              'installed rigor-goals bytes differ from source'
+            )
+          }
+          if (-not (Test-ExactFileBytes $sourceAnchor $installedAnchor)) {
+            Stop-InstallVerification 'ANCHOR_BYTES' (
+              'installed anchor bytes differ from source'
+            )
+          }
+
+          $anchorText = [IO.File]::ReadAllText($installedAnchor)
+          $beginMarker = '<!-- dev-rigor-lite anchor v'
+          $endMarker = '<!-- /dev-rigor-lite anchor -->'
+          $beginCount = [regex]::Matches(
+            $anchorText,
+            [regex]::Escape($beginMarker)
+          ).Count
+          $endCount = [regex]::Matches(
+            $anchorText,
+            [regex]::Escape($endMarker)
+          ).Count
+          if ($beginCount -ne 1) {
+            Stop-InstallVerification 'ANCHOR_BEGIN_COUNT' (
+              "expected one anchor begin marker, found $beginCount"
+            )
+          }
+          if ($endCount -ne 1) {
+            Stop-InstallVerification 'ANCHOR_END_COUNT' (
+              "expected one anchor end marker, found $endCount"
+            )
+          }
+
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-byte-identities.txt"
+          ) @(
+            "SOURCE_GOALS_SHA256=$sourceGoalsHash"
+            "INSTALLED_GOALS_SHA256=$installedGoalsHash"
+            "SOURCE_ANCHOR_SHA256=$sourceAnchorHash"
+            "INSTALLED_ANCHOR_SHA256=$installedAnchorHash"
+            "ANCHOR_BEGIN_MARKERS=$beginCount"
+            "ANCHOR_END_MARKERS=$endCount"
+          )
+          Write-EvidenceLines (
+            Join-Path $EvidenceDirectory "$Label-result.txt"
+          ) @(
+            'RESULT=PASS'
+            'EXPECTED_SKILL_COUNT=19'
+            "SOURCE_TOP_LEVEL_COUNT=$($sourceNames.Count)"
+            "INSTALLED_TOP_LEVEL_COUNT=$($installedNames.Count)"
+            "NORMALIZED_TREE_RECORDS=$($sourceTree.Count)"
+            'REPARSE_POINTS=0'
+            'GOALS_BYTE_IDENTITY=True'
+            'ANCHOR_BYTE_IDENTITY=True'
+            "ANCHOR_BEGIN_MARKERS=$beginCount"
+            "ANCHOR_END_MARKERS=$endCount"
+          )
+          Write-Output (
+            "INSTALL_VERIFY_PASS label=$Label skills=19 tree_records=$($sourceTree.Count)"
+          )
+          '@
+          [IO.File]::WriteAllText(
+            $verifier,
+            $verifierSource,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          [void][scriptblock]::Create($verifierSource)
 
           $checkoutSha = (& git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { throw 'could not resolve checked-out candidate identity' }
@@ -253,6 +592,122 @@ jobs:
             "ANCHOR_END_MARKERS=$anchorEndCount"
           )
 
+          $verificationEvidence = Join-Path $evidence 'install-verification'
+          & $verifier `
+            -SourceRoot $candidate `
+            -ProjectRoot $candidate `
+            -EvidenceDirectory (Join-Path $verificationEvidence 'positive') `
+            -Label 'readme-positive'
+
+          $mutationWork = Join-Path $env:RUNNER_TEMP 'readme-restricted-mutations'
+          $wrongNameProject = Join-Path $mutationWork 'wrong-name-project'
+          $byteDriftProject = Join-Path $mutationWork 'byte-drift-project'
+          New-Item -ItemType Directory -Force -Path (
+            $wrongNameProject, $byteDriftProject
+          ) | Out-Null
+          Copy-Item -LiteralPath (Join-Path $candidate '.claude') `
+            -Destination $wrongNameProject -Recurse
+          Copy-Item -LiteralPath (Join-Path $candidate 'CLAUDE.md') `
+            -Destination (Join-Path $wrongNameProject 'CLAUDE.md')
+          Copy-Item -LiteralPath (Join-Path $candidate '.claude') `
+            -Destination $byteDriftProject -Recurse
+          Copy-Item -LiteralPath (Join-Path $candidate 'CLAUDE.md') `
+            -Destination (Join-Path $byteDriftProject 'CLAUDE.md')
+
+          $wrongNameEvidence = Join-Path $verificationEvidence 'mutation-wrong-name'
+          New-Item -ItemType Directory -Force -Path $wrongNameEvidence | Out-Null
+          $renamedSkill = Join-Path $wrongNameProject '.claude\skills\visitor-audit-lite'
+          $wrongSkill = Join-Path $wrongNameProject '.claude\skills\wrong-skill-placeholder'
+          Move-Item -LiteralPath $renamedSkill -Destination $wrongSkill
+          $wrongNameCount = @(
+            Get-ChildItem -LiteralPath (
+              Join-Path $wrongNameProject '.claude\skills'
+            ) -Directory
+          ).Count
+          if ($wrongNameCount -ne 19) {
+            throw "wrong-name mutation did not preserve 19 directories: $wrongNameCount"
+          }
+          $wrongNameError = $null
+          try {
+            & $verifier `
+              -SourceRoot $candidate `
+              -ProjectRoot $wrongNameProject `
+              -EvidenceDirectory $wrongNameEvidence `
+              -Label 'wrong-name'
+            throw 'wrong-name mutation unexpectedly passed the install verifier'
+          } catch {
+            $wrongNameError = $_.Exception.Message
+            if (-not $wrongNameError.StartsWith(
+              'INSTALL_VERIFY_INSTALLED_NAME_SET:',
+              [StringComparison]::Ordinal
+            )) {
+              throw
+            }
+          }
+          [IO.File]::WriteAllLines(
+            (Join-Path $wrongNameEvidence 'mutation-result.txt'),
+            @(
+              'RESULT=EXPECTED_REJECTION'
+              'MUTATION=visitor-audit-lite->wrong-skill-placeholder'
+              "INSTALLED_TOP_LEVEL_COUNT=$wrongNameCount"
+              "ERROR=$wrongNameError"
+            ),
+            (New-Object Text.UTF8Encoding($false))
+          )
+
+          $byteDriftEvidence = Join-Path $verificationEvidence 'mutation-byte-drift'
+          New-Item -ItemType Directory -Force -Path $byteDriftEvidence | Out-Null
+          $driftFile = Join-Path (
+            $byteDriftProject
+          ) '.claude\skills\quick-audit-lite\SKILL.md'
+          $beforeDriftHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $driftFile
+          ).Hash.ToLowerInvariant()
+          [IO.File]::AppendAllText(
+            $driftFile,
+            "`nBYTE_DRIFT_MUTATION`n",
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $afterDriftHash = (
+            Get-FileHash -Algorithm SHA256 -LiteralPath $driftFile
+          ).Hash.ToLowerInvariant()
+          if ($beforeDriftHash -ceq $afterDriftHash) {
+            throw 'byte-drift mutation did not change the selected SKILL.md'
+          }
+          $byteDriftError = $null
+          try {
+            & $verifier `
+              -SourceRoot $candidate `
+              -ProjectRoot $byteDriftProject `
+              -EvidenceDirectory $byteDriftEvidence `
+              -Label 'byte-drift'
+            throw 'byte-drift mutation unexpectedly passed the install verifier'
+          } catch {
+            $byteDriftError = $_.Exception.Message
+            if (-not $byteDriftError.StartsWith(
+              'INSTALL_VERIFY_SKILL_TREE:',
+              [StringComparison]::Ordinal
+            )) {
+              throw
+            }
+          }
+          [IO.File]::WriteAllLines(
+            (Join-Path $byteDriftEvidence 'mutation-result.txt'),
+            @(
+              'RESULT=EXPECTED_REJECTION'
+              'MUTATION=quick-audit-lite/SKILL.md byte append'
+              "BEFORE_SHA256=$beforeDriftHash"
+              "AFTER_SHA256=$afterDriftHash"
+              "ERROR=$byteDriftError"
+            ),
+            (New-Object Text.UTF8Encoding($false))
+          )
+          Add-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
+            'INSTALL_VERIFIER_POSITIVE_PASS=True'
+            'WRONG_NAME_MUTATION_REJECTED=True'
+            'BYTE_DRIFT_MUTATION_REJECTED=True'
+          )
+
           $expected = 'powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".claude\skills"'
           if ($readmeCommand -cne $expected) {
             throw "README command drifted after behavioral execution. Expected '$expected'; got '$readmeCommand'"
@@ -264,6 +719,7 @@ jobs:
           name: readme-restricted-windows
           path: ${{ runner.temp }}\readme-restricted-evidence
           if-no-files-found: error
+          include-hidden-files: true
       - name: Documented PowerShell removal refuses source aliases and links
         if: runner.os == 'Windows'
         shell: powershell
@@ -566,6 +1022,15 @@ jobs:
           } finally {
             Pop-Location
           }
+          $verifier = Join-Path $env:RUNNER_TEMP 'verify-installed-copy.ps1'
+          if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
+            throw 'shared install verifier is missing from RUNNER_TEMP'
+          }
+          & $verifier `
+            -SourceRoot $linkedGoals `
+            -ProjectRoot $linkedGoals `
+            -EvidenceDirectory (Join-Path $evidence 'install-verification') `
+            -Label 'linked-goals-fresh'
           $ownerGoals = Join-Path $linkedGoals 'owner-goals.py'
           $installedGoals = Join-Path $linkedGoals '.claude\tools\rigor_goals.py'
           Copy-Item -LiteralPath (Join-Path $linkedGoals 'tools\rigor_goals.py') `
@@ -622,6 +1087,7 @@ jobs:
           name: documented-removal-safety-windows
           path: ${{ runner.temp }}\removal-safety-windows
           if-no-files-found: error
+          include-hidden-files: true
       - name: Relative paths resolve against $PWD (gate regression)
         if: runner.os == 'Windows'
         shell: powershell
