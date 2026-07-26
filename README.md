@@ -12,7 +12,7 @@ without lifecycle hooks, a background runtime, trust activation, Stop intercepti
 private evidence ledger — plus two drift-resistance layers that **install by default
 with everything else**: a small **anchor block** for the host's persistent instructions
 file, and **rigor-goals**, a stdlib-only CLI whose exit gate refuses to close a
-multi-story job without verification evidence.
+continuity-sensitive multi-story job without verification evidence.
 
 These are part of the stack, not extras. Skills alone are advice — a model can drift
 off them in a long session and nothing pushes back; the anchor and the goals gate are
@@ -33,8 +33,8 @@ the discipline's memory into places that do not decay:
 | 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | reminder every turn | the host re-reads its instructions file each turn |
 | 3 | `rigor-goals` CLI | one hard gate at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
 
-The anchor's one enforced habit — "multi-step work: run `rigor-goals create` FIRST" — is
-what feeds Tier 3. One reminder feeding one gate, instead of continuous forcing.
+The anchor routes work by risk and invokes `rigor-goals` only when work crosses sessions,
+needs a handoff, uses parallel agents, or waits on an external event.
 
 ## What changes in Lite
 
@@ -43,6 +43,19 @@ what feeds Tier 3. One reminder feeding one gate, instead of continuous forcing.
 - Host policies control delegation, approvals, merges, publishing, and available tools.
 - Passing a gate establishes readiness; it never grants the agent authority to merge or publish.
 - Missing capabilities are reported as blocked or unverifiable rather than silently passed.
+
+## Proportional rigor
+
+| Lane | Typical work | Required flow |
+|---|---|---|
+| Micro | Localized copy, docs, formatting, mechanical edit with no Critical trigger | Inspect → change → one runnable check → receipt |
+| Standard | Ordinary bug, feature, refactor, or shared-code change | Brief acceptance; RED/GREEN where applicable; affected tests; focused review |
+| Critical | Auth/secrets, money, persistence/migrations/deletion, security/privacy, concurrency/order/idempotency, install/deploy/rollback, irreversible work, broad public contracts | Full independent proof path |
+
+File count, file type, labels such as `medium+`, and release status do not select a lane.
+Release adds exact-candidate and owner-authority controls, then runs only applicable gates.
+The default closure rule is zero unresolved release blockers; every nonblocking finding
+remains visible in the watchlist.
 
 ## Compatibility
 
@@ -64,7 +77,7 @@ Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell
 ### 1. Acquire the pinned release source
 
 ```console
-git clone --branch v0.4.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+git clone --branch v0.4.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 ```
 
@@ -103,7 +116,7 @@ python tools/validate_bundle.py
 
 On systems where Python 3 is named `python3`, use that command instead.
 
-### 4. Start a multi-step unit
+### 4. Start a continuity-sensitive unit
 
 ```console
 python .claude/tools/rigor_goals.py create --brief "ship the unit" --goal "build::implement and test"
@@ -111,6 +124,9 @@ python .claude/tools/rigor_goals.py create --brief "ship the unit" --goal "build
 
 Adjust the tool path for the target you installed. See the
 [manual](docs/manual.md) for all hosts and the complete lifecycle.
+
+Use `rigor-goals` only for cross-session work, handoffs, parallel agents, or an external
+wait. Ordinary same-session work does not need a durable plan.
 
 Installation copies only the 19 directories under `skills/`. Existing directories with
 the same names are refused unless `-Force` or `--force` is supplied.
@@ -177,7 +193,7 @@ durable as the files it lives in.
 
 ## Main entrypoints
 
-- `dev-rigor-stack-lite` — coordinate PLAN → BUILD → VERIFY → REVIEW → MERGE
+- `dev-rigor-stack-lite` — route Micro, Standard, or Critical and coordinate applicable gates
 - `dev-rigor-stack-lite-plan`
 - `dev-rigor-stack-lite-build`
 - `dev-rigor-stack-lite-proof-gate`
@@ -215,9 +231,9 @@ python tools/validate_bundle.py
 
 ## Provenance
 
-This is a hook-free adaptation of
-[`scottconverse/codex-dev-rigor-stack`](https://github.com/scottconverse/codex-dev-rigor-stack),
-originally released under the MIT License. See [NOTICE.md](NOTICE.md).
+This is a hook-free adaptation of the private upstream
+`scottconverse/codex-dev-rigor-stack`, originally released under the MIT License.
+See [NOTICE.md](NOTICE.md).
 
 ## License
 

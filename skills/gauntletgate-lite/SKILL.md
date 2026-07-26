@@ -69,12 +69,13 @@ After the selected lanes finish, **synthesize one gate report** per
 
 ## The verdict (summary — full rules in gate-verdict.md)
 
-- **✅ CLEAR TO ADVANCE** only when the **walkthrough and full lanes both ran** (i.e.
-  `all`, or explicitly `walkthrough full`), at **0 Blocker / 0 Critical**, with
-  **first-run coverage VALID and the core feature reachable by a new user.**
+- **✅ CLEAR TO ADVANCE** only when the **full lane ran**, `blocking_findings` is
+  empty, and Walkthrough either ran when applicable with **first-run coverage VALID**
+  and the core feature reachable, or is explicitly N/A because no changed
+  UI/onboarding/acquisition/installer/first-run surface is in scope.
 - **⚠️ PARTIAL CHECK** — any partial run (missing walkthrough or full); explicitly
   *not* an advancement gate. A cheap `lite` run can never masquerade as the gate.
-- **⛔ DO NOT ADVANCE** — any Blocker/Critical, or INVALID first-run coverage on a
+- **⛔ DO NOT ADVANCE** — any unresolved blocking finding, or INVALID first-run coverage on a
   product with a first-run surface → + the blocking punch list.
 
 ## Operating mode

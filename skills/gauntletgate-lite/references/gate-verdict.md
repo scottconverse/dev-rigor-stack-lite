@@ -9,38 +9,43 @@ masquerade as the full gate.
 
 ## The two verdict types
 
-### CLEAR TO ADVANCE  (only `all`, or `walkthrough full` together)
+### CLEAR TO ADVANCE
 
 Emit **CLEAR TO ADVANCE** only when **all** of the following hold:
 
-- Both the **walkthrough** and **full** lanes ran (this is what `gauntletgate-lite all`
-  does; `lite` is a feeder, not part of the advancement bar).
-- Severity is **0 Blocker / 0 Critical / 0 Major / 0 Minor / 0 Nit** across every lane
-  under the dev-rigor-stack-lite's default strict-zero policy.
-- **First-run coverage is VALID** (the environment attestation is filled with
-  verified facts) **and a brand-new user can reach the core feature.**
+- The **full** lane ran (`lite` is a feeder, not part of the advancement bar).
+- Walkthrough ran when the changed scope includes UI, onboarding, acquisition,
+  installer, or another first-run surface. It may be marked N/A only with a concrete
+  reason that none of those surfaces changed.
+- `blocking_findings` is empty under the default policy: Blocker/Critical block;
+  Major blocks when it violates acceptance criteria or creates material release risk;
+  Minor blocks only when it violates acceptance criteria; Nit never blocks.
+- When Walkthrough applies, **first-run coverage is VALID** (the environment
+  attestation is filled with verified facts) **and a brand-new user can reach the
+  core feature.**
 
-No confirmed finding may remain in a CLEAR verdict. An operator may invoke a looser
-policy only through an explicit owner decision that names the accepted findings and risk;
-that result is POLICY-OVERRIDDEN, not the dev-rigor-stack-lite's normal clear verdict.
+Every confirmed finding remains in the severity roll-up and findings report. Unresolved
+nonblocking findings go to the existing watchlist with an owner or explicit disposition.
+Literal `0/0/0/0/0` is an optional owner-selected stricter policy, not the default.
 
 ### PARTIAL CHECK  (any run missing a required lane)
 
-Any run that does **not** include both walkthrough and full — e.g. `lite`,
-`walkthrough`, `full` alone, or `lite walkthrough` — emits a **PARTIAL CHECK**
-verdict, never CLEAR TO ADVANCE. The report must say, in the first line:
+Any run that omits the full lane, or omits an applicable Walkthrough — e.g. `lite`,
+`walkthrough`, or `lite walkthrough` — emits a **PARTIAL CHECK** verdict, never CLEAR
+TO ADVANCE. A `full` run is also partial unless Walkthrough ran or was explicitly
+classified N/A from the changed scope. The report must say, in the first line:
 
 > ⚠️ PARTIAL CHECK — lanes run: `<list>`. This is **not** an advancement gate.
-> Run `gauntletgate-lite all` for a clear-to-advance decision.
+> Run the missing applicable lane(s) for a clear-to-advance decision.
 
 A PARTIAL CHECK still reports its findings and its own pass/fail *within the lanes
 it ran* — it just cannot greenlight advancement.
 
 ### DO NOT ADVANCE
 
-Any strict-zero run (full or partial) that has a confirmed finding at any severity, or whose first-run
-coverage is **INVALID** while a UI/onboarding/dependency surface is in scope, emits
-**DO NOT ADVANCE** with the blocking punch list that must be cleared before a re-run.
+Any run with an unresolved blocking finding, or whose first-run coverage is **INVALID**
+while a UI/onboarding/dependency surface is in scope, emits **DO NOT ADVANCE** with the
+blocking punch list that must be cleared before a re-run.
 
 ---
 
@@ -64,8 +69,11 @@ coverage is **INVALID** while a UI/onboarding/dependency surface is in scope, em
 ## Honesty rules (do not violate)
 
 - A `lite`-only or any partial run is **never** CLEAR TO ADVANCE. Label it PARTIAL.
-- Under the default dev-rigor-stack-lite policy, any confirmed Blocker/Critical/Major/Minor/Nit
-  prevents CLEAR TO ADVANCE. Classify false positives out with evidence; do not waive them.
+- Never classify Walkthrough N/A when changed UI, onboarding, acquisition, installer,
+  or first-run behavior is in scope.
+- Under the default policy, classify `blocking_findings` by acceptance and material
+  release risk. Keep every nonblocking finding visible in the roll-up/watchlist.
+  Classify false positives out with evidence; do not hide or downgrade real findings.
 - Never report CLEAR TO ADVANCE off an environment whose first-run state was not
   verified, when the product has a first-run surface. INVALID first-run coverage
   caps the verdict.

@@ -1,6 +1,6 @@
 ---
 name: dev-rigor-stack-lite-audit-team
-description: Run the complete five-role dev-rigor-stack-lite Audit Team independently across engineering, UI/UX, documentation, tests, and runtime QA. Use for "$dev-rigor-stack-lite-audit-team", "/dev-rigor-stack-lite-audit-team", deep audit, high-blast review, pre-release review, or requests to tear a project apart with evidence.
+description: Run the complete five-role dev-rigor-stack-lite Audit Team independently across engineering, UI/UX, documentation, tests, and runtime QA. Use for "$dev-rigor-stack-lite-audit-team", "/dev-rigor-stack-lite-audit-team", deep audit, Critical-risk review, broad pre-release review, or requests to tear a project apart with evidence.
 ---
 
 # Dev Rigor Stack — Audit Team

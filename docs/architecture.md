@@ -16,9 +16,9 @@ flowchart LR
     Installer --> Anchor["Managed block in host instructions"]
     Skills --> Host["Agent host"]
     Anchor --> Host
-    Operator["Operator"] --> Goals
+    Operator["Operator, when continuity risk exists"] --> Goals
     Goals --> State["./.rigor/goals.json and ledger.jsonl"]
-    Host --> Gates["PLAN - BUILD - VERIFY - REVIEW - MERGE"]
+    Host --> Gates["Micro - Standard - Critical routing"]
     Evidence["Tests, CI, logs, hashes, reports"] --> Gates
     Policy["Host policy and owner authority"] --> Gates
 ```
@@ -26,8 +26,9 @@ flowchart LR
 Text fallback: a human runs one of the installers from pinned source. The
 installer copies the 19 skill directories, one Python tool, and one
 marker-fenced block in a host instructions file. The host reads the skills and
-anchor. The operator invokes the goals tool, which writes project-local state
-under `./.rigor/`. Tests, CI, and other raw artifacts feed the workflow gates.
+anchor. For cross-session work, handoffs, parallel agents, or external waits, the
+operator invokes the goals tool, which writes project-local state under `./.rigor/`.
+Ordinary same-session work skips it. Tests, CI, and other raw artifacts feed the selected lane.
 Host policy and human authority still control permissions, merges, and
 publication.
 
@@ -43,22 +44,27 @@ publication.
 
 ```mermaid
 flowchart TD
-    Plan["PLAN: scope, trace, acceptance, tests, blast radius"] --> Build["BUILD: witnessed RED, GREEN, refactor"]
-    Build --> Verify["VERIFY: reproduce, falsify, bind evidence"]
-    Verify --> Review["REVIEW: fresh-context audit of the exact candidate"]
-    Review --> Merge["MERGE: evaluate the green-path evidence"]
+    Route{"Risk lane"}
+    Route -- "Micro" --> Micro["MICRO: inspect - change - one check - receipt"]
+    Route -- "Standard" --> Plan["STANDARD: brief PLAN and acceptance"]
+    Route -- "Critical" --> Critical["CRITICAL: full PLAN and risk contract"]
+    Plan --> Build["BUILD: applicable RED, GREEN, affected checks"]
+    Critical --> Build
+    Build --> Verify["VERIFY/REVIEW: focused for Standard, independent for Critical"]
+    Verify --> Merge["MERGE: evaluate selected-lane evidence"]
+    Micro --> Merge
     Verify -- "Refuted claim or failed check" --> Build
-    Review -- "Planning defect" --> Plan
-    Review -- "Implementation defect" --> Build
     Merge -- "Stale or mismatched evidence" --> Verify
+    Merge --> Release["RELEASE OVERLAY: exact candidate + applicable gates + owner"]
     Harness["Optional external regression harness"] -. "Supplemental evidence" .-> Verify
 ```
 
-Text fallback: PLAN defines the contract, BUILD uses test-first implementation,
-VERIFY tries to refute the claims, REVIEW inspects the exact candidate without
-the builder's narrative, and MERGE evaluates the resulting evidence. A red
-result returns to the phase that owns the defect. External harnesses can add
-evidence but cannot replace these gates.
+Text fallback: localized mechanical work uses Micro. Ordinary work uses Standard.
+Named risks such as auth, money, persisted data, security, concurrency, installers,
+irreversible operations, or broad public contracts use Critical. Standard applies
+RED/GREEN and focused review where relevant; Critical adds independent proof. Release
+binds evidence to the exact candidate and selects only applicable gates. External
+harnesses can add evidence but cannot replace the selected lane.
 
 ## Boundaries and trust
 

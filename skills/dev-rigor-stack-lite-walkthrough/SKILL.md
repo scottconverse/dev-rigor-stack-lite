@@ -25,9 +25,10 @@ findings, coverage-ledger, handoff, and gate-result shapes in addition to the hu
 - **Full mode:** inventory and exercise every reachable screen, control, distinct path,
   meaningful state, and installer lifecycle operation in declared platform scope.
 
-If the user does not choose, use scoped mode for a unit and full published mode at a
-release boundary. State the mode, artifact, platform matrix, and exclusions before the
-verdict.
+If the user does not choose, use scoped mode for a unit. At a release boundary, select
+the mode from changed UI/onboarding/acquisition/installer scope; use full published mode
+only when full product/lifecycle coverage is required. State the mode, artifact, platform
+matrix, and exclusions before the verdict.
 
 ## Phase 1 — blind acquisition before source knowledge
 
@@ -208,4 +209,5 @@ When invoked alone, emit a standalone Walkthrough report and PARTIAL CHECK relat
 the overall release gate. When invoked by `$dev-rigor-stack-lite-gauntletgate`, provide the
 attestation, acquisition evidence, coverage ledger, findings, first-run verdict, and
 machine-readable gate result. Under the default stack policy, advancement and release
-closure require 0/0/0/0/0.
+closure require valid applicable coverage and an empty `blocking_findings` list. Literal
+`0/0/0/0/0` applies only when the owner selects it.

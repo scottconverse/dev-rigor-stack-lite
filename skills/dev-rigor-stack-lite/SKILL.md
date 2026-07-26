@@ -1,25 +1,43 @@
 ---
 name: dev-rigor-stack-lite
 description: >
-  Standing delivery discipline for ANY coding unit of work — a bug fix, a module,
-  a feature, a refactor — plus the release gate that stands before a tag. Apply
+  Proportional delivery discipline for coding work and releases. Apply
   whenever writing, changing, reviewing, verifying, merging, or releasing code, or
   when the user says "dev rigor stack", "apply the rigor stack", "the gates", "run
   this through the stack", "release gate", or asks for systematic/thorough delivery.
-  Routes each unit through PLAN → BUILD → VERIFY → REVIEW → MERGE, runs the full
-  GauntletGate + claim-refutation + real docs + a rollback plan at the release
-  boundary, keeps durable project state across sessions and machines, fans work out with
-  bounded host subagents or serial fresh-context passes when available, and holds an
-  evidence-over-claims honesty line. Not for non-code work.
+  Routes work through Micro, Standard, or Critical by named risk; applies only the
+  matching PLAN, BUILD, VERIFY, REVIEW, MERGE, and release evidence; keeps durable
+  state when continuity risk exists; and holds an evidence-over-claims honesty line.
+  Not for non-code work.
 license: MIT
 ---
 
-# Standing dev rigor stack Lite v0.4.0
+# Standing dev rigor stack Lite v0.4.1
 
-Two altitudes. The **per-unit loop** (gates 1–5) applies to EVERY unit of work — a
-fix, a module, a feature. The **release gate** fires once per version, at the tag
-boundary, on the aggregate of all merged units. A red result at any gate returns to
-the phase that owns it — never route around a gate, never merge or tag past it.
+Route every unit before choosing its process. Micro work takes the short path below.
+Standard work uses the proportionate per-unit loop. Critical work uses the complete
+independent proof path. A release adds exact-candidate and owner-authority controls,
+then runs only the gates applicable to what changed. A red result returns to the phase
+that owns it; never route around a selected gate or merge/tag past it.
+
+## Route by named risk
+
+- **Micro:** localized copy, documentation, formatting, or mechanical work with no
+  named Critical trigger. Flow: inspect → change → one relevant runnable check → receipt.
+- **Standard:** the default for ordinary bugs, features, refactors, and shared-code
+  changes. Use brief acceptance criteria, witnessed RED/GREEN for bugs or changed logic
+  when practical, affected-suite verification, focused review, and a receipt.
+- **Critical:** use the full stack when work touches authentication, authorization,
+  permissions, secrets, money, persisted data, migrations, deletion/recovery,
+  security/privacy/trust boundaries, concurrency/order/idempotency/shared mutable state,
+  install/update/uninstall/deployment/rollback mechanics, irreversible operations, or
+  broad public compatibility/API contracts.
+
+File count, file type, `medium+`, and release status do not select a lane. A config or
+documentation change can be Critical. A multi-file mechanical change can remain Micro
+when its effects stay local and one check covers them. The
+selected lane is also a ceremony ceiling: escalate only after naming the trigger or
+uncertainty that creates the added risk.
 
 ## Standalone entrypoints
 
@@ -42,9 +60,10 @@ Namespaced entrypoints load the complete canonical sibling contract; they are no
 rewrites. Missing or unreadable required skills make the affected gate INVALID rather than
 silently degrading to a weaker approximation.
 
-Read `references/artifact-contracts.md` before running the stack. Require each stage to
-emit or consume the applicable run manifest, claims, findings, coverage, handoff, and gate
-result without changing upstream evidence or losing artifact identity.
+Read `references/artifact-contracts.md` before a Critical/release run or any standalone
+stage that emits its shapes. Micro needs only its receipt. Standard uses structured
+artifacts only when a handoff, durable decision, or selected gate needs them. Never
+change upstream evidence or lose artifact identity.
 
 ## Session & machine continuity
 
@@ -52,7 +71,8 @@ Standalone: `$dev-rigor-stack-lite-continuity`.
 
 Continuity, not a gate — a bookend on each side of the loop, sitting above it. Nothing
 passes or fails here; it ensures only that durable project state outlives a session or
-machine switch.
+machine switch. Use it only for real continuity risk: cross-session work, a handoff,
+parallel agents, or an external wait. A short same-session unit needs no durable ledger.
 
 Durable state — locked decisions, done-criteria, and killed approaches (each with the
 reason it was rejected) — lives in a **remote-tracked, append-safe artifact**, never
@@ -77,74 +97,49 @@ only in context:
 State lives for the project's duration and purges at project retirement — not per release
 tag (a decision killed in 0.1 is still worth not reopening in 0.4).
 
-## Per-unit loop (every unit of work)
+## Per-unit loop (Standard and Critical)
+
+Micro work does not run this formal loop. It stops after inspect, change, one relevant
+runnable check, and a concise receipt.
 
 1. PLAN (main-thread coordinator)
    Standalone: `$dev-rigor-stack-lite-plan`.
-   Trace the real code end-to-end before touching it. Climb the reuse-before-build
-   ladder (does this need to exist at all? is it already here? does stdlib or the
-   platform do it? can it be one line?). Write the acceptance criteria / definition of done and the
-   TEST LIST up front. **Classify the unit's blast radius here** — that sets the
-   review depth and fires the escalators (below). Blast radius, not diff size, is the
-   sizing axis: a one-line change to auth is small in lines and large in blast.
-   When relevant to the unit, inventory project/package manifests and lockfiles; CI
-   workflows and canonical test/lint/type/build commands; the version authority and
-   every version reader; and existing integration or real-organization harnesses.
-   Keep discovery proportional: a trivial copy edit does not need this inventory.
+   Trace the real path, challenge unnecessary work, state brief acceptance criteria and
+   the affected test list, then select Standard or Critical from the named triggers.
+   Inventory manifests, lockfiles, CI commands, version readers, and external harnesses
+   only when relevant. Diff size is not a risk trigger.
 
-2. BUILD — `$dev-rigor-stack-lite-build` / `$coder-tdd-qa-lite`, test-first
-   Write the failing tests from the test list FIRST (or reproduce-red for a bug),
-   watching each FAIL before you make it pass — that, not a percentage, is what makes
-   a test real. Then minimum code to pass, then refactor green. Static gates:
-   types-strict + lint. Coverage is a **gap diagnostic** (flags untested branches),
-   not a threshold to clear — the exact policy lives in coder-tdd-qa-lite. Fan-out (test
-   generation across combos, sweeping for latent siblings) uses the host's bounded
-   multi-agent tools when available. If no bounded fan-out exists, run the same checks
-   serially from a fresh adversarial vantage. If workers produce parallel branches,
-   merge them one at a time (linearize) and re-verify after each.
+2. BUILD — `$dev-rigor-stack-lite-build` / `$coder-tdd-qa-lite`
+   For a bug fix or changed logic, write or reproduce the smallest meaningful failure
+   and witness RED before GREEN. Then implement the minimum change, refactor green, and
+   run the affected suite/static checks. Do not manufacture RED for copy-only or
+   mechanical work. Coverage is a gap diagnostic, not a threshold. Fan-out is a
+   Critical option, not a Standard requirement.
 
 3. VERIFY — `$dev-rigor-stack-lite-proof-gate` / `$proof-gate-lite`
-   Adversarially try to BREAK the claim ("this holds", "the race can't occur", "the
-   number isn't inflated"). Skeptics run as a workflow on cheap models; the claim only
-   survives if they cannot refute it. For a low-blast unit, VERIFY and REVIEW may
-   collapse into one adversarial pass — don't run both formally over a one-liner.
+   Standard uses a focused falsification pass and may combine VERIFY with REVIEW.
+   Critical uses independent adversarial verification of the exact candidate. If the
+   host cannot provide an independent worker, use an explicitly fresh adversarial
+   serial pass and disclose the limitation.
 
-   **Deterministic-detector harness (when the repo has it — the
-   [deterministic-detector](https://github.com/scottconverse/deterministic-detector)
-   CI jobs, plus its editor hook on hosts that support it; degrade silently if
-   absent):** consume its outputs proportionally to the unit's blast radius from
-   PLAN. Low blast: same-turn lint feedback is enough — no detector evidence
-   required. Medium+: a green randomized-order CI run (randomized-suite job, seed
-   in the log) IS the test-evidence standard — a fixed-order local pass does not
-   count as "tests pass". High blast / release gate: the advisory mutation-report
-   for the changed files must be PRESENT in the gate output and its survivors
-   dispositioned (killed, equivalent, or accepted-with-reason) — it still cannot
-   solely red the gate, and no agent ever touches required-status-check or
-   branch-protection settings (owner-only, after burn-in).
+   **Deterministic-detector harness (when present):** require randomized/pollution
+   evidence only for shared mutable fixtures, global state, order dependence,
+   concurrency, or a known pollution-prone area. Require mutation evidence only for
+   Critical changed logic or genuine test-sensitivity uncertainty. Record replayable
+   seeds and survivor dispositions. Neither tool is required merely because work is
+   called `medium`, spans several files, or is being released. Never alter required
+   status checks or branch protection; those remain owner-only.
 
-4. REVIEW — the coordinator picks the proportionate review lane for what this
-   slice touched, and dispatches a bounded subagent when available. Otherwise, run the
-   same review serially from a fresh adversarial posture:
-   • `$dev-rigor-stack-lite-audit-lite` / `$quick-audit-lite` — default; a scoped diff, a slice,
-     an end-of-slice read.
-   • `$dev-rigor-stack-lite-audit-team` / `$audit-team-lite` — escalate for high-blast units.
-   • `$dev-rigor-stack-lite-walkthrough` — user-facing wiring and black-box newcomer truth:
-     acquisition/installer lifecycle when release-scoped, every inventoried screen,
-     control, distinct path and visual state, then white-box function wiring.
-   • `$dev-rigor-stack-lite-visitor-audit` / `$visitor-audit-lite` — PUBLIC SURFACE lane, only
-     when the unit changes an already-live
-     README, docs site, landing page, release page, announcement, or published asset.
-     Audit the rendered surface after publication, follow every link, and verify quoted
-     checksums/sizes against the published asset. Source inspection or CI is not a pass.
-   (These are the per-unit *review reports*. GauntletGate as the full advancement
-   stage-gate — its `lite`/`full` lanes plus a pass/fail verdict — belongs to the RELEASE
-   gate below, not here. Its `lite`/`full` lanes re-run the same discipline as quick-audit-lite
-   and audit-team-lite, self-contained, because a gate can't invoke a separate skill mid-run.)
-   **What counts as a finding:** a REAL defect. An incorrect finding or tool
-   false-positive is classified OUT, with the reason it isn't real — that is the
-   boundary of "finding," not a back door. Guard both failure modes: never contort
-   correct code to satisfy a wrong tool, and never pass a real defect by calling it a
-   false positive.
+4. REVIEW — use `$dev-rigor-stack-lite-audit-lite` / `$quick-audit-lite` as the
+   Standard focused review. Use `$dev-rigor-stack-lite-audit-team` /
+   `$audit-team-lite` for Critical work, with an independent reviewer when authorized
+   and available. Add `$dev-rigor-stack-lite-walkthrough` only for changed UI,
+   onboarding, acquisition, or installer journeys. Add
+   `$dev-rigor-stack-lite-visitor-audit` / `$visitor-audit-lite` only for changed
+   public pages, rendered docs, release assets, or announcements.
+
+   A finding is a real defect. Classify a false positive OUT with evidence; never
+   contort correct code to satisfy a wrong tool or pass a real defect by relabeling it.
 
 5. MERGE — green-path decision and execution only when authorized.
    Standalone evidence decision: `$dev-rigor-stack-lite-merge-gate`.
@@ -154,73 +149,62 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
 
 ## Evaluator-owned exits (goal loops)
 
-Where the platform provides goal-based loops or evaluator-owned task loops, phrase each
-BUILD/VERIFY unit as a goal with a **deterministic exit** and an explicit **try cap** —
-"tests green", "0 broken links", "Lighthouse ≥ 90, stop after 5 tries" — so a separate
-evaluator, not the model that did the work, owns "done". Worker ≠ judge is the same
-principle as never-review-your-own-work, applied to the stop condition itself: the
-builder can't talk its way past a checker that reruns the check. Criteria a model has
-to interpret ("make it good") don't qualify; if the exit can't be checked
-deterministically, it isn't a goal exit — route it through VERIFY/REVIEW instead.
+Start `rigor-goals` only when the work has real continuity risk: it crosses sessions,
+needs a handoff, uses parallel agents, or waits on an external event. The number of
+sequential steps alone is not a trigger. Give each persisted goal a deterministic exit
+and try cap. Criteria a model must interpret ("make it good") do not qualify; route
+those through the applicable VERIFY/REVIEW lane.
 
-## Release gate (once per version, before the tag — a different altitude than a unit)
+## Release overlay (once per version, before the tag)
 
-Fires after the last slice of a version has merged. Use an independent worker when the host
-supports it and the user or host policy permits it; otherwise run an explicitly adversarial
-serial pass and disclose that independence was unavailable.
+The complete standalone coordinator is `$dev-rigor-stack-lite-release`.
 
-- **Full gauntlet** — `$dev-rigor-stack-lite-gauntletgate all` / `$gauntletgate-lite all` →
-  drive all 5 severity levels to **0/0/0/0/0**
-  (blocker → nit). Findings route back into the per-unit loop until zero. The only way
-  to clear a finding is to **fix it** (not-real findings are classified out per gate
-  4). No waiver, no freeze, no deferred backlog.
-- **Claim refutation** — `$dev-rigor-stack-lite-proof-gate` against the release *claims*:
-  the README, manual,
-  and landing page must not promise what the product doesn't do. Gauntletgate catches a
-  dead link; only claim-refutation catches an honest-looking page that overclaims.
-- **Candidate public-surface pass** — `$dev-rigor-stack-lite-visitor-audit` against rendered
-  staging/candidate
-  surfaces before the owner go/no-go. Every surface is read in full and every link is
-  counted. Unpublished surfaces remain explicitly unproven; source-file review is not a
-  substitute for the live pass below.
-- **Candidate newcomer/product pass** — `$dev-rigor-stack-lite-walkthrough` against the
-  packaged candidate in a verified clean environment. Exercise the installer lifecycle,
-  every inventoried screen/control/distinct path/state, visual/accessibility quality, and
-  actual interface-to-function wiring. Missing denominators or clean-state proof is INVALID.
-- **Deliverable docs real & complete** — `$dev-rigor-stack-lite-docs-gate`: a true README;
-  a two-voice user manual
-  (non-technical + technical); an architecture section with professional-grade
-  drawings; an honest marketing landing page (what it is, how it fits, the value — no
-  overclaiming, every link live).
-- **Rollback defined before the tag** — name the trigger (what signal reverts) and the
-  owner who calls it.
-- **Evidence inventory closes cleanly** — every acceptance claim and real finding must have
-  a current result bound to the exact commit or artifact. Record passed, failed, blocked,
-  skipped, and unverifiable items explicitly. A missing host hook or private ledger is not
-  required in this skills-only edition; commands, logs, screenshots, traces, CI results,
-  hashes, and review artifacts are the evidence boundary.
-- **STOP → owner go/no-go on the tag.** The coordinator drives everything to ready,
-  then hands the decision to the owner unless publication was explicitly requested already.
-- **Post-deploy closure** — after an authorized tag/publish/deploy, run
-  `$dev-rigor-stack-lite-visitor-audit`
-  again against the live URLs and actual release assets, cache-busted. Until this is
-  clean, do not announce the release as complete, close the release workflow, or retire
-  rollback readiness. Consume its acquisition handoff and run full published
-  `$dev-rigor-stack-lite-walkthrough` from the public front door through download, clean-machine
-  install, complete product journey, update/repair/uninstall, and visual/UI audit. A dead
-  download, false current-version claim, wrong checksum, invalid coverage ledger, or broken
-  newcomer journey is a release blocker and routes to correction or rollback.
+Every release requires exact commit, version, and artifact identity; proof that the
+artifact came from that source state; valid results for every check claimed; a complete
+finding inventory; and human go/no-go authority. Define a rollback trigger and owner when
+deployment or another hard-to-reverse action is in scope.
 
-The complete standalone release coordinator is `$dev-rigor-stack-lite-release`.
+Select extra gates by applicability:
 
-Cost of pure-zero: with no freeze, a nit found after the gauntlet ran moves the tagged
-artifact one commit off the one you proved. Re-run the gate **at the blast radius of
-the fix** — a nit re-runs only the lane it touched, not the full gauntlet — enough to
-restore tag == proven-artifact. Never skip it: skipping saves a bounded, scopeable cost
-but ships an unverified delta and breaks the invariant the tag stands for —
-release-altitude theater, however small the fix looked. So pure-zero raises the value of
-driving every slice to zero at per-unit REVIEW; pure-zero and thorough per-unit review
-are the same bet.
+- Run the `$dev-rigor-stack-lite-gauntletgate` full lane only for Critical or broad
+  releases. Add its walkthrough lane only when the Walkthrough trigger below applies;
+  `all` is shorthand only when every lane applies. Standard releases use the focused
+  review/gate evidence selected for their change.
+- Run `$dev-rigor-stack-lite-proof-gate` for Critical changes or material changed claims.
+- Run `$dev-rigor-stack-lite-visitor-audit` when public pages, rendered docs, release
+  assets, or announcements changed.
+- Run `$dev-rigor-stack-lite-walkthrough` when UI, onboarding, acquisition, or installer
+  journeys changed. Require a verified clean machine for install/update/uninstall changes.
+- Run `$dev-rigor-stack-lite-docs-gate` only for affected deliverables.
+- Run randomized and mutation evidence only under the named detector triggers above.
+
+Release PASS means every applicable required check is valid, evidence is bound to the
+exact candidate, and `blocking_findings` is empty. Default closure is zero unresolved
+release blockers:
+
+- Blocker and Critical findings block the affected release.
+- Major findings block when they violate acceptance criteria or create material release risk.
+- Minor findings block only when they violate acceptance criteria.
+- Nit findings never block.
+
+Report every finding. Put unresolved nonblocking findings in the existing next-sprint
+watchlist with an owner or explicit disposition. Literal `0/0/0/0/0` remains available
+only when the owner selects it for that release.
+
+Stop the loop:
+
+- Allow no more than two broad release reviews of one candidate. Later review is focused
+  on changed or previously failing areas unless scope materially changes.
+- Freeze optional polish once acceptance criteria and applicable gates pass. New
+  nonblocking observations go to the watchlist rather than reopening the candidate.
+- If the same final-style execution fails twice for one cause, stop retrying and diagnose.
+- Re-run evidence invalidated by a candidate change. Retain unaffected evidence only when
+  its scope and identity chain prove the changed candidate did not alter what it covered.
+
+After authorized publication, run only applicable live checks against the actual public
+artifact. Changed release pages/assets require a cache-busted Visitor Audit. Changed
+acquisition, UI, onboarding, or installer behavior requires the matching published
+Walkthrough. Keep rollback readiness active until live `blocking_findings` is empty.
 
 ## Owner vs coordinator decisions
 
@@ -254,10 +238,10 @@ decision, every time.
 
 Standalone gate: `$dev-rigor-stack-lite-docs-gate`.
 
-- **Deliverable docs — real and professional, always.** README, two-voice manual
-  (non-technical + technical), architecture + professional drawings, honest landing
-  page. Produced/updated at the release gate; per-unit, update only the deliverable doc
-  a slice actually changes.
+- **Deliverable docs — accurate where affected.** Update the README, manual,
+  architecture, landing page, or other public surface only when the change affects it
+  or acceptance criteria require it. Do not manufacture a manual, landing page, or
+  architecture drawing for an unrelated release.
 - **Process artifacts — ephemeral, never hoarded.** Audits, status docs, handoffs,
   scratch — keep out of the repo (or a transient dir) and purge them. Over-documenting
   the wrong thing buries a repo in stale audits; YAGNI applies to docs too.
@@ -275,8 +259,9 @@ retain ordinary evidence artifacts. If a lane is missing or unreadable, mark tha
 INVALID; do not silently claim the complete stack ran. Host capabilities and higher-priority
 instructions always govern tool use, delegation, approvals, merges, and publication.
 
-An external harness, such as a real-organization workflow, contributes evidence to the
-loop but never replaces PLAN, witnessed RED-to-GREEN, proof, review, or the MERGE gate.
+An external harness, such as a real-organization workflow, contributes evidence but never
+replaces the evidence required by the selected lane: one runnable check for Micro,
+applicable RED/GREEN plus focused review for Standard, or the full Critical proof path.
 Classify unavailable or supplemental evidence honestly; do not promote it into a gate.
 
 **audit-lite / audit-team-lite vs. gauntletgate-lite** overlap by design — the same review
@@ -288,22 +273,24 @@ Same discipline, different altitude — a report vs. a gate.
 
 ## Cross-cutting, always on
 
-- Use bounded leaf workers only when the host provides them and delegation is authorized.
-  Workers do not delegate or spawn sub-workers. Keep synthesis and the final gate decision
-  with the coordinator. Otherwise use serial passes.
-- Independent reviewers receive the acceptance contract, exact candidate identity, and raw
-  evidence artifacts. Exclude the builder's narrative or explanation from their context.
+- Use bounded leaf workers for Critical work only when the host provides them and
+  delegation is authorized. Workers do not delegate or spawn sub-workers. Keep
+  synthesis and the final gate decision with the coordinator. Otherwise use a fresh
+  serial adversarial pass.
+- Critical independent reviewers receive the acceptance contract, exact candidate
+  identity, and raw evidence artifacts. Exclude the builder's narrative or explanation
+  from their context. Standard uses a focused review without mandatory independence.
 - Worker tier calibration (fan-out only): every worker states its tier and moderates
   rigor by it — the paste-in wording is the fan-out preamble below.
 - Open-source-first: verify licenses; prefer MIT/Apache/MPL over BUSL/SSPL/closed.
 - Evidence over claims: reproduce before fixing, verify with numbers, never claim
   beyond the evidence, own mistakes plainly.
-- Code minimalism governs CODE SCOPE ONLY — reuse-before-build and the shortest working
-  diff shrink the *code*, never a gate, a CI check, verification, or subagent discipline.
+- Code and process minimalism both apply: use the shortest working diff and do not add
+  ceremony above the selected lane. Never skip evidence that lane requires.
 
-The stack FLEXES to the unit — sequential fixes skip fan-out, low-blast units collapse
-VERIFY+REVIEW, user-invisible changes skip the walkthrough lane — but the gates that
-apply are not optional, and a skip is stated with a reason, never silent.
+The stack routes to the unit: Micro stops after one relevant check, Standard combines
+focused VERIFY/REVIEW when useful, and Critical keeps the full path. Selected gates are
+not optional; unselected gates need only the lane/applicability reason, not a fake artifact.
 
 ---
 

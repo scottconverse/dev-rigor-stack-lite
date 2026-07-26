@@ -6,11 +6,11 @@ description: >
   follow every link with per-link status and counts, verify published checksums and
   sizes, and flag stale claims, jargon, mojibake, placeholders, invisible links, and
   misleading framing. Use when asked for a visitor audit or public-surface audit, before
-  announcing a page/site/release as done, and after every deploy. Also use for
+  announcing changed public pages/assets as done, and after deploying those surfaces. Also use for
   "$dev-rigor-stack-lite-visitor-audit" and "/dev-rigor-stack-lite-visitor-audit". CI is not a substitute.
 ---
 
-# Dev Rigor Stack Visitor Audit — PUBLIC SURFACE gate (Lite v0.4.0)
+# Dev Rigor Stack Visitor Audit — PUBLIC SURFACE gate (Lite v0.4.1)
 
 Verify the artifact as a first-time visitor experiences it, never through source diffs
 or CI proxies. This lane is distinct from product walkthrough: walkthrough asks whether
@@ -157,8 +157,8 @@ At a release boundary, a failed live pass blocks announcement, release-workflow 
 and retirement of rollback readiness. It does not silently rewrite or delete an already
 published tag; route the evidence to correction or the defined rollback decision.
 
-For a release, run twice: candidate/staging before owner go/no-go, then cache-busted live
-surfaces and actual published assets after deployment. The live acquisition handoff must
-feed a full clean-room Walkthrough. Do not close or announce the release until both are
-clean at the stack's configured severity threshold; the dev-rigor-stack-lite default is
-strict-zero across Blocker/Critical/Major/Minor/Nit.
+When a release changes public surfaces or assets, run twice: candidate/staging before
+owner go/no-go, then cache-busted live surfaces after deployment. Feed the acquisition
+handoff to Walkthrough only when acquisition/onboarding/installer scope applies. Do not
+close or announce until applicable evidence is valid and `blocking_findings` is empty;
+literal `0/0/0/0/0` applies only when the owner selects it.

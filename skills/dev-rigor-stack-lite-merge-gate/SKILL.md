@@ -6,7 +6,9 @@ description: Run the dev-rigor-stack-lite green-path merge decision independentl
 # Dev Rigor Stack — MERGE gate
 
 Verify the exact head commit, target branch, CI state, review state, unresolved comments,
-required PLAN/BUILD/VERIFY/REVIEW results, and conditional Walkthrough/Visitor results.
+the selected lane's evidence, and conditional Walkthrough/Visitor results. Micro requires
+its inspect/change/check receipt; Standard requires applicable PLAN/BUILD and focused
+VERIFY/REVIEW; Critical requires the full independent path.
 Re-run checks invalidated by changes after their evidence was captured. Evidence for a
 different SHA, build, installer, environment, or public artifact does not transfer.
 

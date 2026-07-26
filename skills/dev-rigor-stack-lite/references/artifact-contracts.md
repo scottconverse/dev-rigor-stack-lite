@@ -136,8 +136,8 @@ mismatched evidence. It may add evidence; it may not rewrite the upstream record
 {
   "stage": "release",
   "verdict": "PASS|FAIL|INVALID|BLOCKED|PARTIAL",
-  "strict_zero": true,
-  "severity": {"Blocker": 0, "Critical": 0, "Major": 0, "Minor": 0, "Nit": 0},
+  "strict_zero": false,
+  "severity": {"Blocker": 0, "Critical": 0, "Major": 0, "Minor": 1, "Nit": 2},
   "coverage_valid": true,
   "run_ids": ["input-run"],
   "blocking_findings": [],
@@ -145,7 +145,13 @@ mismatched evidence. It may add evidence; it may not rewrite the upstream record
 }
 ```
 
-PASS requires a compatible manifest schema, strict-zero, valid coverage, exact artifact
-identity, and every mandatory stage for the selected scope. For schema 1.1, incomplete
-dirty-worktree identity or an applicable lockfile/seed mismatch makes the result INVALID.
-Missing/blocked coverage is not PASS.
+`strict_zero` records an optional owner-selected literal-zero policy; it is false by
+default. PASS requires a compatible manifest schema, valid applicable coverage, exact
+artifact identity, every mandatory stage for the selected scope, and an empty
+`blocking_findings` list. Blocker/Critical findings block; Major blocks when it violates
+acceptance criteria or creates material release risk; Minor blocks only when it violates
+acceptance criteria; Nit never blocks. Keep every finding in `findings.json`, including
+nonblocking findings routed to the existing watchlist.
+
+For schema 1.1, incomplete dirty-worktree identity or an applicable lockfile/seed mismatch
+makes the result INVALID. Missing/blocked applicable coverage is not PASS.

@@ -11,4 +11,9 @@ and backward-compatible `$gauntletgate-lite` entrypoint.
 
 The Walkthrough lane must consume `$dev-rigor-stack-lite-walkthrough`; public-facing release
 scope must also consume `$dev-rigor-stack-lite-visitor-audit`. The overall stack sets the gate
-threshold to strict-zero: 0 Blocker / 0 Critical / 0 Major / 0 Minor / 0 Nit.
+threshold to zero unresolved release blockers using the canonical gate-verdict rules.
+Literal 0 Blocker / 0 Critical / 0 Major / 0 Minor / 0 Nit applies only when the owner
+selects strict-zero. The release coordinator selects the full lane only for Critical or
+broad releases and adds walkthrough only when its named trigger applies. `all` is
+shorthand for the case where every lane applies; explicit standalone invocations still
+run the lanes requested.

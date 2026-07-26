@@ -124,6 +124,40 @@ else:
                 errors.append("artifact contract: seeds example must contain context, seed, and evidence")
     if "Existing 1.0 manifests remain valid" not in contract_text:
         errors.append("artifact contract: schema 1.0 compatibility note missing")
+    gate_example = re.search(
+        r"## `gate-result\.json`\s*```json\s*(\{.*?\})\s*```",
+        contract_text,
+        re.S,
+    )
+    if not gate_example:
+        errors.append("artifact contract: gate-result JSON example missing")
+    else:
+        try:
+            gate_result = json.loads(gate_example.group(1))
+        except json.JSONDecodeError as exc:
+            errors.append(f"artifact contract: gate-result example is invalid JSON: {exc}")
+        else:
+            if gate_result.get("strict_zero") is not False:
+                errors.append("artifact contract: strict_zero must default to false")
+            if gate_result.get("blocking_findings") != []:
+                errors.append("artifact contract: PASS example must have no blocking_findings")
+# --- coder contract sync ---
+def sync_blocks(path):
+    text = path.read_text(encoding="utf-8")
+    return dict(re.findall(
+        r"<!-- sync:([a-z0-9-]+)(?: [^>]*)? -->\n(.*?)\n<!-- /sync:\1 -->",
+        text,
+        re.S,
+    ))
+
+coder_dir = SKILLS / "coder-tdd-qa-lite"
+full_blocks = sync_blocks(coder_dir / "SKILL.md")
+lite_blocks = sync_blocks(coder_dir / "SKILL-LITE.md")
+if not lite_blocks:
+    errors.append("coder-tdd-qa-lite: SKILL-LITE.md has no synced blocks")
+for block_id, lite_body in lite_blocks.items():
+    if full_blocks.get(block_id) != lite_body:
+        errors.append(f"coder-tdd-qa-lite: synced block drift: {block_id}")
 
 # --- internal references resolve (0.3.2, Codex report) ---
 # A rename that leaves a dangling `../old-name/SKILL.md` read or a stale
@@ -153,6 +187,9 @@ else:
         errors.append("anchor: end marker missing")
     if "rigor-goals" not in anchor_text:
         errors.append("anchor: must reference the rigor-goals tool (Tier 3 entry point)")
+    for marker in ("Micro:", "Standard:", "Critical triggers:", "cross-session"):
+        if marker not in anchor_text:
+            errors.append(f"anchor: proportional policy marker missing: {marker}")
     content_lines = [
         line for line in anchor_text.splitlines()
         if line.strip() and not line.lstrip().startswith("<!--")

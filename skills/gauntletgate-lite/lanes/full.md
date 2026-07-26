@@ -94,8 +94,8 @@ a thin report — write what was observed and flag what couldn't be verified.
 
 ## This lane's output
 The five deep-dives + an engineering/test/docs/QA/UX severity roll-up that feeds the
-combined gate verdict. When run standalone (not inside `all`), it is a **PARTIAL
-CHECK** unless Walkthrough also ran — `full` alone does not verify first-run unless
-its QA role constructed and verified the first-run state, in which case it may
-contribute a first-run verdict. The advancement decision is made by the dispatcher
-per `references/gate-verdict.md`.
+combined gate verdict. A standalone `full` run is a **PARTIAL CHECK** unless
+Walkthrough also ran, its QA role constructed and verified the applicable first-run
+state, or Walkthrough is explicitly N/A because no changed UI, onboarding,
+acquisition, installer, or first-run surface is in scope. The advancement decision is
+made by the dispatcher per `references/gate-verdict.md`.

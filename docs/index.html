@@ -208,7 +208,7 @@
   <div class="wrap nav-in">
     <a class="brand" href="#top">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#17140F"/><path d="M8 16h5l2.5-5 3 10 2.5-5h5" stroke="#E4571F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      dev-rigor-stack-lite <span class="v">v0.4.0</span>
+      dev-rigor-stack-lite <span class="v">v0.4.1</span>
     </a>
     <button class="menu-btn" aria-expanded="false" aria-controls="navlinks">Menu</button>
     <nav class="nav-links" id="navlinks" aria-label="Main">
@@ -226,10 +226,10 @@
 <main id="main">
 <div id="top" class="hero">
   <div class="wrap">
-    <p class="eyebrow">Portable agent skills · MIT · v0.4.0</p>
+    <p class="eyebrow">Portable agent skills · MIT · v0.4.1</p>
     <h1>A delivery discipline your coding agent can't quietly drop.</h1>
     <p class="lede">
-      Nineteen skills that route every unit of work through plan, build, verify, review and merge —
+      Nineteen skills that route work through Micro, Standard or Critical by named risk —
       plus two layers that survive what skills alone don't: a reminder block your host re-reads every
       turn, and a goal gate that refuses to close a job with no verification evidence named.
     </p>
@@ -248,7 +248,7 @@
         <div class="gate terminal"><span class="n">gate 5</span><span class="g">MERGE</span><span class="d">Readiness proven. Permission still comes from you.</span></div>
       </div>
       <p class="returns"><b>on red →</b> work returns to the gate that owns it. Never route around a gate; never merge or tag past one.</p>
-      <figcaption>The per-unit loop. A separate release gate fires once per version, at the tag boundary.</figcaption>
+      <figcaption>Standard and Critical use the loop; Micro stops after one relevant check and a receipt.</figcaption>
     </figure>
   </div>
 </div>
@@ -310,7 +310,7 @@
         <div><div class="tier-n">2</div></div>
         <div>
           <h3>The anchor block</h3>
-          <p>A marker-fenced block the installer writes into <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>GEMINI.md</code>. Ten lines of standing discipline the host re-reads every single turn, including the turn after compaction. Your own edits outside the markers survive upgrades.</p>
+          <p>A marker-fenced block the installer writes into <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>GEMINI.md</code>. The host re-reads the short discipline block each turn, including after compaction. Your edits outside the markers survive upgrades.</p>
           <span class="force">Force: a reminder, every turn</span>
         </div>
       </div>
@@ -318,7 +318,7 @@
         <div><div class="tier-n">3</div></div>
         <div>
           <h3>The rigor-goals gate</h3>
-          <p>A dependency-free Python CLI holding multi-step plans in <code>./.rigor/</code> on disk. The final story will not close without a named verification command and its result. The refusal is a program, not a prompt — an agent can't talk its way past it.</p>
+          <p>A dependency-free Python CLI for cross-session work, handoffs, parallel agents and external waits. It holds plans in <code>./.rigor/</code>; the final story will not close without a named verification command and result.</p>
           <span class="force">Force: one hard gate at "done"</span>
         </div>
       </div>
@@ -334,12 +334,12 @@
   <div class="wrap split">
     <div>
       <p class="kicker">The loop</p>
-      <h2>Every unit of work takes the same five gates.</h2>
+      <h2>Routine work should not pay the Critical-work tax.</h2>
       <p class="sub">
-        A bug fix, a module, a refactor — the same route, scaled to what's at stake. Blast radius, not
-        diff size, sets the depth: a one-line change to authentication is small in lines and large in
-        blast. Low-risk units collapse verify and review into a single pass; a release runs the full
-        gauntlet. Skips are allowed, but a skip is always stated with a reason. Never silent.
+        Micro work is inspect, change, one check and a receipt. Standard is the default for ordinary
+        bugs and features, with RED/GREEN where applicable and focused review. Named risks — auth,
+        money, persisted data, security, concurrency, installers, irreversible work and broad public
+        contracts — select Critical and its full independent proof path.
       </p>
       <p class="sub">
         Each gate is also a standalone entry point, so you can run one without the others.
@@ -350,7 +350,7 @@
         <span class="lbl">Every code deliverable ends with a receipt</span>
         <div class="line">
           <span class="tag">proved:</span> 14 tests pass; BUNDLE_VALID; 3 mutation probes rejected<br>
-          <span class="tag">level:</span> medium blast — shared validator, reviewed
+          <span class="tag">lane:</span> Standard — affected validator checks, focused review
         </div>
         <div class="stampmark">EVIDENCE</div>
       </div>
@@ -397,7 +397,7 @@
       </div>
       <div class="lane">
         <h3>GauntletGate</h3>
-        <p>The release-altitude advancement gate, in lite, walkthrough and full lanes, driving findings to zero before a tag.</p>
+        <p>The release-altitude advancement gate, in lite, walkthrough and full lanes, driving unresolved release blockers to zero.</p>
         <span class="cmd">$dev-rigor-stack-lite-gauntletgate</span>
       </div>
     </div>
@@ -417,7 +417,7 @@
           <p>Pin to a tag so the bundle you install is the bundle that was tested.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">git</span> clone --branch v0.4.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+<pre><span class="k">git</span> clone --branch v0.4.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 <span class="k">cd</span> dev-rigor-stack-lite</pre>
           </div>
         </div>
@@ -457,8 +457,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
 
       <div class="step">
         <div>
-          <h3>Open a gated plan</h3>
-          <p>Multi-step work starts here. The last story won't close without evidence.</p>
+          <h3>Open a continuity plan</h3>
+          <p>Use this only across sessions, handoffs, parallel agents or external waits.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
 <pre><span class="k">python3</span> tools/rigor_goals.py create --brief <span class="s">"ship feature X"</span> \
@@ -541,7 +541,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
     <p class="kicker">Status &amp; limits</p>
     <h2>Actively developed, and honest about its edges.</h2>
     <p class="sub">
-      Released at v0.4.0 under MIT. The installer's fresh, refusal, forced and upgrade paths are
+      Released at v0.4.1 under MIT. The installer's fresh, refusal, forced and upgrade paths are
       exercised in CI on Windows, Ubuntu and macOS, and the documented Windows command is executed
       verbatim from a fresh Restricted-policy process on every push. These are the limits worth knowing
       before you adopt it.
@@ -570,9 +570,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
 <section class="final">
   <div class="wrap">
     <h2>Put a gate between your agent and "done".</h2>
-    <p>Clone the pinned tag, run one installer command, and the next multi-step job your agent opens has to name its evidence before it can close.</p>
+    <p>Clone the pinned tag, run one installer command, and let named risk select the amount of process the work needs.</p>
     <div class="cta-row">
-      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/releases/tag/v0.4.0">Get v0.4.0</a>
+      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.4.1">Get v0.4.1</a>
       <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Read the manual</a>
     </div>
   </div>
@@ -589,7 +589,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/SECURITY.md">Security</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/issues">Issues</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/LICENSE">MIT License</a>
-    <span class="sp">v0.4.0</span>
+    <span class="sp">v0.4.1</span>
   </div>
 </footer>
 
