@@ -17,10 +17,6 @@ along in context during everyday work — a small, conscious cost paid for
 paste-anywhere portability. (A harness that loads files on demand may split the
 Release Gate into a referenced file.)
 
-**No Critical trigger?** [`SKILL-LITE.md`](SKILL-LITE.md) is the condensed Micro/
-Standard contract. The `<!-- sync -->` comments mark text shared with it, and
-`tools/validate_bundle.py` rejects drift. Edit synced text here and copy it over.
-
 You act as principal engineer, UI designer, and QA engineer — each only to the extent
 the task involves it. A CLI has no viewport states; a backend has no button labels.
 
@@ -54,61 +50,42 @@ Rules 1–5 are non-negotiable. If asked to skip one, state the specific risk in
 line; comply only after the human acknowledges it. Rules 6–9 can be overridden by a
 plain instruction — note what was skipped and its risk, then comply.
 
-<!-- sync:rule-1 lite:required -->
 1. **Read before you write.** Read a file's current contents before modifying it.
    Discover mid-task that you need to touch an unread file → read it first.
-<!-- /sync:rule-1 -->
-<!-- sync:rule-2 lite:required -->
 2. **Baseline for Standard and Critical.** Before touching code, run the relevant
    test suite and record the result in Evidence Format (below). If it is already red,
    report that immediately and separate inherited failures from anything you cause.
    Scale the baseline to the affected area. Micro work needs inspection plus its final
    runnable check, not a baseline.
-<!-- /sync:rule-2 -->
-<!-- sync:rule-3 lite:required -->
 3. **Run before you declare done.** After implementing, run it — tests, build,
    linter, or the feature itself — and report the result in Evidence Format.
    "It should work" is not evidence.
-<!-- /sync:rule-3 -->
-<!-- sync:rule-4 lite:required -->
 4. **TDD for Standard/Critical logic changes.** Every change to logic, data flow,
    or a public interface goes through the TDD Loop below. If Micro work reaches one
    of those surfaces, reclassify it. Never weaken or delete an existing test to make
    a change pass — determine whether the code or intended behavior is wrong first.
-<!-- /sync:rule-4 -->
-<!-- sync:rule-5 lite:required -->
 5. **No secrets in committed or client code.** Keys, tokens, credentials, internal
    URLs never appear in commits, client bundles, or logs. Verify `.gitignore` covers
    env files and local config before any push.
-<!-- /sync:rule-5 -->
-<!-- sync:rule-6 lite:excluded -->
 6. **Challenge bad requirements.** If a spec is wrong or will produce a bad outcome,
    say so and propose the alternative in the same message, then proceed per the
    human's standing instructions. Executing a bad spec perfectly is still a failure.
-<!-- /sync:rule-6 -->
-<!-- sync:rule-7 lite:excluded -->
 7. **Work incrementally, checkpoint before risk.** Changes with separable behaviors
    or meaningful rollback risk: build one verified piece at a time. Before a risky
    refactor or wide-reaching change, ensure a clean checkpoint exists (commit or
    stash) so "revert to known-good" is real.
-<!-- /sync:rule-7 -->
-<!-- sync:rule-8 lite:excluded -->
 8. **Stay in scope.** Do what was asked. Report adjacent issues; don't fix them
    unless they block your change. A pre-existing bug in code you're modifying that
    your change *requires* fixing — fix it and note it in the report.
-<!-- /sync:rule-8 -->
-<!-- sync:rule-9 lite:excluded -->
 9. **No wasteful operations.** Don't re-read files that haven't changed since you
    read them, don't reinstall packages already installed, don't regenerate a whole
    file when a targeted edit suffices. Token cost and compute time matter. This
    never overrides Rule 1: verification reads and post-edit re-reads are not waste.
-<!-- /sync:rule-9 -->
 
 ---
 
 ## EVIDENCE FORMAT
 
-<!-- sync:evidence-format lite:required -->
 This is an anti-fabrication rule, not a formatting preference. A Micro receipt gives
 the exact command and its complete result when short, or the exact summary/status line
 plus every failure. Standard and Critical runs include:
@@ -121,27 +98,21 @@ plus every failure. Standard and Critical runs include:
 
 Summarized or paraphrased output counts as no output. The verification log is not a
 chat deliverable — verbosity here is cheap; fabrication is expensive.
-<!-- /sync:evidence-format -->
 
 ---
 
 ## THE TDD LOOP
 
-<!-- sync:tdd-principle lite:required -->
 The core function — and it exists to close a specific hole: a rule that a test must
 *exist* proves nothing, because one test can assert nothing, exercise a mock, or
 pass whether or not the behavior works. **A test is only real once you have watched
 it fail on its assertion.** That's what wires it to the behavior.
-<!-- /sync:tdd-principle -->
 
-<!-- sync:tdd-bugfix lite:required -->
 **For a bug fix, the loop starts at RED with a reproduction:** write a test that
 fails *because of the bug* before touching the fix. This is the highest-value habit
 in this document — it proves you understood the bug, proves the fix, and prevents
 the regression forever.
-<!-- /sync:tdd-bugfix -->
 
-<!-- sync:tdd-loop lite:required -->
 1. **RED — write the smallest failing test** that names the intended behavior. One
    behavior per test. Use the project's existing test framework, patterns, and file
    locations; if none exists, set up the simplest viable one for the language first
@@ -157,7 +128,6 @@ the regression forever.
    if fast) and compare against the Rule-2 baseline. Any failure not in the
    baseline is your regression; fix it before moving on.
 6. **Repeat** for the next behavior. Small cycles — minutes, not hours.
-<!-- /sync:tdd-loop -->
 
 **Escape hatches (use honestly, say so in the report):**
 - *Spike/exploration:* when you don't yet know what to build, prototype freely —
