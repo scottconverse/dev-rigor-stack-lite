@@ -2,7 +2,8 @@
 name: proof-gate-lite
 description: >
   Adversarial build-and-verify loop for high-stakes or trust-sensitive delivery
-  work — releases, migrations, security/compliance changes, anything where a
+  work — Critical releases, material changed release claims, migrations,
+  security/compliance changes, anything where a
   confident-but-wrong "done" claim is expensive. Kills verification theater:
   checks that can't fail, "done" claims that outrun the evidence, and
   plausible-but-wrong work that survives a shallow review. Use whenever the
@@ -42,7 +43,9 @@ Adopt this verbatim in all reporting:
 - If a step was skipped, say so explicitly.
 - If a check is red for a legitimate reason (missing hardware, external dependency, wall-clock gate), leave it **honest-red** — never fake it green.
 - Report the actual failing output itself, not a summary of it.
-- **Drive to zero**: no "deprioritized" or "revisit later" shelving of in-scope work. Finish it, or hand back the specific blocker and why — never a vague defer.
+- **Drive release blockers to zero**: finish acceptance gaps and material risks or
+  hand back the specific blocker. Report other findings and route them to the
+  existing watchlist; never hide them behind a vague defer.
 
 ## Step 0 — Honest Scope Audit (before any fixing)
 
@@ -78,14 +81,15 @@ The final gate reproduces from a genuinely clean environment (fresh VM, containe
 - [ ] Install/setup performed exactly as a real consumer would perform it
 - [ ] Core path exercised end-to-end, not just imported/loaded
 - [ ] Output validated with a real-bar check from the table above, not a log read
-- [ ] Every verification check used here was mutation-tested (see below)
+- [ ] Critical changed logic or uncertain test sensitivity was mutation-tested
 - [ ] No remaining honest-red items for in-scope work
 - [ ] Any skipped check or honest-red is reported with the exact failing output and reason, not silently green or summarized
 - [ ] Honest status document exists: what was proven, what evidence supports it, what was not proven
 
-## Self-Check: Mutation-Test the Verifier
+## Self-Check: Mutation-Test the Verifier When Triggered
 
-Required before trusting any non-trivial verification step:
+Required for Critical changed logic or uncertain test sensitivity.
+For other checks, a witnessed meaningful RED is sufficient.
 
 1. Deliberately introduce a known, detectable defect into the artifact under test (wrong byte layout, off-by-N segment timing, a hardcoded "always pass," a missing rate-limit, a race condition, fabricated spec data, etc.).
 2. Run the exact same verifier/check that will be used in the real run.

@@ -22,8 +22,8 @@ when the Walkthrough lane ran, **consume its report** instead of re-walking the 
 > and skip the empty state." It must also exercise the **first-run / empty /
 > dependency-absent** state (shared backbone §1). If the Walkthrough lane already
 > produced a verified first-run attestation, the QA role builds on it rather than
-> redoing it; if Walkthrough did **not** run, QA owns the first-run pass and its
-> verdict carries the attestation.
+> redoing it. If Walkthrough applies but did **not** run, that is a coverage gap;
+> Full's QA role may find related defects but may not substitute for the missing lane.
 
 ## Orchestration
 
@@ -52,9 +52,10 @@ when the Walkthrough lane ran, **consume its report** instead of re-walking the 
 5. **Read every deep-dive** (don't trust summaries alone).
 6. **Cross-reference** — a finding touching multiple roles (e.g. a security bug with
    no test and no doc) is a high-leverage triple finding; mark it.
-7. **Synthesize** the executive view, the blocking punch list (Blockers/Criticals +
-   cheap/urgent Majors), and the next-stage watchlist (structural Majors,
-   architectural debt, scaling).
+7. **Synthesize** the executive view, the blocking punch list (Blocker/Critical;
+   Major only for an acceptance violation or material release risk; Minor only for an
+   acceptance violation), and the next-stage watchlist (every other unresolved
+   finding, including structural Majors, architectural debt, scaling, Minor, and Nit).
 
 ## Degraded mode (when multi-agent fan-out isn't available)
 
@@ -94,8 +95,8 @@ a thin report — write what was observed and flag what couldn't be verified.
 
 ## This lane's output
 The five deep-dives + an engineering/test/docs/QA/UX severity roll-up that feeds the
-combined gate verdict. When run standalone (not inside `all`), it is a **PARTIAL
-CHECK** unless Walkthrough also ran — `full` alone does not verify first-run unless
-its QA role constructed and verified the first-run state, in which case it may
-contribute a first-run verdict. The advancement decision is made by the dispatcher
-per `references/gate-verdict.md`.
+combined gate verdict. A standalone `full` run is a **PARTIAL CHECK** unless
+Walkthrough also ran or is explicitly N/A because no changed UI, onboarding,
+acquisition, installer, or first-run surface is in scope. Full's QA role does not
+substitute for an applicable Walkthrough. The advancement decision is made by the
+dispatcher per `references/gate-verdict.md`.

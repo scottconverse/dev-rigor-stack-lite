@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.4.1 - 2026-07-25
+
+- **Delivery rigor now has Micro, Standard, and Critical lanes.** Named risk
+  triggers select the lane, and each lane is also a ceiling on ceremony. Micro
+  work uses inspect, change, one check, and a receipt; Standard is the default;
+  Critical retains the full independent proof path.
+- **Release closure now means zero unresolved release blockers.** Blocker and
+  Critical findings block. Major findings block for acceptance violations or
+  material release risk; Minor findings block only for acceptance violations;
+  Nits never block. Every finding remains visible, and nonblocking work moves to
+  the existing watchlist.
+- **Release gates, Deterministic Detector, and rigor-goals are now triggered by
+  applicability.** Exact candidate identity and owner authority remain universal,
+  while full GauntletGate, walkthrough, visitor, clean-room, randomized, mutation,
+  and durable goal machinery run only when their named risk is present.
 - **The SHARED-BLOCK parity fence is removed from the detector-proportionality rule.**
   The rule text is unchanged and stays in VERIFY; only the fence and its
   edit-in-lockstep instruction are gone. The cross-repo check that justified them

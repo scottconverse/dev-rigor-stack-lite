@@ -1,11 +1,12 @@
 ---
 name: quick-audit-lite
-description: Fast single-pass audit of a small code change, bug fix, or scoped diff — covers correctness, UX, docs, tests, and runtime behavior in one tight report. Use this skill whenever the user wants a quick audit, lite audit, smoke audit, spot check, sanity check, or pre-merge review of a recent fix or small feature. Trigger on phrases like "audit this fix," "quick audit," "lite audit," "is this fix ready," "review this small change," "between fixes," "smoke check before merge," or any review request scoped to a single bug fix, a few files, or a recent diff. Prefer this over `audit-team-lite` when the change is small, time is short, and the full multi-role package would be overkill. Escalate to `audit-team-lite` if findings warrant it.
+description: Fast single-pass focused audit of a routine Standard code change or scoped diff — covers correctness, UX, docs, tests, and runtime behavior in one tight report. Use for quick, lite, smoke, spot, sanity, or pre-merge review when no named Critical-risk trigger requires the full audit team. Escalate to `audit-team-lite` when the user asks for it, Critical risk is present, or findings warrant it.
 ---
 
 # Audit Lite
 
-A single-pass audit for small changes. Same severity framework, same evidence bar, same honesty as `audit-team-lite` — but compressed into one reviewer, one report, one sitting. Built to run between bug fixes without breaking flow.
+A single-pass focused audit for routine Standard changes. Same severity framework,
+evidence bar, and honesty as `audit-team-lite`, compressed into one reviewer and report.
 
 The bar: when the user receives the report, they know whether the change ships, what's broken, what to watch, and whether the situation actually warrants escalating to a full `audit-team-lite` run. Every finding has evidence and a fix path. No fluff, no padding, no false alarms.
 
@@ -14,20 +15,22 @@ The bar: when the user receives the report, they know whether the change ships, 
 ## When to use audit-lite vs audit-team-lite
 
 **Use audit-lite when any of these are true:**
-- The change is a bug fix, a single feature, or a small refactor
-- Scope is one PR, a handful of files, or a recent diff
+- The change is a routine bug fix, feature, refactor, PR, or scoped diff
 - The user wants a check between fixes, not a full project review
 - The user said "quick," "lite," "smoke," "spot," "sanity," or "between"
-- Stakes are routine (Tier 1) — not pre-release, not customer-facing launch
+- No named Critical-risk trigger applies
 
 **Escalate to audit-team-lite when any of these are true:**
-- The user asks for a full audit, pre-release review, or readiness assessment
-- The change crosses major architectural boundaries
+- The user explicitly asks for a full audit or multi-role readiness assessment
+- The change touches auth/secrets, money, persistence/migrations/deletion,
+  security/privacy, concurrency/order/idempotency, install/deploy/rollback,
+  irreversible operations, or broad public compatibility/API contracts
 - audit-lite surfaces a Blocker or 3+ Criticals (the situation outgrew lite)
-- The user provides a whole repo, not a scoped change
+- The scope is a whole product/repo rather than one bounded change
 - The dev team needs sprint-planning artifacts, doc rewrites, or per-role deep dives
 
-When in doubt, ask. One question is cheaper than running the wrong tool.
+Inspect enough to classify uncertain risk. Ask only when missing owner intent would
+change the lane.
 
 ---
 

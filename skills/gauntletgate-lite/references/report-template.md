@@ -9,9 +9,10 @@
 ## Verdict (read first)
 
 > **<CLEAR TO ADVANCE | PARTIAL CHECK | DO NOT ADVANCE>**
-> <If PARTIAL CHECK: "lanes run: X — this is NOT an advancement gate; run `gauntletgate-lite all` for a clear-to-advance decision.">
+> <If PARTIAL CHECK: "lanes run: X — this is NOT an advancement gate; run the missing applicable lane(s) for a clear-to-advance decision.">
 
-- **First-run:** reaches core feature ✅ / dead-ends a new user ❌ / NOT VERIFIED — (first-run coverage: VALID / INVALID)
+- **First-run:** reaches core feature ✅ / dead-ends a new user ❌ / NOT VERIFIED /
+  N/A — (first-run coverage: VALID / INVALID / N/A with reason)
 - **Severity roll-up (lanes run):** Blocker N · Critical N · Major N · Minor N · Nit N
 - **Coverage ledger:** screens N/N · controls N/N · paths N/N · visual states N/N · public surfaces N/N · links N/N — VALID / INVALID
 - **One-line why:** <the single most important thing the reader must know>
@@ -61,14 +62,16 @@ deep-dive files.
 
 ## Blocking punch list (must clear to advance)
 
-Every Blocker and Critical, plus cheap/urgent Majors. Each: ID, title, severity,
-lane/role, one-line "what to do," size (S/M/L). **The product does not advance
-until these are zero.**
+Every Blocker/Critical; each Major that violates acceptance or creates material release
+risk; each Minor that violates acceptance. Each: ID, title, severity, lane/role,
+one-line "what to do," size (S/M/L). **The product does not advance until
+`blocking_findings` is empty.**
 
 ## Next-stage watchlist
 
-Structural Majors, architectural debt, design debt, scaling/perf not-yet-acute,
-anything needing product/leadership input.
+Every unresolved nonblocking finding, including structural Majors, architectural/design
+debt, scaling/perf not-yet-acute, and Minor/Nit observations. Give each an owner or
+explicit disposition.
 
 ## What's working (credited, specific)
 
@@ -78,12 +81,16 @@ Honest signal — not filler.
 
 ## Sign-off checklist
 
-- [ ] The verdict matches the lanes actually run (no partial run labeled CLEAR TO ADVANCE).
-- [ ] Environment attestation filled with verified facts **and linked to on-disk evidence artifacts** (or first-run marked INVALID — no artifact = unverified).
+- [ ] The verdict matches the lanes actually run (Full ran; Walkthrough ran when
+      applicable or is N/A with a changed-scope reason; no partial run is labeled
+      CLEAR TO ADVANCE).
+- [ ] Environment attestation filled with verified facts **and linked to on-disk
+      evidence artifacts**, or first-run is N/A because no applicable surface changed
+      (no artifact for an applicable surface = unverified = INVALID).
 - [ ] First-run reachability for a brand-new user is stated; a dead-end on the core feature is a Blocker.
 - [ ] Full/release Walkthrough used a verified clean machine where applicable and accounted for every inventoried screen, control, distinct path, visual state, and lifecycle operation.
 - [ ] Public release scope includes Visitor Audit and its exact acquisition handoff was consumed by Walkthrough.
-- [ ] Strict-zero severity is 0/0/0/0/0; no real finding was silently waived or deferred.
+- [ ] `blocking_findings` is empty; every nonblocking finding remains in the roll-up/watchlist.
 - [ ] If `full`/`all` ran: all 5 in-scope roles ran (or the gap is documented); deep-dives exist; cross-role findings noted.
 - [ ] Every Blocker/Critical has evidence, blast radius, and a fix path.
 - [ ] What's-working is present (the report isn't all-red).

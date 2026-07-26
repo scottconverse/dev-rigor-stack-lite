@@ -1,21 +1,22 @@
 ---
 name: coder-tdd-qa-lite-lite
-description: "Condensed TDD/QA contract for quick fixes — single-file changes, small scripts, tweaks under ~50 lines. Same non-negotiable rules, evidence format, and test-first loop as coder-tdd-qa-lite, minus workflow and release ceremony. Escalates to the full coder-tdd-qa-lite standards when a change grows beyond one file, touches untrusted input/auth/secrets, or is being pushed or released."
+description: "Condensed TDD/QA contract for Micro and Standard work with no named Critical-risk trigger. Provides the short Micro path and the same non-negotiable evidence/test-sensitivity rules for ordinary Standard work. Escalates to the full coder-tdd-qa-lite contract for auth/secrets, money, persisted data/migrations/deletion, security/privacy, concurrency/order/idempotency, install/deploy/rollback, irreversible operations, or broad public compatibility/API contracts."
 ---
 
 # Coder TDD/QA Standards — LITE — v0.5
 
-The condensed contract for small tasks: single-file changes, roughly 50 lines or
-less, nothing being released. Same non-negotiables as the full standards
+The condensed contract for Micro and Standard work with no Critical trigger. File count,
+file type, and release status do not select the lane. Same non-negotiables as the full standards
 ([`SKILL.md`](SKILL.md)) at a third the length. Blocks inside `<!-- sync -->`
 comments are shared verbatim with the full document and enforced by
-`check_sync.py` — edit them there, never here.
+`tools/validate_bundle.py`; edit them in the full document and copy them here.
 
-**Escalation tripwire — check before starting and again while working:** if the
-change grows past one file or ~50 lines, alters any public interface, touches
-untrusted input, auth, secrets, or deserialization, or you're about to push,
-publish, or release — **stop and load the full standards** before continuing.
-Lite is a fast path, not a lower bar.
+**Route before starting and again when scope changes.** Micro is localized mechanical
+work: inspect, change, run one relevant check, and report the receipt. Standard uses the
+rules and TDD loop below where applicable. If work touches auth/secrets, money, persisted
+data/migrations/deletion, security/privacy, concurrency/order/idempotency, install/deploy/
+rollback, irreversible operations, or broad public compatibility/API contracts, stop and
+load the full standards for the Critical path.
 
 ---
 
@@ -29,13 +30,11 @@ human acknowledges it.
    Discover mid-task that you need to touch an unread file → read it first.
 <!-- /sync:rule-1 -->
 <!-- sync:rule-2 -->
-2. **Baseline before you change.** Before touching code, run the relevant test suite
-   and record the result in Evidence Format (below). If the baseline is already red,
-   report that immediately and track pre-existing failures separately from anything
-   you cause — a new failure and inherited noise must never blur together, and
-   red→green means nothing against an unknown start. Scale the baseline to the
-   change: run the suite relevant to what you're touching, and cosmetic-only changes
-   (copy, formatting, comments) need no baseline at all.
+2. **Baseline for Standard and Critical.** Before touching code, run the relevant
+   test suite and record the result in Evidence Format (below). If it is already red,
+   report that immediately and separate inherited failures from anything you cause.
+   Scale the baseline to the affected area. Micro work needs inspection plus its final
+   runnable check, not a baseline.
 <!-- /sync:rule-2 -->
 <!-- sync:rule-3 -->
 3. **Run before you declare done.** After implementing, run it — tests, build,
@@ -43,11 +42,10 @@ human acknowledges it.
    "It should work" is not evidence.
 <!-- /sync:rule-3 -->
 <!-- sync:rule-4 -->
-4. **TDD for logic changes.** Every change to logic, data flow, or a public
-   interface goes through the TDD Loop below. Cosmetic-only changes are exempt.
-   Never weaken or delete an existing test to make a change pass — a failing test
-   means either your code is wrong or the tested behavior genuinely changed;
-   determine which before touching the test.
+4. **TDD for Standard/Critical logic changes.** Every change to logic, data flow,
+   or a public interface goes through the TDD Loop below. If Micro work reaches one
+   of those surfaces, reclassify it. Never weaken or delete an existing test to make
+   a change pass — determine whether the code or intended behavior is wrong first.
 <!-- /sync:rule-4 -->
 <!-- sync:rule-5 -->
 5. **No secrets in committed or client code.** Keys, tokens, credentials, internal
@@ -60,9 +58,9 @@ human acknowledges it.
 ## EVIDENCE FORMAT
 
 <!-- sync:evidence-format -->
-This is an anti-fabrication rule, not a formatting preference. Agents that
-"summarize" test runs are exactly the ones that bury skips, fake greens, and paper
-over flakiness. Every run you report includes:
+This is an anti-fabrication rule, not a formatting preference. A Micro receipt gives
+the exact command and its complete result when short, or the exact summary/status line
+plus every failure. Standard and Critical runs include:
 
 - **The exact command invoked**, as run.
 - **The complete summary/counts line, copied verbatim** — passed, failed, skipped,
@@ -119,13 +117,12 @@ test fail.
 
 ## MINIMUM REPORT — before declaring done
 
-- **What changed and why** — two or three sentences.
-- **Baseline vs. end state** — both runs in Evidence Format.
-- **TDD evidence** — the RED failure and the GREEN summary.
-- **Trust check** — state explicitly that the change involves no untrusted input,
-  auth, secrets, or deserialization. (If it does, you should have escalated
-  already.)
-- **Sign-off** — scope done? Known limitations, or "no known open issues."
+For Micro: what changed, the exact runnable check/result, known open issues, and
+`proved: <check + result> · lane: Micro`.
+
+For Standard: acceptance, applicable baseline, RED/GREEN for bugs or changed logic,
+final affected-suite result, focused falsification, known limitations, and
+`proved: <checks + results> · lane: Standard`.
 
 A checkmark with no evidence is worth nothing. Show what you found, not that you
 looked.

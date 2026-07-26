@@ -1,6 +1,6 @@
 ---
 name: dev-rigor-stack-lite-proof-gate
-description: Run the complete dev-rigor-stack-lite adversarial Proof Gate independently. Use for "$dev-rigor-stack-lite-proof-gate", "/dev-rigor-stack-lite-proof-gate", "prove it works", claim refutation, anti-theater verification, cleanroom evidence, or the VERIFY stage of the overall stack.
+description: Run the complete dev-rigor-stack-lite adversarial Proof Gate independently for Critical work or material claims. Use for "$dev-rigor-stack-lite-proof-gate", "/dev-rigor-stack-lite-proof-gate", "prove it works", claim refutation, anti-theater verification, cleanroom evidence, or a selected Critical VERIFY stage.
 ---
 
 # Dev Rigor Stack — Proof Gate
@@ -14,3 +14,6 @@ include runtime and rendered evidence; for public claims, hand unresolved claim/
 questions to Visitor Audit; for interaction claims, hand them to Walkthrough. Return
 survived, refuted, untested, and unverifiable claims plus the exact commands/artifacts that
 support each classification.
+
+The coordinator selects this gate for Critical work or material changed claims, not merely
+because a change spans files or is being released. An explicit user invocation still runs it.
