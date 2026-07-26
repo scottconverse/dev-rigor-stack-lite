@@ -17,25 +17,6 @@ $ErrorActionPreference = 'Stop'
 if ($NoGoals -and $Goals) { throw 'conflicting flags: -NoGoals and -Goals cannot be combined' }
 if ($NoAnchor -and $Anchor) { throw 'conflicting flags: -NoAnchor and -Anchor cannot be combined' }
 
-# Default-on: the full stack installs unless the owner opts out.
-if (-not $NoGoals -and -not $Goals) {
-  $parent = Split-Path -Parent $Target
-  if (-not $parent) { $parent = '.' }
-  $Goals = Join-Path $parent 'tools'
-}
-if (-not $NoAnchor -and -not $Anchor) {
-  # ~/.gemini is shared: Antigravity (config subtree, reads AGENTS.md next to its
-  # skills dir) vs Gemini CLI (reads GEMINI.md). (Antigravity report, 0.3.2.)
-  if ($Target -like '*.gemini*config*') {
-    $anchorParent = Split-Path -Parent $Target
-    if (-not $anchorParent) { $anchorParent = '.' }
-    $Anchor = Join-Path $anchorParent 'AGENTS.md'
-  }
-  elseif ($Target -like '*.gemini*') { $Anchor = 'GEMINI.md' }
-  elseif ($Target -like '*.claude*') { $Anchor = 'CLAUDE.md' }
-  else { $Anchor = 'AGENTS.md' }
-}
-
 # Resolve relative paths against PowerShell's ACTUAL working directory ($PWD).
 # [IO.Path]::GetFullPath alone resolves against the process CurrentDirectory,
 # which Set-Location/cd never updates — the documented install commands would
@@ -44,8 +25,37 @@ function Resolve-UserPath([string]$p) {
   return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p)
 }
 
+function Get-DefaultAnchorPath([string]$ResolvedTarget, [bool]$RootedInput) {
+  $targetParent = Split-Path -Parent $ResolvedTarget
+  $hostDirectory = (Split-Path -Leaf $targetParent).ToLowerInvariant()
+  $hostParent = Split-Path -Parent $targetParent
+
+  # A rooted target names a user-host location, so its instructions file belongs
+  # beside the skills directory. A relative hidden host directory names a project,
+  # so its instructions file belongs in that directory's containing project.
+  $anchorDirectory = $targetParent
+  if (-not $RootedInput -and $hostDirectory -in @('.claude', '.gemini', '.agents', '.codex')) {
+    $anchorDirectory = $hostParent
+  }
+  if ($hostDirectory -eq '.claude') { return Join-Path $anchorDirectory 'CLAUDE.md' }
+  if ($hostDirectory -eq '.gemini') { return Join-Path $anchorDirectory 'GEMINI.md' }
+  return Join-Path $anchorDirectory 'AGENTS.md'
+}
+
+$targetWasRooted = [IO.Path]::IsPathRooted($Target) -or $Target -match '^~(?:[\\/]|$)'
 $source = Join-Path $PSScriptRoot 'skills'
 $targetPath = Resolve-UserPath $Target
+
+# Default-on: the full stack installs unless the owner opts out. Derive both
+# companion locations from the resolved target; CWD only resolves a relative
+# Target and never independently selects a host instructions file.
+if (-not $NoGoals -and -not $Goals) {
+  $Goals = Join-Path (Split-Path -Parent $targetPath) 'tools'
+}
+if (-not $NoAnchor -and -not $Anchor) {
+  $Anchor = Get-DefaultAnchorPath $targetPath $targetWasRooted
+}
+
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
 
 # Migration (0.3.2, review-hardened): remove the stale lite-owned audit-lite left

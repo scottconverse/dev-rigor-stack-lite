@@ -26,13 +26,13 @@ Clone the repository and detach at the release tag:
 git clone https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 git fetch --tags --force
-git checkout --detach v0.4.2
+git checkout --detach v0.4.3
 git rev-parse HEAD
-git rev-list -n 1 v0.4.2
+git rev-list -n 1 v0.4.3
 ```
 
 The last two commit IDs must match. `git status --short` should print nothing,
-and `manifest.json` should report `0.4.2`. For a later release, replace the tag
+and `manifest.json` should report `0.4.3`. For a later release, replace the tag
 and expected manifest version together. If you use a release archive, compare
 its SHA-256 to the checksum published with that release. If no archive checksum
 is published, prefer the pinned Git checkout.
@@ -42,17 +42,19 @@ cryptographically signed.
 
 ### Choose the destination
 
-Run the installer from the project directory whose current-directory anchor you
-intend to manage. If the source checkout lives elsewhere, invoke the installer
-by its absolute path.
+For a project install, run the installer from that project and use a relative
+hidden-host target. For a user install, use the rooted target shown below. The
+anchor is derived from that target, not independently from the shell's current
+directory. If the source checkout lives elsewhere, invoke the installer by its
+absolute path.
 
 | Host and scope | Skills target | Default goals file | Default anchor |
 |---|---|---|---|
-| Codex user | `$HOME/.codex/skills` | `$HOME/.codex/tools/rigor_goals.py` | `AGENTS.md` in the current directory |
-| Claude project | `.claude/skills` | `.claude/tools/rigor_goals.py` | `CLAUDE.md` in the current directory |
-| Antigravity project | `.agents/skills` | `.agents/tools/rigor_goals.py` | `AGENTS.md` in the current directory |
+| Codex user | `$HOME/.codex/skills` | `$HOME/.codex/tools/rigor_goals.py` | `$HOME/.codex/AGENTS.md` |
+| Claude project | `.claude/skills` | `.claude/tools/rigor_goals.py` | `CLAUDE.md` in the containing project |
+| Antigravity project | `.agents/skills` | `.agents/tools/rigor_goals.py` | `AGENTS.md` in the containing project |
 | Antigravity user/config | `.gemini/config/skills` | `.gemini/config/tools/rigor_goals.py` | `.gemini/config/AGENTS.md`, adjacent to `skills` |
-| Gemini CLI | `.gemini/skills` | `.gemini/tools/rigor_goals.py` | `GEMINI.md` in the current directory |
+| Gemini CLI project | `.gemini/skills` | `.gemini/tools/rigor_goals.py` | `GEMINI.md` in the containing project |
 
 `-Goals`/`--goals` and `-Anchor`/`--anchor` override these defaults. Record any
 override because repair and removal need the same exact paths.
@@ -155,7 +157,7 @@ inventory. For a Git acquisition, bind the work to all of the following:
 
 ```sh
 git rev-parse HEAD
-git rev-list -n 1 v0.4.2
+git rev-list -n 1 v0.4.3
 git status --short
 python3 -c "import json; print(json.load(open('manifest.json', encoding='utf-8'))['version'])"
 ```
@@ -173,18 +175,21 @@ archive SHA-256 in release-sensitive evidence.
 ### Placement and installer behavior
 
 The skills target is always explicit. The goals directory defaults to the
-skills target's sibling `tools` directory. Anchor inference is based on the
-target:
+skills target's sibling `tools` directory. The installer resolves the target
+before selecting the default anchor:
 
-- a target containing `.gemini/config` uses `AGENTS.md` beside that target;
-- another target containing `.gemini` uses `GEMINI.md` in the current
-  directory;
-- a target containing `.claude` uses `CLAUDE.md` in the current directory; and
-- every other target uses `AGENTS.md` in the current directory.
+- a rooted target places the inferred host file beside its `skills` directory:
+  `CLAUDE.md` for `.claude`, `GEMINI.md` for `.gemini`, and `AGENTS.md`
+  otherwise;
+- a relative `.claude`, `.gemini`, `.agents`, or `.codex` target places that
+  host file in the hidden directory's containing project;
+- a `.gemini/config` target always uses `AGENTS.md` beside its `skills`
+  directory; and
+- another relative target uses `AGENTS.md` beside its `skills` directory.
 
 Explicit `-Anchor`/`--anchor` and `-Goals`/`--goals` values take precedence.
-Relative paths resolve from the installer's actual working directory. Quote
-paths containing spaces.
+The shell's working directory resolves relative inputs but never independently
+selects an anchor for a rooted target. Quote paths containing spaces.
 
 Without force, the first existing manifest-named skill makes installation fail.
 With force, each of those exact directories is removed and recopied. The goals

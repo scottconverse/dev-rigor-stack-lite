@@ -34,6 +34,17 @@ jobs:
           # second run must be idempotent: still exactly one managed block
           "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force
           test "$(grep -cF '<!-- dev-rigor-lite anchor v' CLAUDE.md)" -eq 1
+          # Absolute user-host targets derive their anchor from TARGET, never CWD.
+          mkdir -p "$RUNNER_TEMP/absolute-launcher" && cd "$RUNNER_TEMP/absolute-launcher"
+          "$GITHUB_WORKSPACE/install.sh" "$RUNNER_TEMP/absolute-host/.codex/skills"
+          test -f "$RUNNER_TEMP/absolute-host/.codex/AGENTS.md"
+          test ! -e "$RUNNER_TEMP/absolute-launcher/AGENTS.md"
+          "$GITHUB_WORKSPACE/install.sh" "$RUNNER_TEMP/absolute-host/.claude/skills"
+          test -f "$RUNNER_TEMP/absolute-host/.claude/CLAUDE.md"
+          test ! -e "$RUNNER_TEMP/absolute-launcher/CLAUDE.md"
+          "$GITHUB_WORKSPACE/install.sh" "$RUNNER_TEMP/absolute-host/.gemini/config/skills"
+          test -f "$RUNNER_TEMP/absolute-host/.gemini/config/AGENTS.md"
+          test ! -e "$RUNNER_TEMP/absolute-launcher/AGENTS.md"
           # owner opt-outs produce skills only
           mkdir -p "$RUNNER_TEMP/bare" && cd "$RUNNER_TEMP/bare"
           "$GITHUB_WORKSPACE/install.sh" ".agents/skills" --no-goals --no-anchor
@@ -101,6 +112,20 @@ jobs:
           & $installer -Target ".claude\skills" -Force
           $blocks = (Select-String -Path "$proj\CLAUDE.md" -SimpleMatch '<!-- dev-rigor-lite anchor v' -AllMatches | Measure-Object).Count
           if ($blocks -ne 1) { throw "expected exactly one managed block, found $blocks" }
+          # Absolute user-host targets derive their anchor from Target, never $PWD.
+          $launcher = Join-Path $env:RUNNER_TEMP 'absolute-launcher'
+          $hostRoot = Join-Path $env:RUNNER_TEMP 'absolute-host'
+          New-Item -ItemType Directory -Force -Path $launcher | Out-Null
+          Set-Location $launcher
+          & $installer -Target (Join-Path $hostRoot '.codex\skills')
+          if (-not (Test-Path (Join-Path $hostRoot '.codex\AGENTS.md'))) { throw 'Codex anchor did not follow absolute target' }
+          if (Test-Path (Join-Path $launcher 'AGENTS.md')) { throw 'Codex anchor leaked into shell CWD' }
+          & $installer -Target (Join-Path $hostRoot '.claude\skills')
+          if (-not (Test-Path (Join-Path $hostRoot '.claude\CLAUDE.md'))) { throw 'Claude anchor did not follow absolute target' }
+          if (Test-Path (Join-Path $launcher 'CLAUDE.md')) { throw 'Claude anchor leaked into shell CWD' }
+          & $installer -Target (Join-Path $hostRoot '.gemini\config\skills')
+          if (-not (Test-Path (Join-Path $hostRoot '.gemini\config\AGENTS.md'))) { throw 'Antigravity anchor did not follow absolute target' }
+          if (Test-Path (Join-Path $launcher 'AGENTS.md')) { throw 'Antigravity anchor leaked into shell CWD' }
           $bare = Join-Path $env:RUNNER_TEMP 'bare'
           New-Item -ItemType Directory -Force -Path $bare | Out-Null
           Set-Location $bare
