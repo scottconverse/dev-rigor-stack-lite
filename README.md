@@ -77,7 +77,7 @@ Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell
 ### 1. Acquire the pinned release source
 
 ```console
-git clone --branch v0.4.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+git clone --branch v0.4.2 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 ```
 

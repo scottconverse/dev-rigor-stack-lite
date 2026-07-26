@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.2 - 2026-07-26
 
 - **The BUILD contract now has one source of truth.** The redundant
   `coder-tdd-qa-lite/SKILL-LITE.md`, its sync markers, and the custom sync parser
