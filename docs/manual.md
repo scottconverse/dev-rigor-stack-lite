@@ -53,7 +53,7 @@ absolute path.
 | Codex user | `$HOME/.codex/skills` | `$HOME/.codex/tools/rigor_goals.py` | `$HOME/.codex/AGENTS.md` |
 | Claude project | `.claude/skills` | `.claude/tools/rigor_goals.py` | `CLAUDE.md` in the containing project |
 | Antigravity project | `.agents/skills` | `.agents/tools/rigor_goals.py` | `AGENTS.md` in the containing project |
-| Antigravity user/config | `.gemini/config/skills` | `.gemini/config/tools/rigor_goals.py` | `.gemini/config/AGENTS.md`, adjacent to `skills` |
+| Antigravity user/config | `$HOME/.gemini/config/skills` | `$HOME/.gemini/config/tools/rigor_goals.py` | `$HOME/.gemini/config/AGENTS.md`, adjacent to `skills` |
 | Gemini CLI project | `.gemini/skills` | `.gemini/tools/rigor_goals.py` | `GEMINI.md` in the containing project |
 
 `-Goals`/`--goals` and `-Anchor`/`--anchor` override these defaults. Record any
