@@ -9,7 +9,7 @@
 ## Verdict (read first)
 
 > **<CLEAR TO ADVANCE | PARTIAL CHECK | DO NOT ADVANCE>**
-> <If PARTIAL CHECK: "lanes run: X — this is NOT an advancement gate; run `gauntletgate-lite all` for a clear-to-advance decision.">
+> <If PARTIAL CHECK: "lanes run: X — this is NOT an advancement gate; run the missing applicable lane(s) for a clear-to-advance decision.">
 
 - **First-run:** reaches core feature ✅ / dead-ends a new user ❌ / NOT VERIFIED /
   N/A — (first-run coverage: VALID / INVALID / N/A with reason)

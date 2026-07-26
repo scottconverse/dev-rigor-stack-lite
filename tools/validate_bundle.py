@@ -144,19 +144,46 @@ else:
 # --- coder contract sync ---
 def sync_blocks(path):
     text = path.read_text(encoding="utf-8")
-    return dict(re.findall(
-        r"<!-- sync:([a-z0-9-]+)(?: [^>]*)? -->\n(.*?)\n<!-- /sync:\1 -->",
+    matches = re.findall(
+        r"<!-- sync:([a-z0-9-]+)([^>]*) -->\n(.*?)\n<!-- /sync:\1 -->",
         text,
         re.S,
-    ))
+    )
+    blocks = {}
+    modes = {}
+    for block_id, attributes, body in matches:
+        if block_id in blocks:
+            errors.append(f"coder-tdd-qa-lite: duplicate synced block in {path.name}: {block_id}")
+            continue
+        blocks[block_id] = body
+        mode = re.search(r"\blite:(required|excluded)\b", attributes)
+        modes[block_id] = mode.group(1) if mode else None
+    return blocks, modes
 
 coder_dir = SKILLS / "coder-tdd-qa-lite"
-full_blocks = sync_blocks(coder_dir / "SKILL.md")
-lite_blocks = sync_blocks(coder_dir / "SKILL-LITE.md")
+full_blocks, full_modes = sync_blocks(coder_dir / "SKILL.md")
+lite_blocks, lite_modes = sync_blocks(coder_dir / "SKILL-LITE.md")
 if not lite_blocks:
     errors.append("coder-tdd-qa-lite: SKILL-LITE.md has no synced blocks")
-for block_id, lite_body in lite_blocks.items():
-    if full_blocks.get(block_id) != lite_body:
+unclassified = sorted(block_id for block_id, mode in full_modes.items() if mode is None)
+if unclassified:
+    errors.append(f"coder-tdd-qa-lite: full synced blocks missing lite mode: {unclassified}")
+required_ids = {block_id for block_id, mode in full_modes.items() if mode == "required"}
+excluded_ids = {block_id for block_id, mode in full_modes.items() if mode == "excluded"}
+lite_ids = set(lite_blocks)
+missing_required = sorted(required_ids - lite_ids)
+if missing_required:
+    errors.append(f"coder-tdd-qa-lite: required synced blocks missing from lite: {missing_required}")
+excluded_in_lite = sorted(lite_ids & excluded_ids)
+if excluded_in_lite:
+    errors.append(f"coder-tdd-qa-lite: excluded synced blocks present in lite: {excluded_in_lite}")
+unknown_lite = sorted(lite_ids - set(full_blocks))
+if unknown_lite:
+    errors.append(f"coder-tdd-qa-lite: unknown synced blocks present in lite: {unknown_lite}")
+if any(mode is not None for mode in lite_modes.values()):
+    errors.append("coder-tdd-qa-lite: lite synced blocks must not declare lite modes")
+for block_id in sorted(required_ids & lite_ids):
+    if full_blocks[block_id] != lite_blocks[block_id]:
         errors.append(f"coder-tdd-qa-lite: synced block drift: {block_id}")
 
 # --- internal references resolve (0.3.2, Codex report) ---
