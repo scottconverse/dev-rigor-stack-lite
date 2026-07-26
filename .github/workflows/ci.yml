@@ -34,6 +34,13 @@ jobs:
           # second run must be idempotent: still exactly one managed block
           "$GITHUB_WORKSPACE/install.sh" ".claude/skills" --force
           test "$(grep -cF '<!-- dev-rigor-lite anchor v' CLAUDE.md)" -eq 1
+          # A symlinked project host keeps its lexical identity for anchor routing.
+          mkdir -p "$RUNNER_TEMP/symlink-project" "$RUNNER_TEMP/shared-claude-config"
+          ln -s "$RUNNER_TEMP/shared-claude-config" "$RUNNER_TEMP/symlink-project/.claude"
+          cd "$RUNNER_TEMP/symlink-project"
+          "$GITHUB_WORKSPACE/install.sh" ".claude/skills"
+          test -f "$RUNNER_TEMP/symlink-project/CLAUDE.md"
+          test ! -e "$RUNNER_TEMP/shared-claude-config/AGENTS.md"
           # Absolute user-host targets derive their anchor from TARGET, never CWD.
           mkdir -p "$RUNNER_TEMP/absolute-launcher" && cd "$RUNNER_TEMP/absolute-launcher"
           "$GITHUB_WORKSPACE/install.sh" "$RUNNER_TEMP/absolute-host/.codex/skills"

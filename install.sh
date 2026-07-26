@@ -40,18 +40,15 @@ if [ -n "$no_anchor" ] && [ -n "$anchor_file" ]; then
 fi
 
 case "$target" in
-  /*) target_was_rooted=1 ;;
-  *)  target_was_rooted="" ;;
+  /*) target_was_rooted=1; anchor_target=$target ;;
+  *)  target_was_rooted=""; anchor_target=$(pwd -L)/$target ;;
 esac
-mkdir -p "$target"
-target=$(CDPATH= cd -- "$target" && pwd -P)
 
-# Default-on: the full stack installs unless the owner opts out.
-if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
-  goals_dir=$(dirname -- "$target")/tools
-fi
+# Infer the anchor before canonicalizing the install target. A relative project
+# host may be a symlink, but its lexical .claude/.gemini name still determines
+# which project instructions file the agent reads.
 if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
-  target_parent=$(dirname -- "$target")
+  target_parent=$(dirname -- "$anchor_target")
   host_directory=$(basename -- "$target_parent" | tr '[:upper:]' '[:lower:]')
   host_parent=$(dirname -- "$target_parent")
 
@@ -69,6 +66,14 @@ if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
     .gemini) anchor_file=$anchor_directory/GEMINI.md ;;
     *)       anchor_file=$anchor_directory/AGENTS.md ;;
   esac
+fi
+
+mkdir -p "$target"
+target=$(CDPATH= cd -- "$target" && pwd -P)
+
+# Default-on: the full stack installs unless the owner opts out.
+if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
+  goals_dir=$(dirname -- "$target")/tools
 fi
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
