@@ -7,8 +7,7 @@ usage() {
   echo "  --force       replace skills that already exist in TARGET" >&2
   echo "  --goals DIR   override where the rigor-goals tool installs (default: <TARGET>/../tools)" >&2
   echo "  --anchor FILE override which instructions file gets the anchor block" >&2
-  echo "                (default: CLAUDE.md/GEMINI.md/AGENTS.md in the current directory," >&2
-  echo "                inferred from TARGET)" >&2
+  echo "                (default: host instructions file derived from TARGET)" >&2
   echo "  --no-goals    OWNER-ONLY opt-out: skip the rigor-goals tool" >&2
   echo "  --no-anchor   OWNER-ONLY opt-out: skip the anchor block" >&2
   echo "The anchor and rigor-goals install BY DEFAULT: they are part of the stack, not" >&2
@@ -40,28 +39,44 @@ if [ -n "$no_anchor" ] && [ -n "$anchor_file" ]; then
   echo "conflicting flags: --no-anchor and --anchor cannot be combined" >&2; exit 2
 fi
 
+case "$target" in
+  /*) target_was_rooted=1; anchor_target=$target ;;
+  *)  target_was_rooted=""; anchor_target=$(pwd -L)/$target ;;
+esac
+
+# Infer the anchor before canonicalizing the install target. A relative project
+# host may be a symlink, but its lexical .claude/.gemini name still determines
+# which project instructions file the agent reads.
+if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
+  target_parent=$(dirname -- "$anchor_target")
+  host_directory=$(basename -- "$target_parent" | tr '[:upper:]' '[:lower:]')
+  host_parent=$(dirname -- "$target_parent")
+
+  # A rooted target names a user-host location, so its instructions file belongs
+  # beside the skills directory. A relative hidden host directory names a project,
+  # so its instructions file belongs in that directory's containing project.
+  anchor_directory=$target_parent
+  if [ -z "$target_was_rooted" ]; then
+    case "$host_directory" in
+      .claude|.gemini|.agents|.codex) anchor_directory=$host_parent ;;
+    esac
+  fi
+  case "$host_directory" in
+    .claude) anchor_file=$anchor_directory/CLAUDE.md ;;
+    .gemini) anchor_file=$anchor_directory/GEMINI.md ;;
+    *)       anchor_file=$anchor_directory/AGENTS.md ;;
+  esac
+fi
+
+mkdir -p "$target"
+target=$(CDPATH= cd -- "$target" && pwd -P)
+
 # Default-on: the full stack installs unless the owner opts out.
 if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
   goals_dir=$(dirname -- "$target")/tools
 fi
-if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
-  # Case-insensitive inference: Windows filesystems are case-insensitive, and
-  # install.ps1's -like already matches that way. (Review finding, 0.3.0.)
-  # ~/.gemini is shared by two products: Antigravity (~/.gemini/config/*, reads
-  # AGENTS.md — verified from its own system prompt) and Gemini CLI (~/.gemini/*,
-  # reads GEMINI.md). Antigravity's anchor belongs NEXT TO its config skills dir,
-  # not in the CWD. (Antigravity compatibility report, 0.3.2.)
-  target_lc=$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')
-  case "$target_lc" in
-    *.gemini/config*|*.gemini\\config*) anchor_file=$(dirname -- "$target")/AGENTS.md ;;
-    *.gemini*) anchor_file=GEMINI.md ;;
-    *.claude*) anchor_file=CLAUDE.md ;;
-    *)         anchor_file=AGENTS.md ;;
-  esac
-fi
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-mkdir -p "$target"
 
 # Migration (0.3.2): 0.3.1 renamed lite's audit-lite to quick-audit-lite, but an
 # upgrade over an old lite install left the stale audit-lite behind, still

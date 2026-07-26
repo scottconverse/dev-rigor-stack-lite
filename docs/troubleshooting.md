@@ -64,14 +64,15 @@ one end marker.
 
 | Target | Product | Default anchor |
 |---|---|---|
-| `.agents/skills` | Antigravity project install | `AGENTS.md` in the installer's current directory |
+| `.agents/skills` | Antigravity project install | `AGENTS.md` in the containing project |
 | `.gemini/config/skills` | Antigravity user/config install | `.gemini/config/AGENTS.md`, adjacent to the skills directory |
-| `.gemini/skills` | Gemini CLI | `GEMINI.md` in the installer's current directory |
+| `.gemini/skills` | Gemini CLI project | `GEMINI.md` in the containing project |
 
-If inference selected the wrong location because a custom target does not
-contain the expected path segment, rerun with an explicit `-Anchor` or
-`--anchor`. Remove any obsolete managed span only with the marker-safe procedure
-in the [manual](manual.md); do not delete the surrounding host file.
+A rooted target keeps its inferred host file beside the target skills
+directory. If a custom layout needs another location, rerun with an explicit
+`-Anchor` or `--anchor`. Remove any obsolete managed span only with the
+marker-safe procedure in the [manual](manual.md); do not delete the surrounding
+host file.
 
 ## A stale `audit-lite` remains after upgrade
 

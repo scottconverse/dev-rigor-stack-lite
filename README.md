@@ -77,17 +77,17 @@ Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell
 ### 1. Acquire the pinned release source
 
 ```console
-git clone --branch v0.4.2 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+git clone --branch v0.4.3 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 ```
 
 ### 2. Install
 
-Choose one target below. Run project-local commands from the project you are configuring
-so its default anchor lands in that project. The relative commands shown here configure
-the pinned checkout itself. To configure a different project, change to that project and
-invoke the pinned installer by its absolute path; the [manual](docs/manual.md) shows both
-forms.
+Choose one target below. The default anchor follows that target: a rooted user-host
+target keeps the instructions file beside its skills directory, while a relative hidden
+host target puts it in the containing project. To configure a different project, change
+to that project and invoke the pinned installer by its absolute path; the
+[manual](docs/manual.md) shows both forms.
 
 PowerShell:
 
@@ -139,11 +139,11 @@ Defaults are inferred from the target:
 
 | Target pattern | Default goals location | Default anchor location |
 |---|---|---|
-| `$HOME/.codex/skills` | `$HOME/.codex/tools` | `AGENTS.md` in the current directory |
-| `.claude/skills` | `.claude/tools` | `CLAUDE.md` in the current directory |
-| `.agents/skills` (Antigravity project) | `.agents/tools` | `AGENTS.md` in the current directory |
+| `$HOME/.codex/skills` | `$HOME/.codex/tools` | `$HOME/.codex/AGENTS.md` |
+| `.claude/skills` | `.claude/tools` | `CLAUDE.md` in the containing project |
+| `.agents/skills` (Antigravity project) | `.agents/tools` | `AGENTS.md` in the containing project |
 | `$HOME/.gemini/config/skills` (Antigravity user) | `$HOME/.gemini/config/tools` | `$HOME/.gemini/config/AGENTS.md`, beside the skills directory |
-| `.gemini/skills` (Gemini CLI) | `.gemini/tools` | `GEMINI.md` in the current directory |
+| `.gemini/skills` (Gemini CLI) | `.gemini/tools` | `GEMINI.md` in the containing project |
 
 `--anchor FILE` / `-Anchor` and `--goals DIR` / `-Goals` override the default locations.
 The anchor install is idempotent: on upgrade the marker-fenced block is replaced in
