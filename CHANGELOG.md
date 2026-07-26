@@ -6,7 +6,7 @@
   directory.** Rooted Codex, Claude, Gemini, and Antigravity targets place their
   instructions file beside the target skills directory. Relative hidden-host
   targets still place it in the containing project, and explicit anchor
-  overrides remain authoritative. PowerShell and POSIX CI now exercise all three
+  overrides remain authoritative. PowerShell and POSIX CI now exercise all four
   user-host paths from an unrelated launch directory.
 
 ## 0.4.2 - 2026-07-26

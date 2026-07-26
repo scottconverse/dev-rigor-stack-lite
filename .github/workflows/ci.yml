@@ -45,6 +45,9 @@ jobs:
           "$GITHUB_WORKSPACE/install.sh" "$RUNNER_TEMP/absolute-host/.gemini/config/skills"
           test -f "$RUNNER_TEMP/absolute-host/.gemini/config/AGENTS.md"
           test ! -e "$RUNNER_TEMP/absolute-launcher/AGENTS.md"
+          "$GITHUB_WORKSPACE/install.sh" "$RUNNER_TEMP/absolute-host/.gemini/skills"
+          test -f "$RUNNER_TEMP/absolute-host/.gemini/GEMINI.md"
+          test ! -e "$RUNNER_TEMP/absolute-launcher/GEMINI.md"
           # owner opt-outs produce skills only
           mkdir -p "$RUNNER_TEMP/bare" && cd "$RUNNER_TEMP/bare"
           "$GITHUB_WORKSPACE/install.sh" ".agents/skills" --no-goals --no-anchor
@@ -126,6 +129,9 @@ jobs:
           & $installer -Target (Join-Path $hostRoot '.gemini\config\skills')
           if (-not (Test-Path (Join-Path $hostRoot '.gemini\config\AGENTS.md'))) { throw 'Antigravity anchor did not follow absolute target' }
           if (Test-Path (Join-Path $launcher 'AGENTS.md')) { throw 'Antigravity anchor leaked into shell CWD' }
+          & $installer -Target (Join-Path $hostRoot '.gemini\skills')
+          if (-not (Test-Path (Join-Path $hostRoot '.gemini\GEMINI.md'))) { throw 'Gemini CLI anchor did not follow absolute target' }
+          if (Test-Path (Join-Path $launcher 'GEMINI.md')) { throw 'Gemini CLI anchor leaked into shell CWD' }
           $bare = Join-Path $env:RUNNER_TEMP 'bare'
           New-Item -ItemType Directory -Force -Path $bare | Out-Null
           Set-Location $bare
