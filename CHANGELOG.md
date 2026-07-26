@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.4.2 - 2026-07-26
+
+- **The BUILD contract now has one source of truth.** The redundant
+  `coder-tdd-qa-lite/SKILL-LITE.md`, its sync markers, and the custom sync parser
+  are removed. `SKILL.md` already routes Micro, Standard, and Critical work, so
+  the shorter path now comes from lane selection rather than a duplicated file.
 
 ## 0.4.1 - 2026-07-25
 
