@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 - 2026-07-31
+
+- **The landing page now explains the two contracts at the center of v0.5.** Per-unit
+  risk still selects Micro, Standard, or Critical evidence, while the separately pinned
+  engagement mode decides whether the larger body of work may stop. The refreshed page
+  replaces pre-release continuation copy with shipped behavior, adds a state-grounded
+  engagement control visual, and tightens navigation, accessibility, and release proof.
+
 ## 0.5.0 - 2026-07-31
 
 - **Finishing one unit no longer ends an ongoing engagement.** The coordinator records

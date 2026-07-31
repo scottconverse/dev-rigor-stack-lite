@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dev-rigor-stack-lite — a delivery discipline your coding agent can't quietly drop</title>
-<meta name="description" content="A portable, evidence-first workflow for AI coding agents. 19 skills, a persistent anchor, and mode-aware goal state that keeps ongoing development active across unit merges and queue exhaustion.">
+<title>dev-rigor-stack-lite — rigor for the unit, continuity for the work</title>
+<meta name="description" content="A portable delivery workflow for AI coding agents: proportional proof for each unit, persistent engagement state for work that must continue, and no background runtime.">
 <meta property="og:title" content="dev-rigor-stack-lite">
-<meta property="og:description" content="A portable, evidence-first delivery workflow for AI coding agents. Skills alone are advice — this adds two layers that resist drift.">
+<meta property="og:description" content="Proportional proof for each unit. Persistent engagement state for work that must continue. No hooks or background runtime.">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='5' fill='%2317140F'/><path d='M8 16h5l2.5-5 3 10 2.5-5h5' stroke='%23E4571F' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <style>
@@ -50,6 +50,8 @@
   .nav-links{display:flex; gap:22px; margin-left:auto; align-items:center}
   .nav-links a{font-size:14.5px; color:var(--ink-2); text-decoration:none}
   .nav-links a:hover{color:var(--ink)}
+  .nav-links a.btn-1{color:var(--paper)}
+  .nav-links a.btn-1:hover{color:#FFF}
   .btn{display:inline-flex; align-items:center; justify-content:center; gap:8px;
     font-size:15px; font-weight:600; padding:11px 20px; border-radius:var(--r);
     text-decoration:none; border:1px solid transparent; cursor:pointer; transition:.15s}
@@ -60,7 +62,7 @@
   .btn-sm{padding:8px 15px; font-size:14px}
   .menu-btn{display:none; margin-left:auto; background:none; border:1px solid var(--rule-2);
     border-radius:var(--r); padding:7px 11px; font:inherit; font-size:14px; cursor:pointer; color:var(--ink)}
-  @media(max-width:860px){
+  @media(max-width:980px){
     .nav-links{position:fixed; inset:62px 0 auto 0; background:var(--raised); flex-direction:column;
       align-items:stretch; gap:0; padding:8px 24px 20px; border-bottom:1px solid var(--rule);
       margin-left:0; display:none}
@@ -71,14 +73,47 @@
   }
 
   /* ---- hero ---- */
-  .hero{padding:78px 0 64px; border-bottom:1px solid var(--rule)}
+  .hero{padding:76px 0 66px; border-bottom:1px solid var(--rule)}
+  .hero-grid{display:grid; grid-template-columns:minmax(0,1.02fr) minmax(360px,.82fr);
+    gap:56px; align-items:center}
   .eyebrow{font-family:var(--mono); font-size:12.5px; letter-spacing:.09em; text-transform:uppercase;
     color:var(--stamp); margin:0 0 18px; font-weight:600}
-  h1{font-size:clamp(2.3rem,5.4vw,3.85rem); max-width:19ch; letter-spacing:-.033em}
+  h1{font-size:clamp(2.45rem,5.6vw,4.2rem); max-width:13ch; letter-spacing:-.04em}
   .lede{font-size:clamp(1.05rem,2vw,1.24rem); color:var(--ink-2); max-width:60ch; margin:22px 0 0}
   .cta-row{display:flex; gap:12px; flex-wrap:wrap; margin-top:32px}
   .hero-note{margin-top:16px; font-size:14px; color:var(--ink-3)}
   .hero-note code{background:var(--sunk); padding:2px 6px; border-radius:4px}
+  @media(max-width:900px){
+    .hero-grid{grid-template-columns:1fr; gap:42px}
+    h1{max-width:16ch}
+  }
+
+  /* ---- engagement control board ---- */
+  .control-board{background:var(--ink); color:#EDE7DA; border-radius:10px; padding:20px;
+    border:1px solid #2F291D; box-shadow:0 18px 50px rgba(23,20,15,.14)}
+  .control-top{display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding-bottom:14px; border-bottom:1px solid #383126; font-family:var(--mono); font-size:11.5px;
+    letter-spacing:.08em; text-transform:uppercase; color:#AFA695}
+  .active{display:inline-flex; align-items:center; gap:7px; color:#B8D4A8; font-weight:700}
+  .active::before{content:""; width:7px; height:7px; border-radius:50%; background:#6CB27D}
+  .control-mode{padding:18px 0 15px}
+  .control-mode .label{font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; color:#8F8677; display:block; margin-bottom:5px}
+  .control-mode strong{font-family:var(--mono); font-size:16px; color:#FFF; font-weight:600}
+  .control-row{display:grid; grid-template-columns:74px minmax(0,1fr) auto; gap:12px;
+    align-items:center; padding:12px 0; border-top:1px solid #302A20; font-size:13.5px}
+  .control-row .id{font-family:var(--mono); color:#9D9485; font-size:12px}
+  .control-row .state{font-family:var(--mono); color:#F0A868; font-size:11px;
+    letter-spacing:.06em; text-transform:uppercase}
+  .control-row.done .state{color:#9DC5A7}
+  .control-row.next{background:#241F17; margin:0 -10px -2px; padding:12px 10px; border-radius:5px}
+  .control-foot{font-size:12.5px; color:#8F8677; margin:15px 0 0; line-height:1.5}
+  .control-foot code{color:#C9C1B2}
+  @media(max-width:480px){
+    .control-mode strong{font-size:14px}
+    .control-row{grid-template-columns:minmax(0,1fr) auto; gap:5px 10px}
+    .control-row .id{grid-column:1/-1}
+  }
 
   /* ---- gate diagram (the one bold element) ---- */
   .gatefig{margin-top:52px; background:var(--raised); border:1px solid var(--rule);
@@ -104,6 +139,18 @@
     font-family:var(--mono); font-size:13.5px; letter-spacing:.01em}
   .strip-in span{white-space:nowrap; color:#CFC7B6}
   .strip-in b{color:#FFF; font-weight:600}
+
+  /* ---- two-axis model ---- */
+  .axes{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; margin-top:38px}
+  .axis{background:var(--raised); border:1px solid var(--rule); border-radius:8px; padding:26px}
+  .axis .axis-id{font-family:var(--mono); color:var(--stamp); font-size:12px; letter-spacing:.08em;
+    text-transform:uppercase; font-weight:700}
+  .axis h3{font-size:1.25rem; margin-top:10px}
+  .axis p{font-size:15.5px; color:var(--ink-2); margin:10px 0 0}
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:18px}
+  .chip{font-family:var(--mono); font-size:11.5px; border:1px solid var(--rule-2);
+    background:var(--paper); border-radius:999px; padding:5px 9px; color:var(--ink-2)}
+  @media(max-width:760px){.axes{grid-template-columns:1fr}}
 
   /* ---- generic section ---- */
   section{padding:82px 0; border-bottom:1px solid var(--rule)}
@@ -208,17 +255,15 @@
   <div class="wrap nav-in">
     <a class="brand" href="#top">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#17140F"/><path d="M8 16h5l2.5-5 3 10 2.5-5h5" stroke="#E4571F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      dev-rigor-stack-lite <span class="v">v0.5.0</span>
+      dev-rigor-stack-lite <span class="v">v0.5.1</span>
     </a>
     <button class="menu-btn" aria-expanded="false" aria-controls="navlinks">Menu</button>
     <nav class="nav-links" id="navlinks" aria-label="Main">
-      <a href="#why">Why</a>
+      <a href="#model">The model</a>
       <a href="#tiers">How it holds</a>
-      <a href="#loop">The loop</a>
+      <a href="#loop">Risk lanes</a>
       <a href="#install">Install</a>
-      <a href="#evidence">Evidence</a>
-      <a href="#next">What's next</a>
-      <a href="#status">Status</a>
+      <a href="#continuity">Continuation</a>
       <a class="btn btn-1 btn-sm" href="https://github.com/scottconverse/dev-rigor-stack-lite">GitHub</a>
     </nav>
   </div>
@@ -226,42 +271,50 @@
 
 <main id="main">
 <div id="top" class="hero">
-  <div class="wrap">
-    <p class="eyebrow">Portable agent skills · MIT · v0.5.0</p>
-    <h1>A delivery discipline your coding agent can't quietly drop.</h1>
-    <p class="lede">
-      Nineteen skills that route work through Micro, Standard or Critical by named risk —
-      plus two layers that survive what skills alone don't: a reminder block your host re-reads every
-      turn, and mode-aware goal state that does not mistake a green unit or empty current queue
-      for the end of ongoing development.
-    </p>
-    <div class="cta-row">
-      <a class="btn btn-1" href="#install">Install it</a>
-      <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite">Read the source</a>
-    </div>
-    <p class="hero-note">Installs into Codex, Claude Code, Antigravity, and other Agent&nbsp;Skills hosts. Needs Git and Python&nbsp;3 — nothing else.</p>
-
-    <figure class="gatefig">
-      <div class="gate-row">
-        <div class="gate"><span class="n">gate 1</span><span class="g">PLAN</span><span class="d">Trace the code. Write the test list. Classify blast radius.</span></div>
-        <div class="gate"><span class="n">gate 2</span><span class="g">BUILD</span><span class="d">Watch each test fail before you make it pass.</span></div>
-        <div class="gate"><span class="n">gate 3</span><span class="g">VERIFY</span><span class="d">Try to break the claim. It survives only if you can't.</span></div>
-        <div class="gate"><span class="n">gate 4</span><span class="g">REVIEW</span><span class="d">A proportionate lane, from a fresh adversarial vantage.</span></div>
-        <div class="gate terminal"><span class="n">gate 5</span><span class="g">MERGE</span><span class="d">Unit checkpoint. Reconcile and select next unless the engagement terminal is satisfied.</span></div>
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Portable agent delivery · MIT · v0.5.1</p>
+      <h1>Rigor for the unit. Continuity for the work.</h1>
+      <p class="lede">
+        A portable delivery workflow for coding agents: proportional proof for each change,
+        persistent engagement state for work that must continue, and no hooks or background runtime.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-1" href="#install">Install v0.5.1</a>
+        <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite">Inspect the source</a>
       </div>
-      <p class="returns"><b>on red →</b> work returns to the gate that owns it. Never route around a gate; never merge or tag past one.</p>
-      <figcaption>For finite and continuous engagements: MERGE → RECONCILE → SELECT NEXT UNIT. Micro still ends its bounded unit after one relevant check and a receipt.</figcaption>
+      <p class="hero-note">For Codex, Claude Code, Antigravity, Gemini CLI, and compatible Agent&nbsp;Skills hosts. Requires Git and Python&nbsp;3.</p>
+    </div>
+    <figure style="margin:0">
+      <div class="control-board" aria-label="Example continuous engagement state">
+        <div class="control-top"><span>engagement control</span><span class="active">active</span></div>
+        <div class="control-mode">
+          <span class="label">pinned mode</span>
+          <strong>continuous_development</strong>
+        </div>
+        <div class="control-row done">
+          <span class="id">G007</span><span>Merge accepted unit</span><span class="state">complete</span>
+        </div>
+        <div class="control-row">
+          <span class="id">reconcile</span><span>Findings, workers, waits, scope</span><span class="state">required</span>
+        </div>
+        <div class="control-row next">
+          <span class="id">G008</span><span>Repair verified regression</span><span class="state">next</span>
+        </div>
+        <p class="control-foot"><code>MERGE(unit)</code> is a checkpoint. The recorded engagement—not the last green signal—decides whether work may stop.</p>
+      </div>
+      <figcaption style="font-size:12.5px;color:var(--ink-3);margin-top:11px">Interface rendering of the v0.5.0 state model—not a product screenshot.</figcaption>
     </figure>
   </div>
 </div>
 
 <div class="strip">
   <div class="wrap strip-in">
-    <span><b>19</b> skills</span>
-    <span><b>0</b> runtime dependencies</span>
-    <span><b>No</b> hooks or background runtime</span>
-    <span><b>4</b> host families</span>
-    <span><b>Windows · macOS · Linux</b> install proven in CI</span>
+    <span><b>19</b> workflow skills</span>
+    <span><b>39</b> rigor-goals tests</span>
+    <span><b>0</b> third-party runtime packages</span>
+    <span><b>No</b> hooks or daemon</span>
+    <span><b>Windows · macOS · Linux</b> CI</span>
     <span><b>MIT</b></span>
   </div>
 </div>
@@ -289,6 +342,38 @@
         The result is portable. The same workflow runs in Codex, Claude Code, and Antigravity, with no
         runtime to install and nothing host-specific to maintain.
       </p>
+    </div>
+  </div>
+</section>
+
+<section id="model">
+  <div class="wrap">
+    <p class="kicker">Two decisions, kept separate</p>
+    <h2>How much proof? And are we actually done?</h2>
+    <p class="sub">
+      Risk lane and engagement mode answer different questions. Conflating them is how a tiny
+      task becomes process-heavy—or a large program ends after its first green pull request.
+    </p>
+    <div class="axes">
+      <article class="axis">
+        <span class="axis-id">Per unit · risk lane</span>
+        <h3>Size the evidence to what can go wrong.</h3>
+        <p>Micro keeps local work light. Standard covers ordinary engineering. Named trust,
+          data, concurrency, installer, and irreversible risks select the full Critical path.</p>
+        <div class="chips" aria-label="Risk lanes">
+          <span class="chip">Micro</span><span class="chip">Standard</span><span class="chip">Critical</span>
+        </div>
+      </article>
+      <article class="axis">
+        <span class="axis-id">Across units · engagement mode</span>
+        <h3>Pin the terminal before completion-shaped signals arrive.</h3>
+        <p>A passing suite, finished worker, or merged PR closes at most one unit. Finite and
+          continuous work reconciles the remaining commitments before another stop is valid.</p>
+        <div class="chips" aria-label="Engagement modes">
+          <span class="chip">single_unit</span><span class="chip">finite_program</span>
+          <span class="chip">continuous_development</span><span class="chip">release_workflow</span>
+        </div>
+      </article>
     </div>
   </div>
 </section>
@@ -351,8 +436,8 @@
       <div class="receipt">
         <span class="lbl">Every code deliverable ends with a receipt</span>
         <div class="line">
-          <span class="tag">proved:</span> 14 tests pass; BUNDLE_VALID; 3 mutation probes rejected<br>
-          <span class="tag">lane:</span> Standard — affected validator checks, focused review
+          <span class="tag">proved:</span> 39 rigor-goals tests pass; BUNDLE_VALID<br>
+          <span class="tag">lane:</span> Standard — affected checks and focused review
         </div>
         <div class="stampmark">EVIDENCE</div>
       </div>
@@ -363,6 +448,19 @@
         <li>Passing a gate proves readiness — it never grants permission to merge or publish.</li>
       </ul>
     </div>
+  </div>
+  <div class="wrap">
+    <figure class="gatefig">
+      <div class="gate-row">
+        <div class="gate"><span class="n">gate 1</span><span class="g">PLAN</span><span class="d">Trace the code. Define acceptance. Name the risk.</span></div>
+        <div class="gate"><span class="n">gate 2</span><span class="g">BUILD</span><span class="d">Witness applicable RED, then make the smallest change GREEN.</span></div>
+        <div class="gate"><span class="n">gate 3</span><span class="g">VERIFY</span><span class="d">Try to refute the claim at the layer where it matters.</span></div>
+        <div class="gate"><span class="n">gate 4</span><span class="g">REVIEW</span><span class="d">Use a focused or independent lane selected by risk.</span></div>
+        <div class="gate terminal"><span class="n">gate 5</span><span class="g">MERGE</span><span class="d">A unit checkpoint—not automatically the engagement exit.</span></div>
+      </div>
+      <p class="returns"><b>on red →</b> return to the gate that owns the failure. Never route around a selected gate.</p>
+      <figcaption>For finite and continuous work: MERGE → RECONCILE → SELECT NEXT UNIT.</figcaption>
+    </figure>
   </div>
 </section>
 
@@ -419,7 +517,7 @@
           <p>Pin to a tag so the bundle you install is the bundle that was tested.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">git</span> clone --branch v0.5.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+<pre><span class="k">git</span> clone --branch v0.5.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 <span class="k">cd</span> dev-rigor-stack-lite</pre>
           </div>
         </div>
@@ -541,7 +639,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
 <pre>{
   <span class="p">"schema_version"</span>: <span class="s">"1.1"</span>,
   <span class="p">"stage"</span>: <span class="s">"build"</span>,
-  <span class="p">"commit"</span>: <span class="s">"dbc1651…"</span>,
+  <span class="p">"commit"</span>: <span class="s">"609f413…"</span>,
   <span class="p">"worktree_state"</span>: <span class="s">"clean"</span>,
   <span class="p">"dirty_diff_sha256"</span>: null,
   <span class="p">"dirty_diff_evidence"</span>: null,
@@ -559,37 +657,32 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
   </div>
 </section>
 
-<section id="next">
+<section id="continuity">
   <div class="wrap split">
     <div>
-      <p class="kicker">In review · v0.5.0</p>
+      <p class="kicker">Shipped in v0.5.0</p>
       <h2>A green merge is a checkpoint, not an exit.</h2>
       <p class="sub" style="margin-top:16px">
-        The per-unit loop above ends at MERGE — and in a continuing engagement, that ending is a
-        trap. Told to take over development and keep going, a model merges one green PR, writes a
-        polished receipt, and declares the whole job done. Every completion-shaped signal — green
-        CI, a passing suite, a finished worker — invites the same premature stop. It is the failure
-        this stack exists to prevent, one altitude above where it was looking.
+        The per-unit loop ends at MERGE. A continuing engagement does not. Version 0.5.0 records
+        the engagement mode separately, so green CI, a passing suite, a finished worker, and a
+        merged pull request complete at most one unit.
       </p>
       <p class="sub">
-        The next release closes that altitude gap. It pins an <strong>engagement mode</strong> —
-        single unit, finite program, continuous development, or release workflow — separately from
-        the per-unit rigor lane; makes <code>MERGE → RECONCILE → SELECT NEXT UNIT</code> the
-        mandatory transition for continuing work; defines the only valid stops; and upgrades
-        <code>rigor-goals</code> so that exhausting the known queue reports the engagement as
-        still active instead of printing "all stories complete." Mode is model-independent by
-        design: capability may change task allocation, never stopping semantics.
+        <code>rigor-goals</code> persists that mode, the terminal predicate, the queue, the selected
+        next unit, and attributable evidence receipts. In continuous and release modes, an empty
+        known queue stays visibly active. The coordinator must reconcile accepted scope, findings,
+        workers, pull requests, and waits before selecting the next authorized unit or naming a
+        valid stop.
       </p>
       <p class="sub" style="font-size:15px">
-        Implemented and in adversarial review as
-        <a href="https://github.com/scottconverse/dev-rigor-stack-lite/pull/20">PR&nbsp;#20</a>,
-        with CI green on Windows, macOS and Linux. Until it merges, v0.4.3 is what installs — this
-        section describes upcoming behavior, not the released bundle.
+        This behavior shipped through
+        <a href="https://github.com/scottconverse/dev-rigor-stack-lite/pull/20">PR&nbsp;#20</a>.
+        The tagged source and its 39-test goals suite passed CI on Windows, macOS, and Linux.
       </p>
     </div>
     <div>
       <div class="code">
-        <div class="code-bar"><span class="dot"></span> engagement continuation — upcoming</div>
+        <div class="code-bar"><span class="dot"></span> engagement continuation — v0.5.0</div>
 <pre><span class="cm"># for finite_program and continuous_development</span>
 MERGE(unit)
   <span class="p">→</span> RECONCILE      <span class="cm">queue, workers, waits, findings</span>
@@ -616,7 +709,7 @@ MERGE(unit)
     <p class="kicker">Status &amp; limits</p>
     <h2>Actively developed, and honest about its edges.</h2>
     <p class="sub">
-      Version v0.5.0 under MIT. The installer's fresh, refusal, forced and upgrade paths are
+      Version v0.5.1 under MIT. The installer's fresh, refusal, forced, and upgrade paths are
       exercised in CI on Windows, Ubuntu and macOS, and the documented Windows command is executed
       verbatim from a fresh Restricted-policy process on every push. These are the limits worth knowing
       before you adopt it.
@@ -647,7 +740,7 @@ MERGE(unit)
     <h2>Put a gate between your agent and "done".</h2>
     <p>Clone the pinned tag, run one installer command, and let named risk select the amount of process the work needs.</p>
     <div class="cta-row">
-      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.5.0">Get v0.5.0</a>
+      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.5.1">Get v0.5.1</a>
       <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Read the manual</a>
     </div>
   </div>
@@ -664,7 +757,7 @@ MERGE(unit)
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/SECURITY.md">Security</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/issues">Issues</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/LICENSE">MIT License</a>
-    <span class="sp">v0.5.0</span>
+    <span class="sp">v0.5.1</span>
   </div>
 </footer>
 
@@ -677,7 +770,7 @@ MERGE(unit)
       b.setAttribute('aria-expanded',String(!open));
     });
     n.addEventListener('click',function(e){
-      if(e.target.tagName==='A'&&window.innerWidth<=860){
+      if(e.target.tagName==='A'&&window.innerWidth<=980){
         n.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false');
       }
     });

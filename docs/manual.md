@@ -26,9 +26,9 @@ Clone the repository and detach at the release tag:
 git clone https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 git fetch --tags --force
-git checkout --detach v0.5.0
+git checkout --detach v0.5.1
 git rev-parse HEAD
-git rev-list -n 1 v0.5.0
+git rev-list -n 1 v0.5.1
 ```
 
 The last two commit IDs must match. `git status --short` should print nothing,
@@ -157,7 +157,7 @@ inventory. For a Git acquisition, bind the work to all of the following:
 
 ```sh
 git rev-parse HEAD
-git rev-list -n 1 v0.5.0
+git rev-list -n 1 v0.5.1
 git status --short
 python3 -c "import json; print(json.load(open('manifest.json', encoding='utf-8'))['version'])"
 ```
