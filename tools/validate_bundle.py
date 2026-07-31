@@ -172,12 +172,45 @@ else:
     for marker in ("Micro:", "Standard:", "Critical triggers:", "cross-session"):
         if marker not in anchor_text:
             errors.append(f"anchor: proportional policy marker missing: {marker}")
+    if "green merge is a checkpoint, not an exit" not in anchor_text:
+        errors.append("anchor: continuing-engagement merge checkpoint rule missing")
     content_lines = [
         line for line in anchor_text.splitlines()
         if line.strip() and not line.lstrip().startswith("<!--")
     ]
     if len(content_lines) > 15:
         errors.append(f"anchor: {len(content_lines)} content lines — the cap is 15, keep it an anchor not an essay")
+
+# --- continuing-engagement contract (v0.5.0) ---
+COORDINATOR = SKILLS / "dev-rigor-stack-lite" / "SKILL.md"
+CONTINUITY = SKILLS / "dev-rigor-stack-lite-continuity" / "SKILL.md"
+MERGE_GATE = SKILLS / "dev-rigor-stack-lite-merge-gate" / "SKILL.md"
+coordinator_text = COORDINATOR.read_text(encoding="utf-8")
+for marker in (
+    "## Engagement continuation",
+    "`single_unit`",
+    "`finite_program`",
+    "`continuous_development`",
+    "`release_workflow`",
+    "MERGE(unit) → RECONCILE → SELECT NEXT UNIT",
+    "## Valid engagement stops",
+    "mode downgrade is an owner decision",
+):
+    if marker not in coordinator_text:
+        errors.append(f"coordinator: continuing-engagement marker missing: {marker}")
+if "continuity is an engagement checkpoint" not in CONTINUITY.read_text(encoding="utf-8").lower():
+    errors.append("continuity: engagement-checkpoint rule missing")
+if "unit-level verdict" not in MERGE_GATE.read_text(encoding="utf-8"):
+    errors.append("merge gate: unit-level verdict boundary missing")
+for preamble in ("[worker]", "[mechanical worker]"):
+    block_start = coordinator_text.find(preamble)
+    if block_start < 0:
+        errors.append(f"coordinator: worker preamble missing: {preamble}")
+        continue
+    block_end = coordinator_text.find("\n\n", block_start)
+    block = coordinator_text[block_start:block_end if block_end >= 0 else None]
+    if "Your DONE is local" not in block:
+        errors.append(f"coordinator: {preamble} must keep DONE local to the worker assignment")
 
 # --- rigor-goals tool (Tier 3) — the exit gate must actually refuse ---
 GOALS_TOOL = ROOT / "tools" / "rigor_goals.py"

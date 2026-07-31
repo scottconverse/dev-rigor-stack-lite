@@ -1,4 +1,4 @@
-<!-- dev-rigor-lite anchor v3 — managed block, do not hand-edit (edits go outside the markers; the installer replaces this block on upgrade) -->
+<!-- dev-rigor-lite anchor v4 — managed block, do not hand-edit (edits go outside the markers; the installer replaces this block on upgrade) -->
 ## Delivery discipline (always)
 - Prove work at the layer of the claim: "wrote it" ≠ "ran it" ≠ "checked it's correct".
 - Route first: Micro for localized mechanical work; Standard for ordinary bugs/features; Critical only for a named risk trigger. The lane is also a ceiling on ceremony.
@@ -8,6 +8,8 @@
 - A logic test never seen failing is not proven sensitive. Never claim beyond the check run.
 - If the same final-style check fails twice for one cause, diagnose or report it; do not blind-retry.
 - Use `rigor-goals` only for cross-session work, handoffs, parallel agents, or an external wait.
+- Engagement mode is model-independent and separate from the per-unit lane. Continuing language with no bounded end defaults continuous; only the owner may downgrade or stop it.
+- For finite or continuous work, a green merge is a checkpoint, not an exit: reconcile, then select the next unit.
 - At a selected build/verify/review/release step, invoke the matching dev-rigor-stack-lite skill.
 - A release binds evidence to the exact candidate, runs only applicable gates, and passes only with no unresolved release blocker. Optional polish moves to the watchlist after candidate freeze.
 - End code deliverables with a receipt: `proved: <check + result> · lane: <Micro|Standard|Critical>`.

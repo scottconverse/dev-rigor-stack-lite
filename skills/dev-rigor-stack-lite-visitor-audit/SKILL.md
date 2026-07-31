@@ -10,7 +10,7 @@ description: >
   "$dev-rigor-stack-lite-visitor-audit" and "/dev-rigor-stack-lite-visitor-audit". CI is not a substitute.
 ---
 
-# Dev Rigor Stack Visitor Audit — PUBLIC SURFACE gate (Lite v0.4.3)
+# Dev Rigor Stack Visitor Audit — PUBLIC SURFACE gate (Lite v0.5.0)
 
 Verify the artifact as a first-time visitor experiences it, never through source diffs
 or CI proxies. This lane is distinct from product walkthrough: walkthrough asks whether

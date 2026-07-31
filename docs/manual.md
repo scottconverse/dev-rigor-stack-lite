@@ -26,13 +26,13 @@ Clone the repository and detach at the release tag:
 git clone https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 git fetch --tags --force
-git checkout --detach v0.4.3
+git checkout --detach v0.5.0
 git rev-parse HEAD
-git rev-list -n 1 v0.4.3
+git rev-list -n 1 v0.5.0
 ```
 
 The last two commit IDs must match. `git status --short` should print nothing,
-and `manifest.json` should report `0.4.3`. For a later release, replace the tag
+and `manifest.json` should report `0.5.0`. For a later release, replace the tag
 and expected manifest version together. If you use a release archive, compare
 its SHA-256 to the checksum published with that release. If no archive checksum
 is published, prefer the pinned Git checkout.
@@ -157,7 +157,7 @@ inventory. For a Git acquisition, bind the work to all of the following:
 
 ```sh
 git rev-parse HEAD
-git rev-list -n 1 v0.4.3
+git rev-list -n 1 v0.5.0
 git status --short
 python3 -c "import json; print(json.load(open('manifest.json', encoding='utf-8'))['version'])"
 ```
@@ -266,6 +266,87 @@ python3 .claude/tools/rigor_goals.py status
 
 `status` reports that no plan exists until the tool has been used; that is
 expected on a fresh project.
+
+### Durable engagement lifecycle
+
+Create a plan only when work crosses sessions or machines, uses handoffs or parallel
+agents, or waits on an external event. Pin the engagement mode separately from the
+Micro/Standard/Critical lane used for each unit:
+
+```sh
+# Bounded program; the backward-compatible default.
+python3 .claude/tools/rigor_goals.py create --brief "ship two units" \
+  --mode finite_program \
+  --goal "api::implement and test" --goal "docs::document behavior"
+```
+
+Or, in a different working tree (one active plan is allowed per tree), start ongoing
+ownership:
+
+```sh
+python3 .claude/tools/rigor_goals.py create --brief "take over development" \
+  --mode continuous_development \
+  --terminal "owner pauses, cancels, or explicitly changes the engagement mode" \
+  --goal "triage::select the first accepted backlog unit"
+python3 .claude/tools/rigor_goals.py next
+python3 .claude/tools/rigor_goals.py checkpoint --id G001 --status complete \
+  --evidence "first unit green" --verify-cmd "pytest" --verify-evidence "35 passed"
+```
+
+The four modes are `single_unit`, `finite_program`, `continuous_development`, and
+`release_workflow`. Release mode also requires `--release-intent candidate` or
+`--release-intent publish`. Continuing language without a bounded end resolves to
+continuous development. The persisted mode governs later turns; downgrade is an owner
+decision, not a coordinator inference.
+
+After each green unit, checkpoint, reconcile the accepted scope and evidence, and select
+the next authorized unit. Queue changes are explicit and ledger-stamped:
+
+```sh
+python3 .claude/tools/rigor_goals.py add \
+  --goal "repair::address verified regression" \
+  --authorization-source "accepted corrective finding F-12"
+python3 .claude/tools/rigor_goals.py set-next --id G002 \
+  --reason "dependency of the next accepted backlog item"
+python3 .claude/tools/rigor_goals.py next
+python3 .claude/tools/rigor_goals.py checkpoint --id G002 --status complete \
+  --evidence "repair green" --verify-cmd "pytest" --verify-evidence "35 passed"
+```
+
+`waiting_external` and `blocked_owner` remain unresolved; independent in-scope work may
+continue. Use `reopen --id G001 --reason "dependency recovered"` to return a failed,
+blocked, `waiting_external`, or `blocked_owner` goal to the pending queue. `cancelled`
+and `out_of_scope` require both evidence and an authorization-source receipt; reopening
+them requires another authorization-source receipt.
+`close` refuses any unresolved goal. Continuous and release closure also requires an
+authorization source plus non-empty terminal evidence, verification-command, and result
+fields. Those fields are receipts: the tool neither runs the command nor establishes
+that the terminal predicate is true.
+
+```sh
+python3 .claude/tools/rigor_goals.py close \
+  --evidence "recorded terminal predicate is satisfied" \
+  --verify-cmd "command already run" --verify-evidence "observed result" \
+  --authorization-source "owner instruction 2026-07-31"
+```
+
+The CLI stores the authorization source as unattributed text; it does not authenticate
+the person named by that receipt. `set-mode` is the loud, ledger-stamped path for an
+owner-authorized mode change. A custom terminal on a single or finite plan requires
+explicit `close`; only the default all-goals-complete terminal auto-closes.
+
+Existing schema 1 plans migrate once to schema 2 as `finite_program`, preserving goal
+IDs, statuses, and evidence and appending a `plan_migrated` event. Unsupported schemas or
+modes stop with an error instead of being reinterpreted. Migration cannot infer whether
+an old brief was ongoing, so review the conservative `finite_program` result and use
+authorization-receipted `set-mode` if the owner intended continuous work. Plan schema 2
+is unrelated to run-manifest schema 1.1: the former stores engagement state; the latter
+identifies stage evidence.
+
+Executable tests cover these CLI transitions and the anchor/skill bundle contract.
+Worker-local `DONE`, coordinator reconciliation after merge, and receipt-shape discipline
+are advisory scenario contracts because Lite has no host-level behavior harness; do not
+cite them as CI-enforced model adherence.
 
 ### Upgrade and repair evidence
 

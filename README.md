@@ -11,8 +11,8 @@ contains the complete 19-skill workflow from `codex-dev-rigor-stack`, adapted to
 without lifecycle hooks, a background runtime, trust activation, Stop interception, or a
 private evidence ledger — plus two drift-resistance layers that **install by default
 with everything else**: a small **anchor block** for the host's persistent instructions
-file, and **rigor-goals**, a stdlib-only CLI whose exit gate refuses to close a
-continuity-sensitive multi-story job without verification evidence.
+file, and **rigor-goals**, a stdlib-only CLI that pins the engagement mode and
+refuses to mistake a finished unit or an exhausted queue for a finished ongoing job.
 
 These are part of the stack, not extras. Skills alone are advice — a model can drift
 off them in a long session and nothing pushes back; the anchor and the goals gate are
@@ -31,7 +31,7 @@ the discipline's memory into places that do not decay:
 |---|---|---|---|
 | 1 | The 19 skills | none — invoked knowledge | — |
 | 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | reminder every turn | the host re-reads its instructions file each turn |
-| 3 | `rigor-goals` CLI | one hard gate at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
+| 3 | `rigor-goals` CLI | hard state transitions at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
 
 The anchor routes work by risk and invokes `rigor-goals` only when work crosses sessions,
 needs a handoff, uses parallel agents, or waits on an external event.
@@ -77,7 +77,7 @@ Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell
 ### 1. Acquire the pinned release source
 
 ```console
-git clone --branch v0.4.3 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+git clone --branch v0.5.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 ```
 
@@ -163,7 +163,7 @@ marker-fenced anchor span; follow the preview-and-preserve procedure in the
 ### rigor-goals in 30 seconds
 
 ```sh
-python3 tools/rigor_goals.py create --brief "ship feature X" \
+python3 tools/rigor_goals.py create --brief "ship feature X" --mode finite_program \
   --goal "api::add the endpoint" --goal "docs::update the manual"
 python3 tools/rigor_goals.py next
 python3 tools/rigor_goals.py checkpoint --id G001 --status complete --evidence "test_api.py: 4 passed"
@@ -173,16 +173,76 @@ python3 tools/rigor_goals.py checkpoint --id G002 --status complete --evidence "
 python3 tools/rigor_goals.py status
 ```
 
-The final story refuses to complete without `--verify-cmd` and `--verify-evidence` —
-that refusal is the point. State lives in `./.rigor/` (add it to `.gitignore` or commit
-it; your choice). A fresh session resumes with `status`.
+Choose and record one engagement mode when the plan is created:
+
+- `single_unit` — one bounded unit.
+- `finite_program` — a declared finite queue; this is the backward-compatible default.
+- `continuous_development` — ongoing ownership. It requires an explicit `--terminal`
+  predicate, and finishing the currently known queue remains `ACTIVE - NOT COMPLETE`.
+- `release_workflow` — a candidate or publication engagement. It requires both an
+  explicit `--terminal` and `--release-intent candidate|publish`.
+
+The recorded mode governs later turns and machines. Continuing language such as “take
+over,” “keep going,” or “work through the backlog” resolves toward
+`continuous_development`; only the owner may downgrade it. `add` requires an explicit
+authorization source, `set-next` records a deliberate ordering change, and `close`
+refuses unresolved work. Use `waiting_external` or `blocked_owner` for nonterminal waits;
+use `cancelled` or `out_of_scope` only when those outcomes are actually authorized.
+
+For a separate active continuous plan, a complete queue-extension and closure sequence is:
+
+```sh
+python3 tools/rigor_goals.py create --brief "take over development" \
+  --mode continuous_development --terminal "owner pauses, cancels, or changes mode" \
+  --goal "baseline::complete the first accepted unit"
+python3 tools/rigor_goals.py next
+python3 tools/rigor_goals.py checkpoint --id G001 --status complete \
+  --evidence "first unit green" --verify-cmd "pytest" --verify-evidence "35 passed"
+python3 tools/rigor_goals.py add --goal "repair::fix verified regression" \
+  --authorization-source "accepted finding F-12"
+python3 tools/rigor_goals.py set-next --id G002 --reason "next accepted unit"
+python3 tools/rigor_goals.py next
+python3 tools/rigor_goals.py checkpoint --id G002 --status complete \
+  --evidence "repair green" --verify-cmd "pytest" --verify-evidence "35 passed"
+python3 tools/rigor_goals.py set-mode --mode continuous_development \
+  --terminal "owner pauses, cancels, or changes mode" \
+  --authorization-source "owner instruction 2026-07-31"
+python3 tools/rigor_goals.py close --evidence "terminal receipt" \
+  --verify-cmd "command already run" --verify-evidence "observed result" \
+  --authorization-source "owner instruction 2026-07-31"
+```
+
+`--authorization-source` is an attributable text receipt, not authentication of the
+person it names. It is required for continuous/release closure, mode changes,
+`cancelled`/`out_of_scope` resolutions, and their reopening. A custom terminal on a
+single or finite plan also requires explicit `close`; only the default “all declared
+goals complete” terminal auto-closes after its final verified checkpoint.
+
+The final active story refuses to complete without `--verify-cmd` and
+`--verify-evidence`. In continuous and release modes that is a unit checkpoint, not an
+engagement exit: reconcile the accepted scope, add or select the next authorized unit,
+and continue. State lives in `./.rigor/` (add it to `.gitignore` or commit it; your
+choice). A fresh session resumes with `status`. Version 1 plans migrate once to schema 2
+as `finite_program`, preserving their goals and recording `plan_migrated` in the ledger;
+unknown schemas or modes are refused rather than guessed. Migration cannot infer the
+intent of an old brief, so the owner should review the recorded finite mode and use the
+loud, authorization-receipted `set-mode` command if it was actually ongoing work.
 
 Be precise about what the gate is: `rigor-goals` **records** the verification command
 and its result — it does not run the command or check the result is true. It is a
 workflow-completeness gate (no story closes without named evidence), not independent
-proof enforcement. The honesty of the evidence is the agent's obligation and the
-reviewer's to check. One active plan per working tree: concurrent tasks sharing a
+proof enforcement. `close` checks that required receipt fields exist; it cannot establish
+that the terminal predicate is true. The honesty of the evidence is the agent's obligation
+and the reviewer's to check. One active plan per working tree: concurrent tasks sharing a
 checkout will fight over `./.rigor/` — use separate worktrees.
+
+Each CLI process takes `.rigor/mutation.lock`, so overlapping commands refuse instead of
+silently losing an update. If a process crashes, confirm no `rigor-goals` process is
+active before removing a stale lock. `goals.json` replacement is atomic, but the state
+file and append-only ledger are two files, not one transaction: a process or storage
+failure between them can leave the latest state ahead of its ledger event. Preserve both
+files and reconcile that discrepancy; do not describe the ledger as tamper-proof or
+crash-atomic.
 
 **Known limitation — the state is a file, not a fortress.** Any process that can delete
 files in the workspace can destroy the plan, and nothing in-repo can detect a deletion

@@ -107,6 +107,45 @@ Use a separate Git worktree for each concurrent task. Before replacing a plan,
 run `status`; `create --force` is intentionally loud but does not merge two
 plans. Preserve important state in a protected project system of record.
 
+Overlapping CLI processes now refuse while `.rigor/mutation.lock` exists. If the named
+process crashed, verify that no `rigor-goals` process is active before removing the stale
+lock and retrying. Do not blindly delete a live lock. `goals.json` replacement is atomic,
+but state and ledger updates are not a single filesystem transaction; preserve and
+compare both files if an OS or storage failure interrupts a mutation.
+
+## A goals command refuses a lifecycle transition
+
+The v0.5.0 CLI makes state changes explicit:
+
+- `add` requires `--authorization-source`; it records that text but does not authenticate
+  the person named by it.
+- `set-next` accepts only a pending goal. Use `reopen --id G001 --reason "..."` to
+  return a failed, blocked, `waiting_external`, or `blocked_owner` goal to pending first.
+- `cancelled` and `out_of_scope` checkpoints require non-empty evidence and an
+  authorization-source receipt. Reopening either requires another receipt.
+- `close` refuses unresolved work. Continuous and release plans additionally require an
+  authorization-source receipt. A custom terminal on a single or finite plan requires
+  explicit close instead of automatic closure.
+- `set-mode` is the loud path for an owner-authorized mode change and requires an
+  authorization-source receipt. Continuing and release modes also require a terminal;
+  release mode requires candidate or publish intent.
+
+Run `status` to see the pinned mode, terminal predicate, release intent, and every goal
+state. Receipts are structural records: the CLI does not execute verification commands,
+authenticate authority, or judge whether a predicate is true.
+
+## A legacy goals plan changed to `finite_program`
+
+The first v0.5.0 read migrates plan schema 1 once to schema 2, preserves goal IDs,
+statuses, and evidence, and appends a `plan_migrated` ledger event. Old plans did not
+record engagement mode, so migration uses the conservative compatibility default
+`finite_program`; it does not infer intent from the brief. Review the plan and use
+authorization-receipted `set-mode` if the owner intended continuing work.
+
+Unsupported schemas, modes, malformed IDs, duplicate goals, invalid statuses, or
+multiple active goals are refused without mutation. Preserve the files and diagnose the
+producer rather than editing state until it happens to parse.
+
 ## Python or `rigor_goals.py` is not found
 
 By default the tool is installed in `<TARGET>/../tools/rigor_goals.py`.
