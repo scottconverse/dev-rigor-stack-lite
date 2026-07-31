@@ -12,7 +12,7 @@ description: >
 license: MIT
 ---
 
-# Standing dev rigor stack Lite v0.5.0
+# Standing dev rigor stack Lite v0.5.1
 
 Route every unit before choosing its process. Micro work takes the short path below.
 Standard work uses the proportionate per-unit loop. Critical work uses the complete
