@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dev-rigor-stack-lite — a delivery discipline your coding agent can't quietly drop</title>
-<meta name="description" content="A portable, evidence-first development and release workflow for AI coding agents. 19 skills, an anchor block, and a goal gate that refuses to close a job without verification evidence. MIT, no dependencies, no hooks.">
+<meta name="description" content="A portable, evidence-first workflow for AI coding agents. 19 skills, a persistent anchor, and mode-aware goal state that keeps ongoing development active across unit merges and queue exhaustion.">
 <meta property="og:title" content="dev-rigor-stack-lite">
 <meta property="og:description" content="A portable, evidence-first delivery workflow for AI coding agents. Skills alone are advice — this adds two layers that resist drift.">
 <meta property="og:type" content="website">
@@ -208,7 +208,7 @@
   <div class="wrap nav-in">
     <a class="brand" href="#top">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#17140F"/><path d="M8 16h5l2.5-5 3 10 2.5-5h5" stroke="#E4571F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      dev-rigor-stack-lite <span class="v">v0.4.3</span>
+      dev-rigor-stack-lite <span class="v">v0.5.0</span>
     </a>
     <button class="menu-btn" aria-expanded="false" aria-controls="navlinks">Menu</button>
     <nav class="nav-links" id="navlinks" aria-label="Main">
@@ -227,12 +227,13 @@
 <main id="main">
 <div id="top" class="hero">
   <div class="wrap">
-    <p class="eyebrow">Portable agent skills · MIT · v0.4.3</p>
+    <p class="eyebrow">Portable agent skills · MIT · v0.5.0</p>
     <h1>A delivery discipline your coding agent can't quietly drop.</h1>
     <p class="lede">
       Nineteen skills that route work through Micro, Standard or Critical by named risk —
       plus two layers that survive what skills alone don't: a reminder block your host re-reads every
-      turn, and a goal gate that refuses to close a job with no verification evidence named.
+      turn, and mode-aware goal state that does not mistake a green unit or empty current queue
+      for the end of ongoing development.
     </p>
     <div class="cta-row">
       <a class="btn btn-1" href="#install">Install it</a>
@@ -246,10 +247,10 @@
         <div class="gate"><span class="n">gate 2</span><span class="g">BUILD</span><span class="d">Watch each test fail before you make it pass.</span></div>
         <div class="gate"><span class="n">gate 3</span><span class="g">VERIFY</span><span class="d">Try to break the claim. It survives only if you can't.</span></div>
         <div class="gate"><span class="n">gate 4</span><span class="g">REVIEW</span><span class="d">A proportionate lane, from a fresh adversarial vantage.</span></div>
-        <div class="gate terminal"><span class="n">gate 5</span><span class="g">MERGE</span><span class="d">Readiness proven. Permission still comes from you.</span></div>
+        <div class="gate terminal"><span class="n">gate 5</span><span class="g">MERGE</span><span class="d">Unit checkpoint. Reconcile and select next unless the engagement terminal is satisfied.</span></div>
       </div>
       <p class="returns"><b>on red →</b> work returns to the gate that owns it. Never route around a gate; never merge or tag past one.</p>
-      <figcaption>Standard and Critical use the loop; Micro stops after one relevant check and a receipt.</figcaption>
+      <figcaption>For finite and continuous engagements: MERGE → RECONCILE → SELECT NEXT UNIT. Micro still ends its bounded unit after one relevant check and a receipt.</figcaption>
     </figure>
   </div>
 </div>
@@ -319,14 +320,14 @@
         <div><div class="tier-n">3</div></div>
         <div>
           <h3>The rigor-goals gate</h3>
-          <p>A dependency-free Python CLI for cross-session work, handoffs, parallel agents and external waits. It holds plans in <code>./.rigor/</code>; the final story will not close without a named verification command and result.</p>
-          <span class="force">Force: one hard gate at "done"</span>
+          <p>A dependency-free Python CLI for cross-session work, handoffs, parallel agents and external waits. It pins whether the engagement is one unit, a finite program, continuous development, or a release workflow. Continuous work stays active when its current queue empties.</p>
+          <span class="force">Force: durable mode-aware state transitions</span>
         </div>
       </div>
     </div>
 
     <div class="note">
-      <p><strong>Be precise about what the gate is.</strong> <code>rigor-goals</code> records that verification evidence was named — it does not run your command or judge whether the result is true. It's a workflow-completeness gate, not independent proof enforcement. The honesty of the evidence remains the agent's obligation and the reviewer's job to check.</p>
+      <p><strong>Be precise about what the gate is.</strong> <code>rigor-goals</code> records that verification evidence was named — it does not run your command or judge whether the result is true. Its closure check is structural, not independent proof. Worker-local <code>DONE</code> and coordinator reconciliation remain model-behavior contracts, not CI-enforced host behavior.</p>
     </div>
   </div>
 </section>
@@ -418,7 +419,7 @@
           <p>Pin to a tag so the bundle you install is the bundle that was tested.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">git</span> clone --branch v0.4.3 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+<pre><span class="k">git</span> clone --branch v0.5.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 <span class="k">cd</span> dev-rigor-stack-lite</pre>
           </div>
         </div>
@@ -462,13 +463,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
           <p>Use this only across sessions, handoffs, parallel agents or external waits.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">python3</span> tools/rigor_goals.py create --brief <span class="s">"ship feature X"</span> \
-  --goal <span class="s">"api::add the endpoint"</span> --goal <span class="s">"docs::update the manual"</span>
+<pre><span class="k">python3</span> tools/rigor_goals.py create --brief <span class="s">"take over development"</span> \
+  --mode continuous_development \
+  --terminal <span class="s">"owner pauses, cancels, or changes mode"</span> \
+  --goal <span class="s">"api::add the endpoint"</span>
 <span class="k">python3</span> tools/rigor_goals.py next
 <span class="k">python3</span> tools/rigor_goals.py checkpoint --id G001 --status complete \
-  --evidence <span class="s">"test_api.py: 4 passed"</span>
-<span class="cm"># the final story additionally requires:</span>
-<span class="cm">#   --verify-cmd "..." --verify-evidence "..."</span></pre>
+  --evidence <span class="s">"test_api.py: 4 passed"</span> --verify-cmd <span class="s">"pytest"</span> \
+  --verify-evidence <span class="s">"4 passed"</span>
+<span class="cm"># then reconcile and add/select the next authorized unit:</span>
+<span class="k">python3</span> tools/rigor_goals.py add --goal <span class="s">"repair::fix regression"</span> \
+  --authorization-source <span class="s">"accepted finding F-12"</span>
+<span class="k">python3</span> tools/rigor_goals.py set-next --id G002 --reason <span class="s">"dependency order"</span>
+<span class="k">python3</span> tools/rigor_goals.py next
+<span class="k">python3</span> tools/rigor_goals.py checkpoint --id G002 --status complete \
+  --evidence <span class="s">"repair green"</span> --verify-cmd <span class="s">"pytest"</span> --verify-evidence <span class="s">"35 passed"</span>
+<span class="cm"># close records receipts and never executes the named command:</span>
+<span class="k">python3</span> tools/rigor_goals.py close --evidence <span class="s">"terminal receipt"</span> \
+  --verify-cmd <span class="s">"command already run"</span> --verify-evidence <span class="s">"observed result"</span> \
+  --authorization-source <span class="s">"owner instruction"</span></pre>
           </div>
         </div>
       </div>
@@ -507,6 +520,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
       <p class="sub">
         A receiving stage verifies that identity and refuses stale or mismatched evidence. It may add
         evidence; it may not rewrite the record upstream of it.
+      </p>
+      <p class="sub">
+        This run-manifest schema 1.1 identifies stage evidence; it is separate from
+        <code>./.rigor/goals.json</code> plan schema 2, which stores engagement mode and queue state.
+        Legacy plan schema 1 migrates once to a conservative finite program; unknown schemas or modes
+        are refused. CLI tests and the bundle validator exercise those transitions. Worker-local
+        <code>DONE</code> and coordinator reconcile behavior remain advisory scenario contracts because
+        Lite has no host-level behavior harness.
       </p>
       <p class="sub" style="font-size:15px">
         The stack also consumes a
@@ -595,7 +616,7 @@ MERGE(unit)
     <p class="kicker">Status &amp; limits</p>
     <h2>Actively developed, and honest about its edges.</h2>
     <p class="sub">
-      Released at v0.4.3 under MIT. The installer's fresh, refusal, forced and upgrade paths are
+      Version v0.5.0 under MIT. The installer's fresh, refusal, forced and upgrade paths are
       exercised in CI on Windows, Ubuntu and macOS, and the documented Windows command is executed
       verbatim from a fresh Restricted-policy process on every push. These are the limits worth knowing
       before you adopt it.
@@ -626,7 +647,7 @@ MERGE(unit)
     <h2>Put a gate between your agent and "done".</h2>
     <p>Clone the pinned tag, run one installer command, and let named risk select the amount of process the work needs.</p>
     <div class="cta-row">
-      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.4.3">Get v0.4.3</a>
+      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.5.0">Get v0.5.0</a>
       <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Read the manual</a>
     </div>
   </div>
@@ -643,7 +664,7 @@ MERGE(unit)
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/SECURITY.md">Security</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/issues">Issues</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/LICENSE">MIT License</a>
-    <span class="sp">v0.4.3</span>
+    <span class="sp">v0.5.0</span>
   </div>
 </footer>
 
@@ -658,6 +679,11 @@ MERGE(unit)
     n.addEventListener('click',function(e){
       if(e.target.tagName==='A'&&window.innerWidth<=860){
         n.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false');
+      }
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape'&&n.getAttribute('data-open')==='true'){
+        n.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false'); b.focus();
       }
     });
   })();

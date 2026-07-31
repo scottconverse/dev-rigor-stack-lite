@@ -36,7 +36,7 @@ publication.
 |---|---|---|
 | `skills/` | Portable workflow instructions and entrypoints | Instructions are not mechanical enforcement |
 | `anchor/anchor.md` | A short, persistent reminder in the host instructions file | Only the marker-fenced span is managed |
-| `tools/rigor_goals.py` | Sequential task state and a final evidence-recording gate | It records evidence; it does not execute or validate the recorded command |
+| `tools/rigor_goals.py` | Mode-pinned engagement state, ordered units, and structural evidence gates | It records evidence; it does not execute the command or decide that the recorded result is true |
 | `./.rigor/` | Current worktree's plan and append-only event ledger | Ordinary local files, not tamper-resistant storage |
 | `install.ps1` and `install.sh` | Copy the three tiers to explicit or inferred locations | Run only with the invoking user's permissions |
 
@@ -55,7 +55,11 @@ flowchart TD
     Micro --> Merge
     Verify -- "Refuted claim or failed check" --> Build
     Merge -- "Stale or mismatched evidence" --> Verify
-    Merge --> Release["RELEASE OVERLAY: exact candidate + applicable gates + owner"]
+    Merge --> Reconcile{"Engagement terminal satisfied?"}
+    Reconcile -- "No" --> Select["RECONCILE: select next authorized unit"]
+    Select --> Build
+    Reconcile -- "Yes, single or finite" --> Close["Close bounded engagement"]
+    Reconcile -- "Release workflow intent" --> Release["RELEASE OVERLAY: exact candidate + applicable gates + owner"]
     Harness["Optional external regression harness"] -. "Supplemental evidence" .-> Verify
 ```
 
@@ -65,6 +69,41 @@ irreversible operations, or broad public contracts use Critical. Standard applie
 RED/GREEN and focused review where relevant; Critical adds independent proof. Release
 binds evidence to the exact candidate and selects only applicable gates. External
 harnesses can add evidence but cannot replace the selected lane.
+
+## Engagement state machine
+
+Risk lane and engagement mode answer different questions. Micro, Standard, and Critical
+select rigor for the current unit. `single_unit`, `finite_program`,
+`continuous_development`, and `release_workflow` decide whether completing that unit may
+end the larger engagement. The recorded mode persists across agents, sessions, and
+machines; continuing owner language defaults to continuous development, and only the
+owner may downgrade the mode.
+
+Schema 2 stores the mode, terminal predicate, release intent, optional next-goal choice,
+closure state, and existing goal list in `goals.json`. `ledger.jsonl` records loud plan
+replacement, migration, queue addition, ordering, checkpoints, and closure with the
+`plan_id`. Version 1 plans migrate once to `finite_program`, preserving their goals and
+statuses; because old state did not record intent, the owner must review that conservative
+default and use the loud mode-change path when necessary. Unknown schemas or modes are
+refused. `release_intent` is `none`, `candidate`, or `publish` and is carried into the
+closure receipt. `waiting_external` and `blocked_owner` remain unresolved until reopened
+or otherwise authorized. In continuous or release mode, an empty
+known queue remains active. A unit merge therefore returns to reconcile and select-next
+unless the recorded terminal and authority conditions permit closure.
+
+All CLI commands take an atomic-create mutation lock, so concurrent processes refuse
+instead of racing a read-modify-write update. `goals.json` itself is written through an
+fsynced temporary file and atomic replacement. The goals state and append-only ledger
+remain separate files, however; they are not a single crash-atomic transaction. An OS or
+storage failure between state replacement and ledger append can require operator
+reconciliation. This is a documented Lite boundary, not an integrity guarantee.
+
+The Python suite and bundle validator mechanically exercise schema migration, mode-gated
+closure, nonterminal queue exhaustion, queue mutation, ordering, checkpoint states, and
+anchor markers. This schema is separate from run-manifest schema 1.1, which identifies
+stage evidence. Worker-local `DONE`, receipt wording, and coordinator choice after a
+merge are advisory model-behavior contracts: Lite has no host hook that can mechanically
+test adherence. They are documented separately so CI evidence is not overstated.
 
 ## Boundaries and trust
 

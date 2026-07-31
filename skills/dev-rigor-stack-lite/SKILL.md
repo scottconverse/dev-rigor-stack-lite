@@ -12,7 +12,7 @@ description: >
 license: MIT
 ---
 
-# Standing dev rigor stack Lite v0.4.3
+# Standing dev rigor stack Lite v0.5.0
 
 Route every unit before choosing its process. Micro work takes the short path below.
 Standard work uses the proportionate per-unit loop. Critical work uses the complete
@@ -38,6 +38,27 @@ documentation change can be Critical. A multi-file mechanical change can remain 
 when its effects stay local and one check covers them. The
 selected lane is also a ceremony ceiling: escalate only after naming the trigger or
 uncertainty that creates the added risk.
+
+## Engagement continuation
+
+Engagement mode is a pinned, model-independent contract separate from the
+Micro/Standard/Critical per-unit lane. Select it from the owner-stated work shape and
+terminal, never model identity, provider, context window, token budget, worker count,
+or release label. Record it in the existing continuity or rigor-goals state before the
+first unit when continuity risk exists. The recorded mode governs later turns, sessions,
+machines, and agents.
+
+- `single_unit` — one explicitly bounded accepted unit.
+- `finite_program` — a declared bounded sequence of units or acceptance outcomes.
+- `continuous_development` — ongoing development with no declared bounded terminal.
+  Continuing language such as “take over,” “continue,” “keep going,” “work through the
+  backlog,” or “do not stop” defaults here when the owner states no bounded end.
+- `release_workflow` — an explicitly requested release engagement governed by the
+  release overlay. It does not select a unit’s ceremony lane.
+
+The coordinator may recommend a mode change, but **mode downgrade is an owner decision**.
+It may not turn continuing work into `finite_program` or `single_unit`, treat a
+checkpoint as a stop, or discard pending commitments on its own.
 
 ## Standalone entrypoints
 
@@ -147,6 +168,33 @@ runnable check, and a concise receipt.
    readiness; it does not grant permission to merge. Execute a merge only when the user or
    host policy authorizes it. Never use admin override or bypass branch protection.
 
+   For `finite_program` and `continuous_development`, a green unit merge is a
+   checkpoint rather than the engagement exit:
+   `MERGE(unit) → RECONCILE → SELECT NEXT UNIT`. Reconcile the pinned mode,
+   commitments, evidence and findings, existing continuity state, active workers/PRs,
+   and external waits before selecting the next authorized in-spec unit. A merge,
+   passing suite, green CI, clean diff, worker response, or polished receipt completes
+   at most one unit.
+
+## Valid engagement stops
+
+- `single_unit` may complete when its acceptance criteria and authorized delivery are
+  satisfied and no standing instruction requires continuation.
+- `finite_program` may complete only when every pinned outcome is reconciled and no
+  required unit, finding, worker, PR, check, or owner-blocked commitment remains.
+- `continuous_development` may stop only for an explicit owner pause/cancellation/mode
+  replacement, an owner or external blocker that prevents every remaining authorized
+  unit, or `NEEDS_SCOPE` after evidence-backed reconciliation finds no authorized next
+  unit. `NEEDS_SCOPE` is awaiting direction, never completion.
+- `release_workflow` stops only at an applicable owner decision, explicit pause/no-go,
+  or the release overlay’s authorized closure, including applicable live proof.
+
+`WAITING_EXTERNAL` is nonterminal: monitor the required state or continue independent
+authorized work when safe. User interruption or context/session loss produces a
+resumable checkpoint, not completion. Do not invent speculative cleanup or optional
+polish merely to keep the loop active; every selected unit must trace to pinned scope,
+dependency order, or a corrective finding that invalidates an accepted claim.
+
 ## Evaluator-owned exits (goal loops)
 
 Start `rigor-goals` only when the work has real continuity risk: it crosses sessions,
@@ -154,6 +202,17 @@ needs a handoff, uses parallel agents, or waits on an external event. The number
 sequential steps alone is not a trigger. Give each persisted goal a deterministic exit
 and try cap. Criteria a model must interpret ("make it good") do not qualify; route
 those through the applicable VERIFY/REVIEW lane.
+
+Persist schema 2 mode and terminal state with the bundled `rigor-goals` tool. `add`
+requires an authorization-source receipt; `set-next` records ordering reason; `reopen`
+returns failed, blocked, `waiting_external`, or `blocked_owner` work to pending. Reopening
+`cancelled` or `out_of_scope` work requires a reason and another authorization-source
+receipt. `set-mode` is the loud path for an owner-authorized mode change. `cancelled` and
+`out_of_scope` checkpoints require evidence and an authorization-source receipt.
+Continuous/release closure and custom bounded terminals
+use explicit `close`. All authorization and verification fields are attributable text
+receipts only: the tool does not authenticate authority, execute commands, or decide
+whether a terminal predicate is true.
 
 ## Release overlay (once per version, before the tag)
 
@@ -222,7 +281,7 @@ something the model can't take back or wasn't authorized to spend. Instances:
    bypassing a gate.
 4. **Trust-boundary & value calls** — security, privacy, licensing, legal/ethical/
    reputational weight.
-5. **Go / no-go / priority / budget.**
+5. **Go / no-go, strategic reprioritization, and budget.**
 
 Reconciliation (keeps this from meaning "ask permission constantly") — it's about who
 **originates** the call:
@@ -233,6 +292,13 @@ Reconciliation (keeps this from meaning "ask permission constantly") — it's ab
 - **Neither** = surface with a recommendation, and hold.
 Concretely: green-path unit merge = standing authorization; the release tag = owner
 decision, every time.
+
+Within a pinned engagement, the coordinator selects and orders the next reversible,
+in-spec unit from the owner’s ordering, an accepted backlog, dependency order, or a
+corrective finding. Owner priority is needed only when a proposed reorder displaces a
+pinned owner commitment, changes scope, crosses a trust boundary, or reallocates a
+constrained budget. An owner-only decision blocks only dependent work; continue
+independent authorized units when safe.
 
 ## Documentation discipline
 
@@ -296,12 +362,14 @@ not optional; unselected gates need only the lane/applicability reason, not a fa
 
 Fan-out worker preamble (paste the matching line at the top of each agent() prompt):
 
-[worker] You are a bounded leaf worker. Do not delegate or spawn sub-workers. Your known
+[worker] You are a bounded leaf worker. Do not delegate or spawn sub-workers. Your DONE is local
+to this assignment; it never closes a parent unit, engagement, gate, or release. Your known
 failure mode is passing your own "looks right" review instead of running a check that can
 fail. For every claim, run the real check and paste the exact command and its verbatim
 output.
 
 [mechanical worker] You are a bounded leaf worker on a mechanical task. Do not delegate
-or spawn sub-workers. Every result needs a named artifact — exact command + output. Do
+or spawn sub-workers. Your DONE is local to this assignment; it never closes a parent
+unit, engagement, gate, or release. Every result needs a named artifact — exact command + output. Do
 not claim "verified" from inspection. If this task turns out to need judgment or
 synthesis, stop and say so; do not guess.

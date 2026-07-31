@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.0 - 2026-07-31
+
+- **Finishing one unit no longer ends an ongoing engagement.** The coordinator records
+  `single_unit`, `finite_program`, `continuous_development`, or `release_workflow`
+  independently of the per-unit risk lane. Continuing owner language defaults to
+  continuous development, and only the owner may downgrade the recorded mode.
+- **`rigor-goals` now persists schema 2 engagement state.** Continuous and release
+  modes require an explicit terminal predicate; release mode also records candidate or
+  publication intent. Exhausting their currently known queue remains visibly active.
+  Legacy plans migrate once to `finite_program` without rewriting goal state, while
+  unknown schemas and modes fail closed.
+- **Queue changes are loud and attributable.** `add` requires an authorization source;
+  `set-next` records a deliberate ordering reason; both persist `plan_id`-stamped ledger
+  events. `reopen` recovers failed, blocked, or waiting work, and `set-mode` is the loud,
+  authorization-receipted path for owner-approved mode changes. New nonterminal wait
+  states distinguish external and owner blockers, while `cancelled` and `out_of_scope`
+  require evidence and an authorization-source receipt.
+- **Closure stays honest about enforcement.** `close` refuses unresolved work and checks
+  for terminal-predicate evidence receipts, but explicitly does not execute the named
+  verification command or decide whether its result is true. Executable CLI/validator
+  checks are separated from advisory model-behavior scenario contracts. State writes are
+  atomic, malformed or internally inconsistent plans fail closed without mutation, and
+  a cross-process mutation lock prevents lost read-modify-write updates. The state and
+  ledger remain separate non-transactional files; that crash-consistency limit is now
+  explicit rather than implied away.
+- **Resume and crash-recovery output is now precise.** Queue-resolution wording names
+  default versus custom terminal behavior honestly; lock-free `status` keeps schema-1
+  migration in memory until a locked mutation persists it, lock refusals report PID and
+  age when readable, and `status` surfaces the persisted next-work cursor.
+- **The persistent anchor now carries the continuation invariant.** A worker's `DONE`, a
+  green unit merge, session end, context compaction, or queue exhaustion is a checkpoint;
+  finite and continuous work reconcile and select the next authorized unit.
+
 ## 0.4.3 - 2026-07-26
 
 - **Default anchors now follow the target host, not the shell's current
