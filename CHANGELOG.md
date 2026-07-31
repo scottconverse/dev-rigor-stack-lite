@@ -25,6 +25,10 @@
   a cross-process mutation lock prevents lost read-modify-write updates. The state and
   ledger remain separate non-transactional files; that crash-consistency limit is now
   explicit rather than implied away.
+- **Resume and crash-recovery output is now precise.** Queue-resolution wording names
+  default versus custom terminal behavior honestly; lock-free `status` keeps schema-1
+  migration in memory until a locked mutation persists it, lock refusals report PID and
+  age when readable, and `status` surfaces the persisted next-work cursor.
 - **The persistent anchor now carries the continuation invariant.** A worker's `DONE`, a
   green unit merge, session end, context compaction, or queue exhaustion is a checkpoint;
   finite and continuous work reconcile and select the next authorized unit.

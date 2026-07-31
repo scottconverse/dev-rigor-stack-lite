@@ -257,20 +257,35 @@ class RigorGoalsTest(unittest.TestCase):
             "brief": "legacy",
             "created": "2026-07-01T00:00:00+00:00",
             "goals": [{"id": "G001", "title": "old", "objective": "work",
-                       "status": "blocked", "evidence": "owner wait"}],
+                       "status": "pending", "evidence": None}],
         }
-        (state / "goals.json").write_text(json.dumps(legacy), encoding="utf-8")
+        goals_path = state / "goals.json"
+        goals_path.write_text(json.dumps(legacy), encoding="utf-8")
+        bytes_before = goals_path.read_bytes()
         first = run(self.cwd, "status")
         second = run(self.cwd, "status")
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(goals_path.read_bytes(), bytes_before,
+                         "status must migrate in memory without writing state")
+        self.assertFalse((state / "ledger.jsonl").exists(),
+                         "status must not emit a migration ledger event")
+
+        started = run(self.cwd, "next")
+        self.assertEqual(started.returncode, 0, started.stderr)
         plan = self._plan()
         self.assertEqual(plan["schema_version"], 2)
         self.assertEqual(plan["mode"], "finite_program")
-        self.assertEqual(plan["goals"], legacy["goals"])
+        self.assertEqual(plan["goals"][0]["id"], legacy["goals"][0]["id"])
+        self.assertEqual(plan["goals"][0]["title"], legacy["goals"][0]["title"])
+        self.assertEqual(plan["goals"][0]["objective"], legacy["goals"][0]["objective"])
+        self.assertEqual(plan["goals"][0]["status"], "in_progress")
         migrated = [event for event in self._events() if event["event"] == "plan_migrated"]
         self.assertEqual(len(migrated), 1)
         self.assertEqual(migrated[0]["plan_id"], "legacy123")
+        run(self.cwd, "status")
+        migrated = [event for event in self._events() if event["event"] == "plan_migrated"]
+        self.assertEqual(len(migrated), 1, "migration must persist exactly once")
 
     def test_unknown_schema_or_mode_refuses_loudly(self):
         state = Path(self.cwd) / ".rigor"
@@ -338,6 +353,20 @@ class RigorGoalsTest(unittest.TestCase):
         self.assertEqual(event["reason"], "dependency ready")
         r = run(self.cwd, "next")
         self.assertIn("G002", r.stdout)
+
+    def test_status_restores_the_persisted_next_cursor(self):
+        self._create_two()
+        run(self.cwd, "set-next", "--id", "G002", "--reason", "dependency ready")
+        r = run(self.cwd, "status")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("Next: activate G002 two", r.stdout)
+        self.assertIn("* G002 [pending] two", r.stdout)
+
+        with tempfile.TemporaryDirectory() as cwd:
+            run(cwd, "create", "--brief", "no cursor", "--goal", "one::work")
+            r = run(cwd, "status")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertNotIn("Next:", r.stdout)
 
     def test_nonterminal_checkpoint_statuses_are_accepted_and_remain_honest(self):
         for status in ("waiting_external", "blocked_owner"):
@@ -419,6 +448,16 @@ class RigorGoalsTest(unittest.TestCase):
         r = run(self.cwd, "close", "--evidence", "approval receipt recorded",
                 "--verify-cmd", "inspect owner instruction", "--verify-evidence", "approved")
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_default_terminal_resolved_without_final_completion_directs_to_close(self):
+        run(self.cwd, "create", "--brief", "cancel final", "--goal", "one::work")
+        run(self.cwd, "next")
+        r = run(self.cwd, "checkpoint", "--id", "G001", "--status", "cancelled",
+                "--evidence", "owner cancelled final unit",
+                "--authorization-source", "owner instruction 2026-07-31")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("explicit close", r.stdout)
+        self.assertNotIn("custom", r.stdout.lower())
 
     def test_status_exposes_terminal_and_release_intent(self):
         run(self.cwd, "create", "--brief", "publish", "--mode", "release_workflow",
@@ -543,6 +582,48 @@ class RigorGoalsTest(unittest.TestCase):
         self.assertIn("another rigor-goals process", (r.stderr + r.stdout).lower())
         self.assertEqual((state / "goals.json").read_bytes(), goals_before)
         self.assertEqual((state / "ledger.jsonl").read_bytes(), ledger_before)
+
+    def test_status_succeeds_while_foreign_mutation_lock_exists(self):
+        self._create_two()
+        state = Path(self.cwd) / ".rigor"
+        goals_before = (state / "goals.json").read_bytes()
+        ledger_before = (state / "ledger.jsonl").read_bytes()
+        (state / "mutation.lock").write_text(
+            json.dumps({"pid": 4242, "created": "2026-07-31T00:00:00+00:00"}),
+            encoding="utf-8")
+        r = run(self.cwd, "status")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("test job", r.stdout)
+        self.assertEqual((state / "goals.json").read_bytes(), goals_before)
+        self.assertEqual((state / "ledger.jsonl").read_bytes(), ledger_before)
+
+    def test_lock_refusal_reports_pid_and_malformed_metadata_without_traceback(self):
+        self._create_two()
+        state = Path(self.cwd) / ".rigor"
+        lock = state / "mutation.lock"
+        lock.write_text(json.dumps({"pid": 4242, "created": "2026-07-31T00:00:00+00:00"}),
+                        encoding="utf-8")
+        r = run(self.cwd, "add", "--goal", "three::work",
+                "--authorization-source", "accepted backlog")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("4242", r.stderr + r.stdout)
+        self.assertNotIn("traceback", (r.stderr + r.stdout).lower())
+
+        lock.write_text("not-json", encoding="utf-8")
+        r = run(self.cwd, "add", "--goal", "three::work",
+                "--authorization-source", "accepted backlog")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("metadata unreadable", (r.stderr + r.stdout).lower())
+        self.assertNotIn("traceback", (r.stderr + r.stdout).lower())
+
+        lock.write_text(
+            json.dumps({"pid": "not-an-integer", "created": "2026-07-31T00:00:00+00:00"}),
+            encoding="utf-8")
+        r = run(self.cwd, "add", "--goal", "three::work",
+                "--authorization-source", "accepted backlog")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("metadata unreadable", (r.stderr + r.stdout).lower())
+        self.assertNotIn("traceback", (r.stderr + r.stdout).lower())
 
     def test_force_replacement_of_malformed_state_refuses_without_traceback(self):
         state = Path(self.cwd) / ".rigor"

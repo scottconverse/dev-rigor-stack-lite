@@ -65,6 +65,7 @@ REOPENABLE_STATUSES = {
     "failed", "blocked", "waiting_external", "blocked_owner", "cancelled", "out_of_scope",
 }
 DEFAULT_TERMINAL = "all declared goals complete with a final verification receipt"
+MIGRATION_MARKER = "_migrated_from_schema"
 
 
 def now():
@@ -78,8 +79,25 @@ def mutation_lock():
     try:
         descriptor = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     except FileExistsError:
-        sys.exit("rigor-goals: another rigor-goals process holds .rigor/mutation.lock. "
-                 "Wait for it; if it crashed, verify no process is active before removing the stale lock.")
+        details = "metadata unreadable"
+        try:
+            metadata = json.loads(LOCK.read_text(encoding="utf-8"))
+            pid = metadata["pid"]
+            if type(pid) is not int or pid <= 0:
+                raise ValueError("invalid pid")
+            created = datetime.fromisoformat(metadata["created"])
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            age = max(0, int((datetime.now(timezone.utc) - created).total_seconds()))
+            details = f"pid {pid}, age {age}s"
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError, OSError):
+            pass
+        # Do not auto-delete or probe PID liveness here. Cross-platform PID checks are
+        # unreliable (especially on Windows), and deleting a live lock reopens the
+        # lost-update race. A human may remove a stale lock after checking the process.
+        sys.exit(f"rigor-goals: another rigor-goals process holds .rigor/mutation.lock "
+                 f"({details}). Wait for it; if it crashed, verify no process is active "
+                 "before removing the stale lock.")
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             handle.write(json.dumps({"pid": os.getpid(), "created": now()}))
@@ -196,9 +214,7 @@ def load():
             "next_action": None,
             "closed": False,
         })
-        save(plan)
-        log("plan_migrated", plan_id=plan.get("plan_id"), from_schema=1,
-            to_schema=SCHEMA_VERSION, mode="finite_program")
+        plan[MIGRATION_MARKER] = 1
     elif schema != SCHEMA_VERSION:
         sys.exit(f"rigor-goals: unsupported plan schema {schema}; expected {SCHEMA_VERSION}.")
     validate_plan(plan)
@@ -206,6 +222,7 @@ def load():
 
 
 def save(plan):
+    migrated_from = plan.pop(MIGRATION_MARKER, None)
     validate_plan(plan)
     DIR.mkdir(exist_ok=True)
     tmp = DIR / f".goals.{uuid.uuid4().hex}.tmp"
@@ -220,6 +237,9 @@ def save(plan):
             tmp.unlink()
         except FileNotFoundError:
             pass
+    if migrated_from is not None:
+        log("plan_migrated", plan_id=plan.get("plan_id"), from_schema=migrated_from,
+            to_schema=SCHEMA_VERSION, mode=plan["mode"])
 
 
 def parse_goal(spec):
@@ -326,6 +346,9 @@ def plan_wrapup(plan):
         return ("rigor-goals: current queue exhausted but engagement remains ACTIVE - NOT COMPLETE. "
                 "Reconcile authorized scope, use `add`/`set-next`, or record an authorized `close`.")
     if not remaining:
+        if plan["terminal_predicate"] == DEFAULT_TERMINAL:
+            return ("rigor-goals: current queue resolved without a final verified completion - "
+                    "explicit close required; record structural terminal evidence with `close`.")
         return ("rigor-goals: current queue resolved but the custom terminal requires explicit close - "
                 "record structural terminal evidence with `close`.")
     waiting = sum(1 for g in plan["goals"] if g["status"] == "waiting_external")
@@ -541,11 +564,15 @@ def cmd_status(a):
     print(f"  Terminal: {plan['terminal_predicate']}")
     if plan["mode"] == "release_workflow":
         print(f"  Release intent: {plan['release_intent']}")
+    if plan.get("next_action"):
+        print(f"  Next: {plan['next_action']}")
     mark = {"complete": "+", "in_progress": ">", "pending": ".", "failed": "x",
             "blocked": "#", "waiting_external": "w", "blocked_owner": "o",
             "cancelled": "c", "out_of_scope": "-"}
+    selected = plan.get("next_goal_id")
     for g in plan["goals"]:
-        print(f"  {mark.get(g['status'],'?')} {g['id']} [{g['status']}] {g['title']}")
+        cursor = "*" if g["id"] == selected else mark.get(g["status"], "?")
+        print(f"  {cursor} {g['id']} [{g['status']}] {g['title']}")
 
 
 def main():
@@ -580,11 +607,15 @@ def main():
     close.add_argument("--verify-evidence", dest="verify_evidence", default="")
     close.add_argument("--authorization-source", default="")
     a = p.parse_args()
-    with mutation_lock():
-        {"create": cmd_create, "add": cmd_add, "set-next": cmd_set_next,
-         "reopen": cmd_reopen, "set-mode": cmd_set_mode,
-         "next": cmd_next, "checkpoint": cmd_checkpoint, "status": cmd_status,
-         "close": cmd_close}[a.cmd](a)
+    commands = {"create": cmd_create, "add": cmd_add, "set-next": cmd_set_next,
+                "reopen": cmd_reopen, "set-mode": cmd_set_mode,
+                "next": cmd_next, "checkpoint": cmd_checkpoint, "status": cmd_status,
+                "close": cmd_close}
+    if a.cmd == "status":
+        cmd_status(a)
+    else:
+        with mutation_lock():
+            commands[a.cmd](a)
 
 
 if __name__ == "__main__":
