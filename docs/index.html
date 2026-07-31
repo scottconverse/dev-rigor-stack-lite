@@ -217,6 +217,7 @@
       <a href="#loop">The loop</a>
       <a href="#install">Install</a>
       <a href="#evidence">Evidence</a>
+      <a href="#next">What's next</a>
       <a href="#status">Status</a>
       <a class="btn btn-1 btn-sm" href="https://github.com/scottconverse/dev-rigor-stack-lite">GitHub</a>
     </nav>
@@ -533,6 +534,58 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
 }</pre>
       </div>
       <p style="font-size:14px;color:var(--ink-3);margin-top:12px">Existing 1.0 manifests stay valid — 1.1 is additive, and old evidence is never upgraded by inference.</p>
+    </div>
+  </div>
+</section>
+
+<section id="next">
+  <div class="wrap split">
+    <div>
+      <p class="kicker">In review · v0.5.0</p>
+      <h2>A green merge is a checkpoint, not an exit.</h2>
+      <p class="sub" style="margin-top:16px">
+        The per-unit loop above ends at MERGE — and in a continuing engagement, that ending is a
+        trap. Told to take over development and keep going, a model merges one green PR, writes a
+        polished receipt, and declares the whole job done. Every completion-shaped signal — green
+        CI, a passing suite, a finished worker — invites the same premature stop. It is the failure
+        this stack exists to prevent, one altitude above where it was looking.
+      </p>
+      <p class="sub">
+        The next release closes that altitude gap. It pins an <strong>engagement mode</strong> —
+        single unit, finite program, continuous development, or release workflow — separately from
+        the per-unit rigor lane; makes <code>MERGE → RECONCILE → SELECT NEXT UNIT</code> the
+        mandatory transition for continuing work; defines the only valid stops; and upgrades
+        <code>rigor-goals</code> so that exhausting the known queue reports the engagement as
+        still active instead of printing "all stories complete." Mode is model-independent by
+        design: capability may change task allocation, never stopping semantics.
+      </p>
+      <p class="sub" style="font-size:15px">
+        Implemented and in adversarial review as
+        <a href="https://github.com/scottconverse/dev-rigor-stack-lite/pull/20">PR&nbsp;#20</a>,
+        with CI green on Windows, macOS and Linux. Until it merges, v0.4.3 is what installs — this
+        section describes upcoming behavior, not the released bundle.
+      </p>
+    </div>
+    <div>
+      <div class="code">
+        <div class="code-bar"><span class="dot"></span> engagement continuation — upcoming</div>
+<pre><span class="cm"># for finite_program and continuous_development</span>
+MERGE(unit)
+  <span class="p">→</span> RECONCILE      <span class="cm">queue, workers, waits, findings</span>
+  <span class="p">→</span> SELECT NEXT    <span class="cm">next authorized unit</span>
+  <span class="p">→</span> PLAN … MERGE   <span class="cm">the loop continues</span>
+
+<span class="k">valid stops</span>   owner pause · owner/external blocker
+              · NEEDS_SCOPE (awaiting direction)
+<span class="k">never a stop</span>  merged PR · green CI · passing suite
+              · finished worker · polished receipt</pre>
+      </div>
+      <ul class="plain">
+        <li><code>single_unit</code> — one bounded deliverable; may complete when accepted.</li>
+        <li><code>finite_program</code> — a declared sequence; completes when every outcome reconciles.</li>
+        <li><code>continuous_development</code> — "take over, keep going"; only the owner ends it.</li>
+        <li><code>release_workflow</code> — candidate/publish intent, governed by the release overlay.</li>
+      </ul>
     </div>
   </div>
 </section>
