@@ -106,7 +106,7 @@ canonical_candidate() {
       }
       normalized = ""
       for (i = 1; i <= depth; i++) normalized = normalized "/" component[i]
-      print normalized == "" ? "/" : normalized
+      print (normalized == "" ? "/" : normalized)
     }
   '
 }
