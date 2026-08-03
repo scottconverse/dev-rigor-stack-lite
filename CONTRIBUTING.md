@@ -35,18 +35,6 @@ anchor, host-placement, or lifecycle changes also require the relevant Windows,
 Ubuntu, and macOS CI lanes. Documentation changes require a rendered Markdown
 read, link check, and comparison against current behavior.
 
-For a billed, opt-in observation of GauntletGate's live-mutation isolation behavior,
-run the harness outside CI and retain its evidence directory:
-
-```sh
-python tools/eval_isolation_behavior.py --model <codex-model> --output-dir <empty-evidence-dir>
-```
-
-The harness gives one Codex worker a shared clone and an isolated clone, verifies that
-the shared source never changes, and requires the isolated mutation to make bundle
-validation fail before the worker restores it. A passing run is evidence only for that
-model, host, prompt, and candidate; it is not universal prompt-adherence proof.
-
 Do not make a failing test pass by weakening or deleting its assertion. Capture
 the RED output, the GREEN output, the exact candidate commit, and hashes for
 release artifacts or other identity-sensitive evidence.

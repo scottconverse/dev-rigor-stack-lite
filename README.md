@@ -77,9 +77,8 @@ host and model. This repository does not claim mechanical enforcement.
 
 The executable release checks prove inventory, prompt-contract markers, installer
 lifecycle behavior, and documentation consistency. The BRAINSTORM scenarios are an
-evaluation rubric, not a CI behavioral test. An opt-in Gauntlet isolation harness can
-record one bounded Codex worker's mutation path; neither that observation nor CI proves
-that every host loads a skill or that every model follows it.
+evaluation rubric, not a behavioral test: neither the validator nor CI proves that a
+host loads the skill or that a model follows it.
 
 ## Fast start
 

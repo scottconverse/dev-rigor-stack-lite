@@ -101,7 +101,7 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("seeded random sample", orchestration)
         self.assertIn("sampled finding IDs", orchestration)
 
-    def test_gauntlet_mutation_isolation_has_contract_and_behavior_harness(self):
+    def test_gauntlet_mutation_isolation_has_contract(self):
         full_lane = (
             ROOT / "skills" / "gauntletgate-lite" / "lanes" / "full.md"
         ).read_text(encoding="utf-8")
@@ -113,30 +113,6 @@ class ReleaseContractTests(unittest.TestCase):
         ):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, full_lane)
-
-        harness = ROOT / "tools" / "eval_isolation_behavior.py"
-        self.assertTrue(harness.is_file())
-        harness_text = harness.read_text(encoding="utf-8")
-        for phrase in (
-            "EVAL_SHARED_REPO",
-            "EVAL_ISOLATED_REPO",
-            "isolation-eval-receipt.json",
-            "BUNDLE_INVALID",
-            "shared clone changed during behavior evaluation",
-            "ISOLATION_BEHAVIOR_EVAL_PASS",
-            'command.append("-")',
-            "input=prompt",
-            'str(isolated),\n        "--add-dir",\n        str(shared),',
-            'errors="replace"',
-            'glob("@openai/codex-win32-*/vendor/*/bin/codex.exe")',
-        ):
-            with self.subTest(harness_phrase=phrase):
-                self.assertIn(phrase, harness_text)
-        for relative in ("README.md", "docs/manual.md", "docs/index.html"):
-            with self.subTest(public_behavior_scope=relative):
-                public_text = (ROOT / relative).read_text(encoding="utf-8")
-                self.assertIn("opt-in Gauntlet isolation harness", public_text)
-                self.assertNotIn("Lite has no host-level behavior harness", public_text)
 
     def test_release_preserves_frozen_removal_confirmation(self):
         expected_occurrences = {
