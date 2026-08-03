@@ -439,7 +439,6 @@ $Target = ".claude\skills"
 $GoalsFile = ".claude\tools\rigor_goals.py"
 $AnchorFile = "CLAUDE.md"
 $ErrorActionPreference = "Stop"
-Import-Module Microsoft.PowerShell.Utility -ErrorAction Stop
 
 function Resolve-UserPath([string]$Path) {
   $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)
@@ -572,6 +571,19 @@ function Test-SamePath([string]$Left, [string]$Right) {
     (Resolve-UserPath $Right)
   )
 }
+function Get-Sha256([string]$Path) {
+  $stream = [IO.File]::OpenRead($Path)
+  try {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+      ([BitConverter]::ToString($sha256.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+    } finally {
+      $sha256.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
+}
 function Get-TreeInventory([string]$Root) {
   Assert-PlainPath $Root "tree root"
   $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
@@ -587,7 +599,7 @@ function Get-TreeInventory([string]$Root) {
         if ($_.PSIsContainer) {
           "DIR|$relative"
         } else {
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
+          $hash = Get-Sha256 $_.FullName
           "FILE|$relative|$hash"
         }
       }
@@ -663,8 +675,8 @@ if (Test-SamePath $anchorPath $sourceAnchor) {
   throw "refusing anchor file that aliases pinned source: $anchorPath"
 }
 
-$sourceGoalsHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourceGoals).Hash
-$installedGoalsHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $goalsPath).Hash
+$sourceGoalsHash = Get-Sha256 $sourceGoals
+$installedGoalsHash = Get-Sha256 $goalsPath
 if ($sourceGoalsHash -cne $installedGoalsHash) {
   $backup = "$goalsPath.owner-backup.$(Get-Date -Format 'yyyyMMddHHmmss')"
   Copy-Item -LiteralPath $goalsPath -Destination $backup

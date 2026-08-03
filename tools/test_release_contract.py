@@ -122,6 +122,17 @@ class ReleaseContractTests(unittest.TestCase):
         )
         self.assertIn("WINDOWS_ROLLBACK_V0.6.0_ONLY_SKILL_ABSENT=True", windows_rollback)
 
+    def test_documented_windows_removal_has_no_cmdlet_autoload_dependency(self):
+        manual = (ROOT / "docs" / "manual.md").read_text(encoding="utf-8")
+        match = re.search(
+            r"(?ms)^#### PowerShell removal\s+.*?^```powershell\r?\n(?P<body>.*?)^```\s*$",
+            manual,
+        )
+        self.assertIsNotNone(match)
+        removal = match.group("body")
+        self.assertIn("function Get-Sha256", removal)
+        self.assertNotIn("Get-FileHash", removal)
+
     def test_portable_workflow_does_not_pin_a_worker_model(self):
         offenders = []
         for path in (ROOT / "skills").rglob("*.md"):
