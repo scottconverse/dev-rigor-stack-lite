@@ -132,6 +132,8 @@ class ReleaseContractTests(unittest.TestCase):
         removal = match.group("body")
         self.assertIn("function Get-Sha256", removal)
         self.assertNotIn("Get-FileHash", removal)
+        self.assertIn("function Visit-Tree", removal)
+        self.assertNotIn(".Substring($base.Length)", removal)
 
     def test_portable_workflow_does_not_pin_a_worker_model(self):
         offenders = []

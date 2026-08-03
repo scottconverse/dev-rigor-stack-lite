@@ -586,24 +586,27 @@ function Get-Sha256([string]$Path) {
 }
 function Get-TreeInventory([string]$Root) {
   Assert-PlainPath $Root "tree root"
-  $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
-    [IO.Path]::DirectorySeparatorChar
-  @(
-    Get-ChildItem -LiteralPath $Root -Recurse -Force |
-      Sort-Object FullName |
-      ForEach-Object {
-        if (($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-          throw "refusing linked tree content: $($_.FullName)"
-        }
-        $relative = $_.FullName.Substring($base.Length).Replace('\', '/')
-        if ($_.PSIsContainer) {
-          "DIR|$relative"
-        } else {
-          $hash = Get-Sha256 $_.FullName
-          "FILE|$relative|$hash"
-        }
+  function Visit-Tree([string]$Directory, [string]$Prefix) {
+    foreach ($item in @(Get-ChildItem -LiteralPath $Directory -Force |
+        Sort-Object Name)) {
+      if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "refusing linked tree content: $($item.FullName)"
       }
-  )
+      $relative = if ($Prefix) {
+        "$Prefix/$($item.Name)"
+      } else {
+        $item.Name
+      }
+      if ($item.PSIsContainer) {
+        "DIR|$relative"
+        Visit-Tree $item.FullName $relative
+      } else {
+        $hash = Get-Sha256 $item.FullName
+        "FILE|$relative|$hash"
+      }
+    }
+  }
+  @(Visit-Tree $Root "")
 }
 
 $root = (Resolve-Path -LiteralPath .).Path
