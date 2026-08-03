@@ -128,6 +128,7 @@ class ReleaseContractTests(unittest.TestCase):
             "input=prompt",
             'str(isolated),\n        "--add-dir",\n        str(shared),',
             'errors="replace"',
+            'glob("@openai/codex-win32-*/vendor/*/bin/codex.exe")',
         ):
             with self.subTest(harness_phrase=phrase):
                 self.assertIn(phrase, harness_text)

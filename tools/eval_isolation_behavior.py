@@ -101,6 +101,14 @@ def codex_executable(requested: str) -> list[str]:
     if resolved is None:
         raise RuntimeError(f"Codex command not found: {requested}")
     if os.name == "nt" and Path(resolved).suffix.lower() in {".cmd", ".bat"}:
+        package_modules = (
+            Path(resolved).parent / "node_modules" / "@openai" / "codex" / "node_modules"
+        )
+        native_candidates = sorted(
+            package_modules.glob("@openai/codex-win32-*/vendor/*/bin/codex.exe")
+        )
+        if len(native_candidates) == 1:
+            return [str(native_candidates[0])]
         return [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", resolved]
     return [resolved]
 
