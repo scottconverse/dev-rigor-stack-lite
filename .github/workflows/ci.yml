@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     strategy:
@@ -13,22 +16,28 @@ jobs:
     env:
       CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
       - run: python tools/validate_bundle.py
+      - run: python tools/test_release_contract.py
+      - run: python tools/test_installer_preflight.py
       - run: python tools/test_rigor_goals.py
+      - name: Documented Windows removal to pinned v0.5.1 rollback
+        if: runner.os == 'Windows'
+        run: python tools/test_windows_rollback.py
       - name: Installer smoke on Linux (default-on contract)
         if: runner.os == 'Linux'
         run: |
           # A bare install from a project dir must produce ALL THREE tiers.
           mkdir -p "$RUNNER_TEMP/proj" && cd "$RUNNER_TEMP/proj"
           "$GITHUB_WORKSPACE/install.sh" ".claude/skills"
-          test "$(find .claude/skills -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 19
+          test "$(find .claude/skills -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 20
           test -f .claude/tools/rigor_goals.py
           grep -qF '<!-- dev-rigor-lite anchor' CLAUDE.md
           # second run must be idempotent: still exactly one managed block
@@ -116,7 +125,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $proj | Out-Null
           Set-Location $proj
           & $installer -Target ".claude\skills"
-          if ((Get-ChildItem "$proj\.claude\skills" -Directory).Count -ne 19) { throw 'wrong skill count' }
+          if ((Get-ChildItem "$proj\.claude\skills" -Directory).Count -ne 20) { throw 'wrong skill count' }
           if (-not (Test-Path "$proj\.claude\tools\rigor_goals.py")) { throw 'rigor-goals not installed by default' }
           if (-not (Select-String -Path "$proj\CLAUDE.md" -SimpleMatch '<!-- dev-rigor-lite anchor' -Quiet)) { throw 'anchor block missing by default' }
           & $installer -Target ".claude\skills" -Force
@@ -308,9 +317,9 @@ jobs:
             Stop-InstallVerification 'MANIFEST_JSON' 'source manifest is not valid JSON'
           }
           $expectedSkills = [string[]]@($manifest.skills | ForEach-Object { [string]$_ })
-          if ([int]$manifest.skill_count -ne 19 -or $expectedSkills.Count -ne 19) {
+          if ([int]$manifest.skill_count -ne 20 -or $expectedSkills.Count -ne 20) {
             Stop-InstallVerification 'MANIFEST_COUNT' (
-              "source manifest must declare exactly 19 skills; skill_count=$(
+              "source manifest must declare exactly 20 skills; skill_count=$(
                 $manifest.skill_count
               ), names=$($expectedSkills.Count)"
             )
@@ -469,7 +478,7 @@ jobs:
             Join-Path $EvidenceDirectory "$Label-result.txt"
           ) @(
             'RESULT=PASS'
-            'EXPECTED_SKILL_COUNT=19'
+            'EXPECTED_SKILL_COUNT=20'
             "SOURCE_TOP_LEVEL_COUNT=$($sourceNames.Count)"
             "INSTALLED_TOP_LEVEL_COUNT=$($installedNames.Count)"
             "NORMALIZED_TREE_RECORDS=$($sourceTree.Count)"
@@ -480,7 +489,7 @@ jobs:
             "ANCHOR_END_MARKERS=$endCount"
           )
           Write-Output (
-            "INSTALL_VERIFY_PASS label=$Label skills=19 tree_records=$($sourceTree.Count)"
+            "INSTALL_VERIFY_PASS label=$Label skills=20 tree_records=$($sourceTree.Count)"
           )
           '@
           [IO.File]::WriteAllText(
@@ -620,7 +629,7 @@ jobs:
           }
           if (-not (Test-Path -LiteralPath $target)) { throw 'README command did not create the target' }
           $skillCount = @(Get-ChildItem -LiteralPath $target -Directory).Count
-          if ($skillCount -ne 19) { throw "expected 19 installed skill directories, found $skillCount" }
+          if ($skillCount -ne 20) { throw "expected 20 installed skill directories, found $skillCount" }
           if (-not (Test-Path -LiteralPath (Join-Path $candidate '.claude\tools\rigor_goals.py'))) {
             throw 'README command did not install rigor-goals'
           }
@@ -672,8 +681,8 @@ jobs:
               Join-Path $wrongNameProject '.claude\skills'
             ) -Directory
           ).Count
-          if ($wrongNameCount -ne 19) {
-            throw "wrong-name mutation did not preserve 19 directories: $wrongNameCount"
+          if ($wrongNameCount -ne 20) {
+            throw "wrong-name mutation did not preserve 20 directories: $wrongNameCount"
           }
           $wrongNameError = $null
           try {
@@ -762,7 +771,7 @@ jobs:
           }
       - name: Preserve README Restricted-policy evidence
         if: runner.os == 'Windows' && always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: readme-restricted-windows
           path: ${{ runner.temp }}\readme-restricted-evidence
@@ -1113,6 +1122,107 @@ jobs:
           if ($linkedError -notmatch 'refusing linked goals file') {
             throw 'hard-link refusal did not identify the linked goals file'
           }
+
+          $success = Join-Path $evidence 'successful-removal-project'
+          New-Item -ItemType Directory -Path $success | Out-Null
+          Push-Location $success
+          try {
+            & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+              -File (Join-Path $sourceAlias 'install.ps1') `
+              -Target '.claude\skills'
+            if ($LASTEXITCODE -ne 0) { throw 'successful-removal fixture install failed' }
+          } finally {
+            Pop-Location
+          }
+          $successTarget = Join-Path $success '.claude\skills'
+          $successGoals = Join-Path $success '.claude\tools\rigor_goals.py'
+          $successAnchor = Join-Path $success 'CLAUDE.md'
+          New-Item -ItemType Directory -Path (
+            (Join-Path $successTarget 'owner-sentinel'),
+            (Join-Path $success '.rigor')
+          ) | Out-Null
+          Set-Content -LiteralPath (Join-Path $successTarget 'owner-sentinel\keep.txt') `
+            -Value 'OWNER_SKILL_SENTINEL'
+          Set-Content -LiteralPath (Join-Path $success '.rigor\keep.txt') `
+            -Value 'OWNER_RIGOR_SENTINEL'
+          $ownerTool = Join-Path $success '.claude\tools\owner-tool.txt'
+          Set-Content -LiteralPath $ownerTool -Value 'OWNER_TOOL_SENTINEL'
+          $ownerSentinelFiles = @(
+            (Join-Path $successTarget 'owner-sentinel\keep.txt'),
+            $ownerTool,
+            (Join-Path $success '.rigor\keep.txt')
+          )
+          $ownerSentinelHashes = @{}
+          foreach ($ownerFile in $ownerSentinelFiles) {
+            $ownerSentinelHashes[$ownerFile] = (
+              Get-FileHash -Algorithm SHA256 -LiteralPath $ownerFile
+            ).Hash
+          }
+          $anchorWithOwnerText = "OWNER_BEFORE`n" +
+            [IO.File]::ReadAllText($successAnchor) + "OWNER_AFTER`n"
+          [IO.File]::WriteAllText(
+            $successAnchor,
+            $anchorWithOwnerText,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $successScript = $documented
+          $successReplacements = [ordered]@{
+            '$Target = ".claude\skills"' =
+              '$Target = ' + (ConvertTo-PowerShellLiteral $successTarget)
+            '$GoalsFile = ".claude\tools\rigor_goals.py"' =
+              '$GoalsFile = ' + (ConvertTo-PowerShellLiteral $successGoals)
+            '$AnchorFile = "CLAUDE.md"' =
+              '$AnchorFile = ' + (ConvertTo-PowerShellLiteral $successAnchor)
+            '$confirmation = Read-Host "Type REMOVE 19 to continue"' =
+              '$confirmation = "REMOVE 19"'
+          }
+          foreach ($entry in $successReplacements.GetEnumerator()) {
+            if ($successScript.IndexOf([string]$entry.Key, [StringComparison]::Ordinal) -lt 0) {
+              throw "missing documented successful-removal line: $($entry.Key)"
+            }
+            $successScript = $successScript.Replace([string]$entry.Key, [string]$entry.Value)
+          }
+          $successScriptPath = Join-Path $evidence 'successful-removal.ps1'
+          [IO.File]::WriteAllText(
+            $successScriptPath,
+            $successScript,
+            (New-Object Text.UTF8Encoding($false))
+          )
+          $successProcess = Start-Process `
+            -FilePath 'powershell.exe' `
+            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$successScriptPath`"" `
+            -WorkingDirectory $sourceAlias `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput (Join-Path $evidence 'successful-removal.stdout.log') `
+            -RedirectStandardError (Join-Path $evidence 'successful-removal.stderr.log')
+          if ($successProcess.ExitCode -ne 0) {
+            throw "documented successful removal failed with exit $($successProcess.ExitCode)"
+          }
+          $successManifest = Get-Content -Raw -LiteralPath (
+            Join-Path $sourceAlias 'manifest.json'
+          ) | ConvertFrom-Json
+          $remainingManaged = @($successManifest.skills | Where-Object {
+            Test-Path -LiteralPath (Join-Path $successTarget $_)
+          })
+          if ($remainingManaged.Count -ne 0) {
+            throw "successful removal left managed skills: $($remainingManaged -join ', ')"
+          }
+          if (Test-Path -LiteralPath $successGoals) { throw 'successful removal left goals file' }
+          foreach ($ownerFile in $ownerSentinelFiles) {
+            if (-not (Test-Path -LiteralPath $ownerFile -PathType Leaf)) {
+              throw "successful removal deleted owner content: $ownerFile"
+            }
+            $afterHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ownerFile).Hash
+            if ($afterHash -cne $ownerSentinelHashes[$ownerFile]) {
+              throw "successful removal changed owner content bytes: $ownerFile"
+            }
+          }
+          $successAnchorText = [IO.File]::ReadAllText($successAnchor)
+          if ($successAnchorText -cne "OWNER_BEFORE`nOWNER_AFTER`n") {
+            throw 'successful removal changed owner anchor text outside the managed span'
+          }
+
           Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
             "CANDIDATE_SHA=$env:CANDIDATE_SHA"
             "CHECKOUT_SHA=$checkoutSha"
@@ -1126,11 +1236,13 @@ jobs:
             'JUNCTION_ALIAS_ZERO_BYTE_CHANGE=True'
             "LINKED_GOALS_EXIT=$($linkedProcess.ExitCode)"
             'LINKED_GOALS_ZERO_BYTE_CHANGE=True'
+            "SUCCESSFUL_REMOVAL_EXIT=$($successProcess.ExitCode)"
+            'SUCCESSFUL_REMOVAL_OWNER_CONTENT_PRESERVED=True'
             'DOCUMENTED_POWERSHELL_REMOVAL_SAFETY_PASS'
           )
       - name: Preserve documented PowerShell removal-safety evidence
         if: runner.os == 'Windows' && always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: documented-removal-safety-windows
           path: ${{ runner.temp }}\removal-safety-windows
@@ -1161,11 +1273,12 @@ jobs:
       V033_SHA: 824bc12a6612da50a150bcb3ef524002fac9452e
       V033_ARCHIVE_URL: https://github.com/scottconverse/dev-rigor-stack-lite/archive/refs/tags/v0.3.3.tar.gz
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
       - name: Exercise archived install.sh lifecycle
@@ -1251,8 +1364,12 @@ jobs:
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
           expected = sorted(manifest["skills"])
           actual = sorted(path.name for path in target.iterdir() if path.is_dir())
-          if manifest.get("skill_count") != 19 or len(expected) != 19:
-              raise SystemExit(f"{label}: source manifest does not declare exactly 19 skills")
+          declared_count = manifest.get("skill_count")
+          if declared_count != len(expected):
+              raise SystemExit(
+                  f"{label}: source manifest skill_count {declared_count!r} "
+                  f"does not match its {len(expected)} declared skills"
+              )
           if actual != expected:
               raise SystemExit(
                   f"{label}: installed directories differ from manifest\n"
@@ -1530,7 +1647,20 @@ jobs:
           source_alias_script="$work/source-alias-removal.sh"
           source_alias="$work/removal-source-alias"
           linked_goals="$work/removal-linked-goals"
-          mkdir -p "$evidence" "$source_alias" "$linked_goals"
+          success="$work/removal-success"
+          success_script="$work/successful-removal.sh"
+          rollback_source="$work/v0.5.1-rollback-source"
+          rollback_sha=d3d4592b12e689140d589b09d10c2bec63658b60
+          mkdir -p \
+            "$evidence" "$source_alias" "$linked_goals" "$success" "$rollback_source"
+
+          resolved_rollback_sha=$(git rev-parse 'v0.5.1^{commit}')
+          if [ "$resolved_rollback_sha" != "$rollback_sha" ]; then
+            printf 'v0.5.1 rollback identity mismatch: expected %s, got %s\n' \
+              "$rollback_sha" "$resolved_rollback_sha" >&2
+            exit 1
+          fi
+          git archive --format=tar "$rollback_sha" | tar -xf - -C "$rollback_source"
 
           python - "$candidate/docs/manual.md" "$documented" <<'PY'
           import re
@@ -1646,17 +1776,125 @@ jobs:
             "$evidence/linked-goals-before.sha256" \
             "$evidence/linked-goals-after.sha256"
 
+          (
+            cd "$success"
+            "$candidate/install.sh" .claude/skills
+          ) > "$evidence/success-install.stdout.log" 2> "$evidence/success-install.stderr.log"
+          mkdir -p "$success/.claude/skills/owner-sentinel" "$success/.rigor"
+          printf '%s\n' OWNER_SKILL_SENTINEL > "$success/.claude/skills/owner-sentinel/keep.txt"
+          printf '%s\n' OWNER_TOOL_SENTINEL > "$success/.claude/tools/owner-tool.txt"
+          printf '%s\n' OWNER_RIGOR_SENTINEL > "$success/.rigor/keep.txt"
+          {
+            printf '%s\n' OWNER_BEFORE
+            cat "$success/CLAUDE.md"
+            printf '%s\n' OWNER_AFTER
+          } > "$success/CLAUDE.md.owner"
+          mv "$success/CLAUDE.md.owner" "$success/CLAUDE.md"
+          python - "$documented" "$success_script" "$success" <<'PY'
+          import shlex
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1]).read_text(encoding="utf-8")
+          project = Path(sys.argv[3]).resolve()
+          replacements = {
+              "TARGET=.claude/skills": f"TARGET={shlex.quote(str(project / '.claude/skills'))}",
+              "GOALS_FILE=.claude/tools/rigor_goals.py": f"GOALS_FILE={shlex.quote(str(project / '.claude/tools/rigor_goals.py'))}",
+              "ANCHOR_FILE=CLAUDE.md": f"ANCHOR_FILE={shlex.quote(str(project / 'CLAUDE.md'))}",
+          }
+          for old, new in replacements.items():
+              if source.count(old) != 1:
+                  raise SystemExit(f"expected one documented assignment: {old}")
+              source = source.replace(old, new, 1)
+          Path(sys.argv[2]).write_text(source, encoding="utf-8", newline="\n")
+          PY
+          (
+            cd "$candidate"
+            printf 'REMOVE 19\n' | bash "$success_script"
+          ) > "$evidence/successful-removal.stdout.log" \
+            2> "$evidence/successful-removal.stderr.log"
+          python - "$candidate/manifest.json" "$success" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          project = Path(sys.argv[2])
+          target = project / ".claude/skills"
+          remaining = [name for name in manifest["skills"] if (target / name).exists()]
+          if remaining:
+              raise SystemExit(f"successful removal left managed skills: {remaining}")
+          if (project / ".claude/tools/rigor_goals.py").exists():
+              raise SystemExit("successful removal left goals file")
+          sentinels = {
+              target / "owner-sentinel/keep.txt": "OWNER_SKILL_SENTINEL\n",
+              project / ".claude/tools/owner-tool.txt": "OWNER_TOOL_SENTINEL\n",
+              project / ".rigor/keep.txt": "OWNER_RIGOR_SENTINEL\n",
+          }
+          for sentinel, expected in sentinels.items():
+              if not sentinel.is_file():
+                  raise SystemExit(f"successful removal deleted owner content: {sentinel}")
+              if sentinel.read_text(encoding="utf-8") != expected:
+                  raise SystemExit(f"successful removal changed owner content: {sentinel}")
+          anchor = (project / "CLAUDE.md").read_text(encoding="utf-8-sig")
+          if anchor != "OWNER_BEFORE\nOWNER_AFTER\n":
+              raise SystemExit("successful removal changed owner anchor text")
+          print("successful removal deleted only current manifest-owned content")
+          PY
+
+          (
+            cd "$success"
+            "$rollback_source/install.sh" .claude/skills
+          ) > "$evidence/rollback-install.stdout.log" \
+            2> "$evidence/rollback-install.stderr.log"
+          python - "$rollback_source/manifest.json" "$success" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          project = Path(sys.argv[2])
+          target = project / ".claude/skills"
+          if (
+              manifest.get("version") != "0.5.1"
+              or manifest.get("skill_count") != len(manifest.get("skills", []))
+          ):
+              raise SystemExit("rollback source manifest identity or inventory is invalid")
+          missing = [name for name in manifest["skills"] if not (target / name).is_dir()]
+          if missing:
+              raise SystemExit(f"rollback install is missing skills: {missing}")
+          if (target / "dev-rigor-stack-lite-brainstorm").exists():
+              raise SystemExit("rollback left the v0.6.0-only brainstorm skill installed")
+          for sentinel in (
+              target / "owner-sentinel/keep.txt",
+              project / ".claude/tools/owner-tool.txt",
+              project / ".rigor/keep.txt",
+          ):
+              if not sentinel.is_file():
+                  raise SystemExit(f"rollback deleted owner content: {sentinel}")
+          anchor = (project / "CLAUDE.md").read_text(encoding="utf-8-sig")
+          if "OWNER_BEFORE" not in anchor or "OWNER_AFTER" not in anchor:
+              raise SystemExit("rollback install lost owner anchor text")
+          if anchor.count("<!-- dev-rigor-lite anchor") != 1:
+              raise SystemExit("rollback install did not add exactly one managed anchor")
+          print("current removal followed by pinned v0.5.1 install produced a clean rollback")
+          PY
+
           {
             printf 'candidate_sha=%s\n' "$CANDIDATE_SHA"
             printf 'source_alias_exit=%s\n' "$source_alias_status"
             printf 'source_alias_zero_byte_change=true\n'
             printf 'linked_goals_exit=%s\n' "$linked_goals_status"
             printf 'linked_goals_zero_byte_change=true\n'
+            printf 'successful_removal_exit=0\n'
+            printf 'successful_removal_owner_content_preserved=true\n'
+            printf 'rollback_source_sha=%s\n' "$rollback_sha"
+            printf 'rollback_v0.6.0_only_skill_absent=true\n'
             printf 'DOCUMENTED_BASH_REMOVAL_SAFETY_PASS\n'
           } > "$evidence/result.log"
       - name: Preserve POSIX installer lifecycle evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: posix-installer-lifecycle-${{ matrix.os }}
           path: ${{ runner.temp }}/posix-installer-lifecycle-evidence

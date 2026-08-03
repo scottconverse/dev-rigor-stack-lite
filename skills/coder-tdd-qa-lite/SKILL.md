@@ -3,7 +3,7 @@ name: coder-tdd-qa-lite
 description: "Engineering, TDD, and QA standards for coding work — Micro, Standard, and Critical routing; test sensitivity; anti-fabrication evidence; focused or adversarial falsification; and an applicable release checklist. Use for coding, debugging, feature work, refactoring, and UI/frontend/interface work. The Release Gate section applies when tagging, publishing, deploying, or when owner/host policy explicitly defines a push as a release."
 ---
 
-# Coder TDD/QA Standards — v0.5
+# Coder TDD/QA Standards — v0.6
 
 Portable Agent Skills standards. Install this folder in the active host's supported skills
 directory. The workflow depends on capabilities—reading files, editing, running commands,
@@ -128,6 +128,17 @@ the regression forever.
    if fast) and compare against the Rule-2 baseline. Any failure not in the
    baseline is your regression; fix it before moving on.
 6. **Repeat** for the next behavior. Small cycles — minutes, not hours.
+
+Before hypothesizing, find the nearest working equivalent in the same codebase, read it
+completely, and list every difference from the broken path—including differences that
+look irrelevant. Partial comparison can relocate the symptom instead of explaining it.
+
+Count production fix attempts against one cause separately from diagnostic probes. A
+probe observes or tests a hypothesis and is removed before shipping; a fix attempt changes
+production behavior and ends with its focused check. A third failed fix for one cause ends
+implementation and opens an architecture question with the owner; a fourth is not
+authorized. Fixes that reveal new coupling, require broad refactoring, or create a new
+symptom indicate a structural problem, not merely a stubborn defect.
 
 **Escape hatches (use honestly, say so in the report):**
 - *Spike/exploration:* when you don't yet know what to build, prototype freely —

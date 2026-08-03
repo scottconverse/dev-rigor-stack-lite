@@ -28,8 +28,10 @@ Get-ExecutionPolicy -List
 ## The installer refuses to overwrite a skill
 
 Without `-Force` or `--force`, an existing manifest-named skill directory is a
-hard stop. This protects local changes. Review or back up the target, then run a
-deliberate repair or upgrade:
+hard stop. The installer reports the collision set during read-only preflight and
+does not copy any sibling skill, goals file, or anchor text before refusing. This
+protects local changes and avoids a mixed installation after a nonzero exit. Review
+or back up the target, then run a deliberate repair or upgrade:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".claude\skills" -Force
@@ -39,7 +41,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".clau
 ./install.sh .claude/skills --force
 ```
 
-Force replaces the 19 manifest-named skill directories and the installed goals
+Force replaces the 20 manifest-named skill directories and the installed goals
 file. It does not authorize deleting unrelated target entries or owner text
 outside the anchor markers.
 
@@ -48,10 +50,9 @@ outside the anchor markers.
 The managed span begins with `<!-- dev-rigor-lite anchor` and ends with
 `<!-- /dev-rigor-lite anchor -->`.
 
-- If a begin marker exists without an end marker, the installer stops. Back up
-  the host instructions file and repair the marker pair by hand.
-- If either marker appears more than once, stop. Identify the single lite-owned
-  span before changing anything.
+- If either marker is missing, out of order, embedded in owner text, or appears
+  more than once, the installer stops before copying any component. Back up the
+  host instructions file and repair the marker pair by hand.
 - Never resolve a marker problem by deleting the whole `AGENTS.md`,
   `CLAUDE.md`, or `GEMINI.md`; those files can contain unrelated owner policy.
 - Text outside the one verified marker pair is owner content and must survive

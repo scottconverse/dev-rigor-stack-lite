@@ -7,11 +7,12 @@
 [Releases](https://github.com/scottconverse/dev-rigor-stack-lite/releases)
 
 A portable, evidence-first development and release workflow for AI coding agents. It
-contains the complete 19-skill workflow from `codex-dev-rigor-stack`, adapted to run
-without lifecycle hooks, a background runtime, trust activation, Stop interception, or a
-private evidence ledger — plus two drift-resistance layers that **install by default
-with everything else**: a small **anchor block** for the host's persistent instructions
-file, and **rigor-goals**, a stdlib-only CLI that pins the engagement mode and
+contains the original workflow skills adapted from `codex-dev-rigor-stack`, plus a
+text-first BRAINSTORM entrypoint adapted from `obra/superpowers`, for 20 skills total. It runs without
+lifecycle hooks, a background runtime, trust activation, Stop interception, or a private
+evidence ledger. Two drift-resistance layers **install by default with everything else**:
+a small **anchor block** for the host's persistent instructions file, and **rigor-goals**,
+a stdlib-only CLI that pins the engagement mode and
 refuses to mistake a finished unit or an exhausted queue for a finished ongoing job.
 
 These are part of the stack, not extras. Skills alone are advice — a model can drift
@@ -29,8 +30,8 @@ the discipline's memory into places that do not decay:
 
 | Tier | What | Force | Why it resists drift |
 |---|---|---|---|
-| 1 | The 19 skills | none — invoked knowledge | — |
-| 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | reminder every turn | the host re-reads its instructions file each turn |
+| 1 | The 20 skills | none — invoked knowledge | — |
+| 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | persistent reminder | the instructions remain in session context and reload at host-defined boundaries; Claude Code also re-injects root `CLAUDE.md` after compaction |
 | 3 | `rigor-goals` CLI | hard state transitions at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
 
 The anchor routes work by risk and invokes `rigor-goals` only when work crosses sessions,
@@ -39,6 +40,10 @@ needs a handoff, uses parallel agents, or waits on an external event.
 ## What changes in Lite
 
 - Skills, references, templates, and deterministic helper scripts remain.
+- Optional BRAINSTORM discovery resolves material design ambiguity before PLAN.
+  Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+  Without explicit invocation, a decision-complete brief skips discovery, and Micro
+  never gains a mandatory approval gate.
 - Evidence comes from ordinary commands, logs, CI, screenshots, traces, hashes, and reports.
 - Host policies control delegation, approvals, merges, publishing, and available tools.
 - Passing a gate establishes readiness; it never grants the agent authority to merge or publish.
@@ -70,6 +75,11 @@ The bundle uses the portable Agent Skills layout: one directory per skill with a
 The Markdown workflows are portable; tool availability and instruction adherence vary by
 host and model. This repository does not claim mechanical enforcement.
 
+The executable release checks prove inventory, prompt-contract markers, installer
+lifecycle behavior, and documentation consistency. The BRAINSTORM scenarios are an
+evaluation rubric, not a behavioral test: neither the validator nor CI proves that a
+host loads the skill or that a model follows it.
+
 ## Fast start
 
 Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell.
@@ -77,7 +87,7 @@ Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell
 ### 1. Acquire the pinned release source
 
 ```console
-git clone --branch v0.5.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+git clone --branch v0.6.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 ```
 
@@ -128,13 +138,16 @@ Adjust the tool path for the target you installed. See the
 Use `rigor-goals` only for cross-session work, handoffs, parallel agents, or an external
 wait. Ordinary same-session work does not need a durable plan.
 
-Installation copies only the 19 directories under `skills/`. Existing directories with
-the same names are refused unless `-Force` or `--force` is supplied.
+Installation copies only the 20 directories under `skills/`. Before writing anything, a
+read-only preflight validates the target, all manifest-name collisions, the goals and anchor
+destinations, and the managed marker structure. Existing directories with the same names
+are refused unless `-Force` or `--force` is supplied; every preflight refusal leaves the
+project unchanged.
 
 ### The anchor block and rigor-goals install by default
 
 A plain `./install.sh .claude/skills` (or the process-scoped PowerShell form above)
-installs all three tiers: the 19 skills, the `rigor-goals` tool, and the anchor block.
+installs all three tiers: the 20 skills, the `rigor-goals` tool, and the anchor block.
 Defaults are inferred from the target:
 
 | Target pattern | Default goals location | Default anchor location |
@@ -155,7 +168,7 @@ running the installer must never pass them on its own initiative.
 
 For an upgrade or same-version repair, acquire the intended source version and rerun the
 same command with `--force` or `-Force`. This replaces managed skill/tool bytes while
-preserving text outside the anchor markers. Safe removal must delete only the 19
+preserving text outside the anchor markers. Safe removal must delete only the 20
 manifest-owned skill directories, the one managed tool file, and the single
 marker-fenced anchor span; follow the preview-and-preserve procedure in the
 [manual](docs/manual.md).
@@ -254,6 +267,7 @@ durable as the files it lives in.
 ## Main entrypoints
 
 - `dev-rigor-stack-lite` — route Micro, Standard, or Critical and coordinate applicable gates
+- `dev-rigor-stack-lite-brainstorm` — optional discovery for materially unresolved designs
 - `dev-rigor-stack-lite-plan`
 - `dev-rigor-stack-lite-build`
 - `dev-rigor-stack-lite-proof-gate`

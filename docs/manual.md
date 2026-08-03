@@ -10,7 +10,7 @@ identity, placement, verification, repair, and removal procedures.
 
 A default installation adds three local tiers:
 
-1. the 19 directories named in `manifest.json`;
+1. the 20 directories named in `manifest.json`;
 2. `rigor_goals.py` in a tools directory beside the skills directory; and
 3. one marker-fenced anchor block in the host's instructions file.
 
@@ -26,13 +26,13 @@ Clone the repository and detach at the release tag:
 git clone https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 git fetch --tags --force
-git checkout --detach v0.5.1
+git checkout --detach v0.6.0
 git rev-parse HEAD
-git rev-list -n 1 v0.5.1
+git rev-list -n 1 v0.6.0
 ```
 
 The last two commit IDs must match. `git status --short` should print nothing,
-and `manifest.json` should report `0.5.0`. For a later release, replace the tag
+and `manifest.json` should report `0.6.0`. For a later release, replace the tag
 and expected manifest version together. If you use a release archive, compare
 its SHA-256 to the checksum published with that release. If no archive checksum
 is published, prefer the pinned Git checkout.
@@ -109,13 +109,28 @@ agents.
 
 Before using the stack, confirm:
 
-- every one of the 19 manifest names exists under the skills target;
+- every one of the 20 manifest names exists under the skills target;
 - the expected `rigor_goals.py` file exists;
 - the expected host instructions file contains exactly one anchor begin marker
   and one end marker; and
 - `python tools/validate_bundle.py` passes in the pinned source checkout.
 
 Exact commands are in [Technical verification](#technical-verification).
+
+### Use optional BRAINSTORM discovery
+
+Invoke `$dev-rigor-stack-lite-brainstorm` when the problem, success criteria, material
+constraints, or a consequential design choice is genuinely unresolved. It elicits and
+records an approved text-first design, then hands that record to PLAN.
+Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+Without explicit invocation, a decision-complete brief goes directly to PLAN, and Micro
+work never requires BRAINSTORM approval.
+
+`tools/test_release_contract.py` checks the shipped prompt contract and scenario inventory.
+Those static checks do not prove that a host loads the skill or that a model follows it;
+use
+[`skills/dev-rigor-stack-lite-brainstorm/references/behavior-scenarios.md`](../skills/dev-rigor-stack-lite-brainstorm/references/behavior-scenarios.md)
+as the explicit evaluation rubric.
 
 ### Upgrade or repair
 
@@ -131,10 +146,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".clau
 ./install.sh .claude/skills --force
 ```
 
-Force replaces the 19 manifest-named skill directories, refreshes the goals
+Force replaces the 20 manifest-named skill directories, refreshes the goals
 file, and replaces the single managed anchor span. It preserves unrelated
 target entries and text outside the markers. The same-version command is a
 repair; a newer pinned source is an upgrade.
+
+### Downgrade or roll back
+
+Do not force an older release over a newer installation. An older manifest does not know
+about skills introduced later, so overlaying v0.5.1 onto v0.6.0 would leave
+`dev-rigor-stack-lite-brainstorm` installed and create a mixed-version bundle.
+
+To downgrade safely, first use the currently installed release's matching pinned source
+and the [Safe three-tier removal](#safe-three-tier-removal) procedure below. Confirm that
+all current manifest-owned skills, the managed goals file, and the managed anchor span are
+gone while unrelated owner content remains. Then acquire the older pinned release and run
+its normal installer. Preserve `./.rigor/` unless the owner separately decides to remove
+project history.
 
 ### Remove the stack
 
@@ -142,7 +170,7 @@ Do not remove the whole skills target, tools directory, or host instructions
 file. They may contain unrelated owner data. Do not use wildcards.
 
 Use the audited procedure in [Safe three-tier removal](#safe-three-tier-removal).
-It derives exactly 19 names from the matching pinned manifest, verifies that
+It derives exactly 20 names from the matching pinned manifest, verifies that
 installed skill bytes still match that source, refuses symbolic links, backs up
 and refuses a changed goals file, and removes only one verified marker-fenced
 anchor span. It preserves `./.rigor/` by default so project history is not
@@ -152,12 +180,12 @@ silently destroyed.
 
 ### Identity and acquisition
 
-`manifest.json` is the product version authority and owns the 19-skill
+`manifest.json` is the product version authority and owns the 20-skill
 inventory. For a Git acquisition, bind the work to all of the following:
 
 ```sh
 git rev-parse HEAD
-git rev-list -n 1 v0.5.1
+git rev-list -n 1 v0.6.0
 git status --short
 python3 -c "import json; print(json.load(open('manifest.json', encoding='utf-8'))['version'])"
 ```
@@ -191,10 +219,13 @@ Explicit `-Anchor`/`--anchor` and `-Goals`/`--goals` values take precedence.
 The shell's working directory resolves relative inputs but never independently
 selects an anchor for a rooted target. Quote paths containing spaces.
 
-Without force, the first existing manifest-named skill makes installation fail.
-With force, each of those exact directories is removed and recopied. The goals
-file is copied with overwrite enabled. The installer adds or replaces the
-managed anchor span while preserving content outside the markers.
+Before writing, the installer preflights the complete manifest-name collision set,
+target and companion path types, source aliases, and the managed anchor marker
+structure. Any preflight refusal leaves the project byte-for-byte unchanged. Without
+force, one or more existing manifest-named skills make installation fail. With force,
+each of those exact directories is removed and recopied. The goals file is copied with
+overwrite enabled. The installer adds or replaces the managed anchor span while
+preserving content outside the markers.
 
 ### Technical verification
 
@@ -209,8 +240,8 @@ $AnchorFile = "CLAUDE.md"
 
 $manifest = Get-Content -Raw -LiteralPath .\manifest.json | ConvertFrom-Json
 $names = @($manifest.skills)
-if ($manifest.skill_count -ne 19 -or $names.Count -ne 19) {
-  throw "manifest does not authorize exactly 19 skills"
+if ($manifest.skill_count -ne 20 -or $names.Count -ne 20) {
+  throw "manifest does not authorize exactly 20 skills"
 }
 $missing = @($names | Where-Object {
   -not (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Container)
@@ -227,7 +258,7 @@ $end = ([regex]::Matches($anchorText, [regex]::Escape('<!-- /dev-rigor-lite anch
 if ($begin -ne 1 -or $end -ne 1) {
   throw "expected one anchor marker pair; found begin=$begin end=$end"
 }
-Write-Host "Verified 19 manifest skills, goals file, and one anchor pair"
+Write-Host "Verified 20 manifest skills, goals file, and one anchor pair"
 ```
 
 The equivalent Bash-hosted check uses Python's standard library:
@@ -244,22 +275,25 @@ import sys
 target, goals, anchor = map(pathlib.Path, sys.argv[1:])
 manifest = json.loads(pathlib.Path("manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
-assert manifest["skill_count"] == 19
-assert len(names) == len(set(names)) == 19
+assert manifest["skill_count"] == 20
+assert len(names) == len(set(names)) == 20
 missing = [name for name in names if not (target / name).is_dir()]
 assert not missing, f"missing skills: {missing}"
 assert goals.is_file(), f"missing goals file: {goals}"
 text = anchor.read_text(encoding="utf-8-sig")
 assert text.count("<!-- dev-rigor-lite anchor") == 1
 assert text.count("<!-- /dev-rigor-lite anchor -->") == 1
-print("Verified 19 manifest skills, goals file, and one anchor pair")
+print("Verified 20 manifest skills, goals file, and one anchor pair")
 PY
 ```
 
 Then validate the source and exercise the installed goals tool from the project
-whose state you intend to use:
+whose state you intend to use. These examples use `python3`; if your Python 3
+interpreter is named `python`, use that command consistently instead:
 
 ```sh
+python3 tools/test_release_contract.py
+python3 tools/test_installer_preflight.py
 python3 tools/validate_bundle.py
 python3 .claude/tools/rigor_goals.py status
 ```
@@ -374,7 +408,7 @@ when the install lives outside the source checkout.
 
 Both procedures below enforce these preconditions before deletion:
 
-- `manifest.json` contains 19 unique, path-safe names and `skill_count` is 19;
+- `manifest.json` contains 20 unique, path-safe names and `skill_count` is 20;
 - each exact installed skill tree byte-matches the corresponding pinned source
   tree and is not a symbolic link or junction;
 - the skills target, goals file, and anchor file are real, non-linked entries;
@@ -538,26 +572,42 @@ function Test-SamePath([string]$Left, [string]$Right) {
     (Resolve-UserPath $Right)
   )
 }
+function Get-Sha256([string]$Path) {
+  $stream = [IO.File]::OpenRead($Path)
+  try {
+    $sha256 = [Security.Cryptography.SHA256]::Create()
+    try {
+      ([BitConverter]::ToString($sha256.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+    } finally {
+      $sha256.Dispose()
+    }
+  } finally {
+    $stream.Dispose()
+  }
+}
 function Get-TreeInventory([string]$Root) {
   Assert-PlainPath $Root "tree root"
-  $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/') +
-    [IO.Path]::DirectorySeparatorChar
-  @(
-    Get-ChildItem -LiteralPath $Root -Recurse -Force |
-      Sort-Object FullName |
-      ForEach-Object {
-        if (($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-          throw "refusing linked tree content: $($_.FullName)"
-        }
-        $relative = $_.FullName.Substring($base.Length).Replace('\', '/')
-        if ($_.PSIsContainer) {
-          "DIR|$relative"
-        } else {
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
-          "FILE|$relative|$hash"
-        }
+  function Visit-Tree([string]$Directory, [string]$Prefix) {
+    foreach ($item in @(Get-ChildItem -LiteralPath $Directory -Force |
+        Sort-Object Name)) {
+      if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "refusing linked tree content: $($item.FullName)"
       }
-  )
+      $relative = if ($Prefix) {
+        "$Prefix/$($item.Name)"
+      } else {
+        $item.Name
+      }
+      if ($item.PSIsContainer) {
+        "DIR|$relative"
+        Visit-Tree $item.FullName $relative
+      } else {
+        $hash = Get-Sha256 $item.FullName
+        "FILE|$relative|$hash"
+      }
+    }
+  }
+  @(Visit-Tree $Root "")
 }
 
 $root = (Resolve-Path -LiteralPath .).Path
@@ -575,8 +625,8 @@ Assert-PlainPath $sourceAnchor "pinned anchor file"
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $names = @($manifest.skills)
 $unique = @($names | Sort-Object -Unique)
-if ($manifest.skill_count -ne 19 -or $names.Count -ne 19 -or $unique.Count -ne 19) {
-  throw "manifest does not authorize exactly 19 unique skills"
+if ($manifest.skill_count -ne 20 -or $names.Count -ne 20 -or $unique.Count -ne 20) {
+  throw "manifest does not authorize exactly 20 unique skills"
 }
 foreach ($name in $names) {
   if ($name -cnotmatch '^[a-z0-9][a-z0-9-]*$') {
@@ -629,8 +679,8 @@ if (Test-SamePath $anchorPath $sourceAnchor) {
   throw "refusing anchor file that aliases pinned source: $anchorPath"
 }
 
-$sourceGoalsHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourceGoals).Hash
-$installedGoalsHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $goalsPath).Hash
+$sourceGoalsHash = Get-Sha256 $sourceGoals
+$installedGoalsHash = Get-Sha256 $goalsPath
 if ($sourceGoalsHash -cne $installedGoalsHash) {
   $backup = "$goalsPath.owner-backup.$(Get-Date -Format 'yyyyMMddHHmmss')"
   Copy-Item -LiteralPath $goalsPath -Destination $backup
@@ -705,7 +755,7 @@ $after = [IO.File]::ReadAllText($anchorPath)
 if ($after.Contains($beginMarker) -or $after.Contains($endMarker)) {
   throw "managed marker remains"
 }
-Write-Host "Removed exactly 19 verified skill directories, one goals file, and one anchor span."
+Write-Host "Removed exactly 20 verified skill directories, one goals file, and one anchor span."
 Write-Host ".rigor and all parent directories were preserved."
 ```
 
@@ -771,8 +821,8 @@ if os.path.samefile(anchor, source_anchor):
 
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
-assert manifest["skill_count"] == 19
-assert len(names) == len(set(names)) == 19
+assert manifest["skill_count"] == 20
+assert len(names) == len(set(names)) == 20
 assert all(re.fullmatch(r"[a-z0-9][a-z0-9-]*", name) for name in names)
 print("The following exact skill directories will be removed:")
 for name in names:
@@ -840,8 +890,8 @@ if os.path.samefile(anchor, source_anchor):
 
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
-if manifest.get("skill_count") != 19 or len(names) != 19 or len(set(names)) != 19:
-    raise SystemExit("manifest does not authorize exactly 19 unique skills")
+if manifest.get("skill_count") != 20 or len(names) != 20 or len(set(names)) != 20:
+    raise SystemExit("manifest does not authorize exactly 20 unique skills")
 if not all(re.fullmatch(r"[a-z0-9][a-z0-9-]*", name) for name in names):
     raise SystemExit("manifest contains an unsafe skill name")
 
@@ -859,8 +909,11 @@ def inventory(tree):
     for member in sorted(tree.rglob("*")):
         if member.is_symlink():
             raise SystemExit(f"refusing linked content: {member}")
-        if member.is_file():
-            result.append((member.relative_to(tree).as_posix(), digest(member)))
+        relative = member.relative_to(tree).as_posix()
+        if member.is_dir():
+            result.append(("DIR", relative))
+        elif member.is_file():
+            result.append(("FILE", relative, digest(member)))
     return result
 
 skill_paths = []
@@ -927,7 +980,7 @@ if goals.exists():
 after = anchor.read_text(encoding="utf-8-sig")
 if begin in after or end in after:
     raise SystemExit("managed marker remains")
-print("Removed exactly 19 verified skill directories, one goals file, and one anchor span.")
+print("Removed exactly 20 verified skill directories, one goals file, and one anchor span.")
 print(".rigor and all parent directories were preserved.")
 PY
 ```

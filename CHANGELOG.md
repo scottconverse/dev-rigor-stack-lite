@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.6.0 - 2026-08-03
+
+- **Optional BRAINSTORM discovery now precedes PLAN when material product choices are
+  unresolved.** Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+  Without explicit invocation, the text-first skill activates only for genuine ambiguity,
+  skips decision-complete briefs, scales questions and approval to the design, and hands a
+  complete approved record to PLAN without taking implementation action.
+- **Debugging and audit fan-out contracts are sharper without duplicating skills.**
+  Diagnostic probes are separated from production fix attempts; audit coordinators
+  reverify verdict-driving claims and record replayable sampling of lower-risk findings.
+  Portable orchestration examples no longer pin a provider-specific worker model.
+- **The installer lifecycle now covers 20 manifest-owned skills without weakening its
+  trust boundaries.** Public instructions and safe removal preserve the owner-frozen
+  `REMOVE 19` confirmation, use the manifest inventory, and test owner-content preservation.
+  Read-only preflight rejects collisions, malformed markers, source aliases, redirected
+  companion files, and conflicting output topology before any component copy. Missing
+  companion parents are prepared before installation. Windows and POSIX both prove removal
+  followed by a pinned v0.5.1 rollback so a newer-only skill cannot linger.
+- **The public release path is consistent at narrow widths and across documentation.**
+  Explicit BRAINSTORM invocation wins even for a decision-complete brief, the landing page
+  distinguishes five review modes from the GauntletGate umbrella, and primary navigation
+  remains inside a 320 CSS-pixel viewport. Quick-start commands now keep the pinned installer
+  separate from the target project; keyboard-operable overflow panes and copy controls keep
+  long commands usable at narrow widths.
+- **Release claims stay bounded to the evidence.** Static contract and lifecycle checks
+  verify packaging, documentation, and cleanup mechanics; they do not prove that a host
+  loads BRAINSTORM or that a model follows its behavior contract. A billed opt-in harness
+  can record one Codex worker's handling of GauntletGate mutation isolation without
+  promoting that observation into universal behavior proof.
+- **Release provenance and CI inputs are now complete and immutable.** The full upstream
+  fivetaku MIT notice and exact source identity ship beside the goals adaptation. GitHub
+  Actions dependencies are pinned to verified full commits, checkout credentials are not
+  persisted, and the workflow token is explicitly read-only.
+
 ## 0.5.1 - 2026-07-31
 
 - **The landing page now explains the two contracts at the center of v0.5.** Per-unit

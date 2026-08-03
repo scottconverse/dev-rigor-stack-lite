@@ -43,7 +43,7 @@
   header.nav{position:sticky; top:0; z-index:50; background:rgba(246,242,234,.88);
     backdrop-filter:saturate(1.4) blur(8px); border-bottom:1px solid var(--rule)}
   .nav-in{display:flex; align-items:center; gap:28px; height:62px}
-  .brand{display:flex; align-items:center; gap:9px; font-family:var(--mono); font-size:14.5px;
+  .brand{display:flex; align-items:center; gap:9px; min-height:44px; font-family:var(--mono); font-size:14.5px;
     font-weight:600; letter-spacing:-.01em; text-decoration:none; white-space:nowrap}
   .brand svg{flex:none}
   .brand .v{color:var(--stamp); font-size:12px}
@@ -60,7 +60,7 @@
   .btn-2{background:transparent; color:var(--ink); border-color:var(--rule-2)}
   .btn-2:hover{border-color:var(--ink); background:var(--raised)}
   .btn-sm{padding:8px 15px; font-size:14px}
-  .menu-btn{display:none; margin-left:auto; background:none; border:1px solid var(--rule-2);
+  .menu-btn{display:none; min-height:44px; margin-left:auto; background:none; border:1px solid var(--rule-2);
     border-radius:var(--r); padding:7px 11px; font:inherit; font-size:14px; cursor:pointer; color:var(--ink)}
   @media(max-width:980px){
     .nav-links{position:fixed; inset:62px 0 auto 0; background:var(--raised); flex-direction:column;
@@ -70,6 +70,11 @@
     .nav-links a{padding:13px 0; border-bottom:1px solid var(--rule); font-size:16px}
     .nav-links .btn{margin-top:14px; border-bottom:none}
     .menu-btn{display:block}
+  }
+  @media(max-width:360px){
+    .nav-in{gap:8px; padding-inline:16px}
+    .brand{gap:7px; font-size:13px}
+    .brand .v{display:none}
   }
 
   /* ---- hero ---- */
@@ -159,6 +164,7 @@
   h2{font-size:clamp(1.75rem,3.4vw,2.4rem); max-width:22ch}
   .sub{color:var(--ink-2); max-width:var(--read); margin-top:16px; font-size:1.04rem}
   .split{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:56px; align-items:start}
+  .split>*{min-width:0}
   @media(max-width:900px){.split{grid-template-columns:1fr; gap:34px}}
 
   /* ---- tiers ---- */
@@ -176,6 +182,9 @@
   .code-bar{display:flex; align-items:center; gap:9px; padding:9px 15px; border-bottom:1px solid #2A2418;
     font-family:var(--mono); font-size:12px; color:#9A9182; letter-spacing:.03em}
   .code-bar .dot{width:8px;height:8px;border-radius:50%;background:#3A3326}
+  .copy-btn{min-height:44px; margin:-7px -10px -7px auto; padding:7px 11px; border:1px solid #514838;
+    border-radius:5px; background:#241F17; color:#E9E2D3; font:inherit; cursor:pointer}
+  .copy-btn:hover{background:#302A20; border-color:#756A58}
   .code pre{margin:0; padding:17px 18px; overflow-x:auto; font-family:var(--mono);
     font-size:13.4px; line-height:1.72; color:#E9E2D3}
   .code .cm{color:#8B8371}
@@ -246,6 +255,9 @@
   .foot .sp{margin-left:auto; color:var(--ink-3); font-family:var(--mono); font-size:12.5px}
   ul.plain{margin:14px 0 0; padding-left:20px; color:var(--ink-2); font-size:15.5px}
   ul.plain li{margin-bottom:8px}
+  @media(max-width:480px){
+    .lanes,.limits{grid-template-columns:minmax(0,1fr)}
+  }
 </style>
 </head>
 <body>
@@ -255,7 +267,7 @@
   <div class="wrap nav-in">
     <a class="brand" href="#top">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#17140F"/><path d="M8 16h5l2.5-5 3 10 2.5-5h5" stroke="#E4571F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      dev-rigor-stack-lite <span class="v">v0.5.1</span>
+      dev-rigor-stack-lite <span class="v">v0.6.0</span>
     </a>
     <button class="menu-btn" aria-expanded="false" aria-controls="navlinks">Menu</button>
     <nav class="nav-links" id="navlinks" aria-label="Main">
@@ -269,18 +281,18 @@
   </div>
 </header>
 
-<main id="main">
+<main id="main" tabindex="-1">
 <div id="top" class="hero">
   <div class="wrap hero-grid">
     <div>
-      <p class="eyebrow">Portable agent delivery · MIT · v0.5.1</p>
+      <p class="eyebrow">Portable agent delivery · MIT · v0.6.0</p>
       <h1>Rigor for the unit. Continuity for the work.</h1>
       <p class="lede">
         A portable delivery workflow for coding agents: proportional proof for each change,
         persistent engagement state for work that must continue, and no hooks or background runtime.
       </p>
       <div class="cta-row">
-        <a class="btn btn-1" href="#install">Install v0.5.1</a>
+        <a class="btn btn-1" href="#install">Install v0.6.0</a>
         <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite">Inspect the source</a>
       </div>
       <p class="hero-note">For Codex, Claude Code, Antigravity, Gemini CLI, and compatible Agent&nbsp;Skills hosts. Requires Git and Python&nbsp;3.</p>
@@ -310,7 +322,7 @@
 
 <div class="strip">
   <div class="wrap strip-in">
-    <span><b>19</b> workflow skills</span>
+    <span><b>20</b> workflow skills</span>
     <span><b>39</b> rigor-goals tests</span>
     <span><b>0</b> third-party runtime packages</span>
     <span><b>No</b> hooks or daemon</span>
@@ -335,12 +347,12 @@
       <p class="sub">
         Hooks fight that with per-turn injection, but hooks are host-specific and don't travel. This
         bundle takes the other route: it moves the discipline into two places that don't decay — the
-        host's own instructions file, which is re-read every turn, and a file on disk, which survives
-        compaction and session death.
+        host's own instructions file, which remains in session context and reloads at host-defined
+        boundaries, and a file on disk, which survives compaction and session death.
       </p>
       <p class="sub">
         The result is portable. The same workflow runs in Codex, Claude Code, and Antigravity, with no
-        runtime to install and nothing host-specific to maintain.
+        hooks, daemon, or host-specific runtime to maintain. Python 3 is required for the bundled CLI.
       </p>
     </div>
   </div>
@@ -388,8 +400,8 @@
       <div class="tier">
         <div><div class="tier-n">1</div></div>
         <div>
-          <h3>The 19 skills</h3>
-          <p>The full workflow — planning, test-first build, adversarial verification, five review lanes, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
+          <h3>The 20 skills</h3>
+          <p>The full workflow — planning, test-first build, adversarial verification, five review modes plus an advancement gate, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
           <span class="force">Force: none — invoked knowledge</span>
         </div>
       </div>
@@ -397,8 +409,8 @@
         <div><div class="tier-n">2</div></div>
         <div>
           <h3>The anchor block</h3>
-          <p>A marker-fenced block the installer writes into <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>GEMINI.md</code>. The host re-reads the short discipline block each turn, including after compaction. Your edits outside the markers survive upgrades.</p>
-          <span class="force">Force: a reminder, every turn</span>
+          <p>A marker-fenced block the installer writes into <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>GEMINI.md</code>. The instructions remain in session context and reload at host-defined boundaries; Claude Code also re-injects root <code>CLAUDE.md</code> after compaction. Your edits outside the markers survive upgrades.</p>
+          <span class="force">Force: a persistent reminder</span>
         </div>
       </div>
       <div class="tier">
@@ -431,6 +443,12 @@
       <p class="sub">
         Each gate is also a standalone entry point, so you can run one without the others.
       </p>
+      <p class="sub">
+        Version 0.6.0 also adds optional, text-first BRAINSTORM discovery before PLAN when
+        the product problem or a consequential design choice is genuinely unresolved.
+        Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+        Without explicit invocation, a decision-complete brief skips it, and its approval authorizes planning—not building.
+      </p>
     </div>
     <div>
       <div class="receipt">
@@ -451,7 +469,7 @@
   </div>
   <div class="wrap">
     <figure class="gatefig">
-      <div class="gate-row">
+      <div class="gate-row" tabindex="0" aria-label="Delivery gate sequence; scroll horizontally for every gate">
         <div class="gate"><span class="n">gate 1</span><span class="g">PLAN</span><span class="d">Trace the code. Define acceptance. Name the risk.</span></div>
         <div class="gate"><span class="n">gate 2</span><span class="g">BUILD</span><span class="d">Witness applicable RED, then make the smallest change GREEN.</span></div>
         <div class="gate"><span class="n">gate 3</span><span class="g">VERIFY</span><span class="d">Try to refute the claim at the layer where it matters.</span></div>
@@ -468,7 +486,7 @@
   <div class="wrap">
     <p class="kicker">The lanes</p>
     <h2>Review depth you choose on purpose.</h2>
-    <p class="sub">Five review lanes, from a quick scoped read to a full simulated team. Each is invocable on its own.</p>
+    <p class="sub">Five review modes plus the GauntletGate advancement gate. Each is invocable on its own.</p>
     <div class="lanes">
       <div class="lane">
         <h3>Quick audit</h3>
@@ -516,9 +534,14 @@
           <h3>Get the pinned release</h3>
           <p>Pin to a tag so the bundle you install is the bundle that was tested.</p>
           <div class="code">
-            <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">git</span> clone --branch v0.5.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
-<span class="k">cd</span> dev-rigor-stack-lite</pre>
+            <div class="code-bar"><span class="dot"></span> powershell</div>
+<pre><span class="k">git</span> clone --branch v0.6.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+$Installer = (Resolve-Path <span class="s">".\dev-rigor-stack-lite"</span>).Path</pre>
+          </div>
+          <div class="code" style="margin-top:14px">
+            <div class="code-bar"><span class="dot"></span> bash</div>
+<pre><span class="k">git</span> clone --branch v0.6.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+INSTALLER=$(cd dev-rigor-stack-lite &amp;&amp; pwd -P)</pre>
           </div>
         </div>
       </div>
@@ -526,19 +549,25 @@
       <div class="step">
         <div>
           <h3>Install into your host</h3>
-          <p>Pick the target for the agent you use. Rooted user targets keep the anchor beside their skills; relative hidden-host targets put it in the containing project.</p>
+          <p>Pick user scope or project scope. For a project install, change to the project first and invoke the pinned installer by its absolute path; relative targets then resolve in that project.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> powershell</div>
-<pre>powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span class="s">"$HOME\.codex\skills"</span>
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span class="s">".claude\skills"</span>
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span class="s">".agents\skills"</span></pre>
+<pre><span class="cm"># User-scoped Codex install</span>
+powershell -NoProfile -ExecutionPolicy Bypass -File <span class="s">"$Installer\install.ps1"</span> -Target <span class="s">"$HOME\.codex\skills"</span>
+
+<span class="cm"># Project-scoped Claude install</span>
+Set-Location <span class="s">"C:\path\to\your-project"</span>
+powershell -NoProfile -ExecutionPolicy Bypass -File <span class="s">"$Installer\install.ps1"</span> -Target <span class="s">".claude\skills"</span></pre>
           </div>
           <p style="font-size:14px; color:var(--ink-3); margin:10px 0 14px"><code>-ExecutionPolicy Bypass</code> applies only to that one child process. It changes nothing for your user or machine.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> bash</div>
-<pre>./install.sh <span class="s">"$HOME/.codex/skills"</span>
-./install.sh .claude/skills
-./install.sh .agents/skills</pre>
+<pre><span class="cm"># User-scoped Codex install</span>
+<span class="s">"$INSTALLER/install.sh"</span> <span class="s">"$HOME/.codex/skills"</span>
+
+<span class="cm"># Project-scoped Claude install</span>
+<span class="k">cd</span> /path/to/your-project
+<span class="s">"$INSTALLER/install.sh"</span> .claude/skills</pre>
           </div>
         </div>
       </div>
@@ -546,11 +575,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
       <div class="step">
         <div>
           <h3>Verify the bundle</h3>
-          <p>Confirms all 19 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
+          <p>Run this against the pinned source. It confirms all 20 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">python</span> tools/validate_bundle.py
-<span class="cm">→ BUNDLE_VALID: 19 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
+<pre><span class="cm"># PowerShell</span>
+<span class="k">python</span> <span class="s">"$Installer\tools\validate_bundle.py"</span>
+<span class="cm"># Bash</span>
+<span class="k">python3</span> <span class="s">"$INSTALLER/tools/validate_bundle.py"</span>
+<span class="cm">→ BUNDLE_VALID: 20 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
           </div>
         </div>
       </div>
@@ -558,34 +590,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
       <div class="step">
         <div>
           <h3>Open a continuity plan</h3>
-          <p>Use this only across sessions, handoffs, parallel agents or external waits.</p>
+          <p>Use this only across sessions, handoffs, parallel agents or external waits. Run it from the target project root so <code>./.rigor/</code> belongs to that project.</p>
           <div class="code">
-            <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">python3</span> tools/rigor_goals.py create --brief <span class="s">"take over development"</span> \
-  --mode continuous_development \
-  --terminal <span class="s">"owner pauses, cancels, or changes mode"</span> \
-  --goal <span class="s">"api::add the endpoint"</span>
-<span class="k">python3</span> tools/rigor_goals.py next
-<span class="k">python3</span> tools/rigor_goals.py checkpoint --id G001 --status complete \
-  --evidence <span class="s">"test_api.py: 4 passed"</span> --verify-cmd <span class="s">"pytest"</span> \
-  --verify-evidence <span class="s">"4 passed"</span>
-<span class="cm"># then reconcile and add/select the next authorized unit:</span>
-<span class="k">python3</span> tools/rigor_goals.py add --goal <span class="s">"repair::fix regression"</span> \
-  --authorization-source <span class="s">"accepted finding F-12"</span>
-<span class="k">python3</span> tools/rigor_goals.py set-next --id G002 --reason <span class="s">"dependency order"</span>
-<span class="k">python3</span> tools/rigor_goals.py next
-<span class="k">python3</span> tools/rigor_goals.py checkpoint --id G002 --status complete \
-  --evidence <span class="s">"repair green"</span> --verify-cmd <span class="s">"pytest"</span> --verify-evidence <span class="s">"35 passed"</span>
-<span class="cm"># close records receipts and never executes the named command:</span>
-<span class="k">python3</span> tools/rigor_goals.py close --evidence <span class="s">"terminal receipt"</span> \
-  --verify-cmd <span class="s">"command already run"</span> --verify-evidence <span class="s">"observed result"</span> \
-  --authorization-source <span class="s">"owner instruction"</span></pre>
+            <div class="code-bar"><span class="dot"></span> powershell</div>
+<pre><span class="k">python</span> .claude\tools\rigor_goals.py create --brief <span class="s">"take over development"</span> --mode continuous_development --terminal <span class="s">"owner pauses, cancels, or changes mode"</span> --goal <span class="s">"api::add the endpoint"</span>
+<span class="k">python</span> .claude\tools\rigor_goals.py next
+<span class="k">python</span> .claude\tools\rigor_goals.py checkpoint --id G001 --status complete --evidence <span class="s">"test_api.py: 4 passed"</span> --verify-cmd <span class="s">"pytest"</span> --verify-evidence <span class="s">"4 passed"</span></pre>
+          </div>
+          <div class="code" style="margin-top:14px">
+            <div class="code-bar"><span class="dot"></span> bash</div>
+<pre><span class="k">python3</span> .claude/tools/rigor_goals.py create --brief <span class="s">"take over development"</span> --mode continuous_development --terminal <span class="s">"owner pauses, cancels, or changes mode"</span> --goal <span class="s">"api::add the endpoint"</span>
+<span class="k">python3</span> .claude/tools/rigor_goals.py next
+<span class="k">python3</span> .claude/tools/rigor_goals.py checkpoint --id G001 --status complete --evidence <span class="s">"test_api.py: 4 passed"</span> --verify-cmd <span class="s">"pytest"</span> --verify-evidence <span class="s">"4 passed"</span></pre>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="tbl-wrap">
+    <div class="tbl-wrap" tabindex="0" aria-label="Install targets by host; scroll horizontally for every column">
       <table>
         <caption class="sr-only" style="position:absolute;left:-9999px">Install targets by host</caption>
         <thead><tr><th scope="col">Host</th><th scope="col">Skills target</th><th scope="col">Anchor file</th></tr></thead>
@@ -709,7 +731,7 @@ MERGE(unit)
     <p class="kicker">Status &amp; limits</p>
     <h2>Actively developed, and honest about its edges.</h2>
     <p class="sub">
-      Version v0.5.1 under MIT. The installer's fresh, refusal, forced, and upgrade paths are
+      Version v0.6.0 under MIT. The installer's fresh, refusal, forced, upgrade, and removal paths are
       exercised in CI on Windows, Ubuntu and macOS, and the documented Windows command is executed
       verbatim from a fresh Restricted-policy process on every push. These are the limits worth knowing
       before you adopt it.
@@ -740,7 +762,7 @@ MERGE(unit)
     <h2>Put a gate between your agent and "done".</h2>
     <p>Clone the pinned tag, run one installer command, and let named risk select the amount of process the work needs.</p>
     <div class="cta-row">
-      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.5.1">Get v0.5.1</a>
+      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.6.0">Get v0.6.0</a>
       <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Read the manual</a>
     </div>
   </div>
@@ -757,13 +779,21 @@ MERGE(unit)
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/SECURITY.md">Security</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/issues">Issues</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/LICENSE">MIT License</a>
-    <span class="sp">v0.5.1</span>
+    <span class="sp">v0.6.0</span>
   </div>
 </footer>
 
 <script>
   (function(){
     var b=document.querySelector('.menu-btn'), n=document.getElementById('navlinks');
+    function focusHash(hash){
+      if(!hash||hash.charAt(0)!=='#') return;
+      var target=document.getElementById(decodeURIComponent(hash.slice(1)));
+      if(!target) return;
+      if(!target.hasAttribute('tabindex')) target.setAttribute('tabindex','-1');
+      window.setTimeout(function(){target.focus({preventScroll:true});},0);
+    }
+    function focusFragment(link){focusHash(link.getAttribute('href'));}
     b.addEventListener('click',function(){
       var open=n.getAttribute('data-open')==='true';
       n.setAttribute('data-open',String(!open));
@@ -773,6 +803,59 @@ MERGE(unit)
       if(e.target.tagName==='A'&&window.innerWidth<=980){
         n.setAttribute('data-open','false'); b.setAttribute('aria-expanded','false');
       }
+    });
+    document.addEventListener('click',function(e){
+      var link=e.target.closest('a[href^="#"]');
+      if(link) focusFragment(link);
+    });
+    window.addEventListener('hashchange',function(){focusHash(window.location.hash);});
+    if(window.location.hash) focusHash(window.location.hash);
+    document.querySelectorAll('.code').forEach(function(block){
+      var bar=block.querySelector('.code-bar'), pre=block.querySelector('pre');
+      if(!bar||!pre) return;
+      var label=bar.textContent.trim();
+      var step=block.closest('.step'), heading=step&&step.querySelector('h3');
+      var accessibleLabel=(heading?heading.textContent.trim()+' - ':'')+label;
+      pre.tabIndex=0;
+      pre.setAttribute('aria-label',accessibleLabel+' code; scroll horizontally if needed');
+      var copy=document.createElement('button');
+      copy.type='button'; copy.className='copy-btn'; copy.textContent='Copy';
+      copy.setAttribute('aria-live','polite');
+      copy.setAttribute('aria-label','Copy '+accessibleLabel+' code');
+      copy.addEventListener('click',function(){
+        var value=pre.textContent;
+        var done=function(){
+          copy.textContent='Copied';
+          window.setTimeout(function(){copy.textContent='Copy';},1500);
+        };
+        var fallback=function(){
+          var field=document.createElement('textarea');
+          field.value=value; field.setAttribute('readonly','');
+          field.style.position='fixed'; field.style.opacity='0';
+          document.body.appendChild(field); field.select();
+          var copied=document.execCommand('copy'); field.remove();
+          if(copied){
+            done();
+          }else{
+            copy.textContent='Copy failed';
+            window.setTimeout(function(){copy.textContent='Copy';},1500);
+          }
+        };
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          navigator.clipboard.writeText(value).then(done).catch(fallback);
+        }else{
+          fallback();
+        }
+      });
+      bar.appendChild(copy);
+    });
+    document.querySelectorAll('.gate-row,.tbl-wrap,.code pre').forEach(function(region){
+      region.addEventListener('keydown',function(e){
+        if(e.key==='ArrowRight'){region.scrollLeft+=48; e.preventDefault();}
+        if(e.key==='ArrowLeft'){region.scrollLeft-=48; e.preventDefault();}
+        if(e.key==='End'){region.scrollLeft=region.scrollWidth; e.preventDefault();}
+        if(e.key==='Home'){region.scrollLeft=0; e.preventDefault();}
+      });
     });
     document.addEventListener('keydown',function(e){
       if(e.key==='Escape'&&n.getAttribute('data-open')==='true'){

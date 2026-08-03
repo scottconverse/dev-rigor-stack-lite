@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   echo "usage: ./install.sh TARGET [--force] [--goals DIR] [--anchor FILE] [--no-goals] [--no-anchor]" >&2
-  echo "  TARGET        directory to copy the 19 skills into" >&2
+  echo "  TARGET        directory to copy the 20 skills into" >&2
   echo "  --force       replace skills that already exist in TARGET" >&2
   echo "  --goals DIR   override where the rigor-goals tool installs (default: <TARGET>/../tools)" >&2
   echo "  --anchor FILE override which instructions file gets the anchor block" >&2
@@ -68,15 +68,242 @@ if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
   esac
 fi
 
-mkdir -p "$target"
-target=$(CDPATH= cd -- "$target" && pwd -P)
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+source_skills=$(CDPATH= cd -- "$repo_dir/skills" && pwd -P)
+
+# Resolve the existing prefix physically and normalize any missing suffix. This
+# keeps output-graph comparisons meaningful before their parent directories exist.
+canonical_candidate() {
+  candidate=$1
+  case "$candidate" in
+    /*) ;;
+    *) candidate=$(pwd -L)/$candidate ;;
+  esac
+  suffix=""
+  while [ ! -e "$candidate" ] && [ ! -L "$candidate" ]; do
+    name=$(basename -- "$candidate")
+    suffix=/$name$suffix
+    parent=$(dirname -- "$candidate")
+    [ "$parent" != "$candidate" ] || break
+    candidate=$parent
+  done
+  if [ -d "$candidate" ]; then
+    prefix=$(CDPATH= cd -- "$candidate" && pwd -P)
+  else
+    parent=$(CDPATH= cd -- "$(dirname -- "$candidate")" && pwd -P)
+    prefix=$parent/$(basename -- "$candidate")
+  fi
+  printf '%s\n' "$prefix$suffix" | awk -F/ '
+    {
+      depth = 0
+      for (i = 1; i <= NF; i++) {
+        if ($i == "" || $i == ".") continue
+        if ($i == "..") {
+          if (depth > 0) depth--
+          continue
+        }
+        component[++depth] = $i
+      }
+      normalized = ""
+      for (i = 1; i <= depth; i++) normalized = normalized "/" component[i]
+      print (normalized == "" ? "/" : normalized)
+    }
+  '
+}
+
+case_probe_base=$(basename -- "$repo_dir")
+case_probe_name=$(printf '%s' "$case_probe_base" | tr '[:lower:]' '[:upper:]')
+if [ "$case_probe_name" = "$case_probe_base" ]; then
+  case_probe_name=$(printf '%s' "$case_probe_base" | tr '[:upper:]' '[:lower:]')
+fi
+case_probe_path=$(dirname -- "$repo_dir")/$case_probe_name
+case_insensitive_paths=""
+if [ "$case_probe_path" != "$repo_dir" ] && [ -e "$case_probe_path" ] &&
+   [ "$case_probe_path" -ef "$repo_dir" ]; then
+  case_insensitive_paths=1
+fi
+
+comparison_key() {
+  key=$(canonical_candidate "$1")
+  if [ -n "$case_insensitive_paths" ]; then
+    printf '%s\n' "$key" | tr '[:upper:]' '[:lower:]'
+  else
+    printf '%s\n' "$key"
+  fi
+}
+
+path_is_within() {
+  child=$1
+  parent=${2%/}
+  [ "$child" = "$parent" ] || case "$child" in "$parent"/*) true ;; *) false ;; esac
+}
+
+assert_directory_chain() {
+  chain=$1
+  label=$2
+  case "$chain" in
+    /*) ;;
+    *) chain=$(pwd -L)/$chain ;;
+  esac
+  while [ ! -e "$chain" ] && [ ! -L "$chain" ]; do
+    next=$(dirname -- "$chain")
+    [ "$next" != "$chain" ] || break
+    chain=$next
+  done
+  if [ ! -d "$chain" ]; then
+    echo "$label parent chain is blocked by a non-directory: $chain" >&2
+    exit 1
+  fi
+}
+
+if [ -e "$target" ] || [ -L "$target" ]; then
+  if [ ! -d "$target" ]; then
+    echo "skills target exists but is not a directory: $target" >&2
+    exit 1
+  fi
+  target_compare=$(CDPATH= cd -- "$target" && pwd -P)
+else
+  target_compare=$anchor_target
+fi
+if [ "$target_compare" = "$source_skills" ] ||
+   { [ -e "$target" ] && [ "$target" -ef "$source_skills" ]; }; then
+  echo "refusing skills target that aliases bundled source: $target" >&2
+  exit 1
+fi
+target_compare=$(canonical_candidate "$target")
+target_key=$(comparison_key "$target_compare")
+source_skills_key=$(comparison_key "$source_skills")
+if path_is_within "$target_key" "$source_skills_key"; then
+  echo "refusing skills target inside bundled source: $target" >&2
+  exit 1
+fi
 
 # Default-on: the full stack installs unless the owner opts out.
 if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
-  goals_dir=$(dirname -- "$target")/tools
+  goals_dir=$(dirname -- "$target_compare")/tools
 fi
 
-repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Preflight every known refusal before the first filesystem mutation. A failed
+# install must not leave a mixed skill inventory or a goals-only partial install.
+if [ "$force" != "--force" ] && [ -d "$target" ]; then
+  collisions=""
+  for source in "$repo_dir"/skills/*; do
+    [ -d "$source" ] || continue
+    destination=$target/${source##*/}
+    if [ -e "$destination" ] || [ -L "$destination" ]; then
+      collisions="${collisions}${collisions:+, }$destination"
+    fi
+  done
+  if [ -n "$collisions" ]; then
+    echo "skill already exists: $collisions (use --force to replace)" >&2
+    exit 1
+  fi
+fi
+
+if [ -n "$goals_dir" ]; then
+  if { [ -e "$goals_dir" ] || [ -L "$goals_dir" ]; } && [ ! -d "$goals_dir" ]; then
+    echo "goals destination exists but is not a directory: $goals_dir" >&2
+    exit 1
+  fi
+  goals_file=$goals_dir/rigor_goals.py
+  if [ -L "$goals_file" ]; then
+    echo "refusing linked goals destination: $goals_file" >&2
+    exit 1
+  fi
+  if [ -e "$goals_file" ] && [ "$repo_dir/tools/rigor_goals.py" -ef "$goals_file" ]; then
+    echo "refusing goals destination that aliases bundled source: $goals_file" >&2
+    exit 1
+  fi
+  assert_directory_chain "$goals_dir" "goals destination"
+fi
+
+if [ -n "$anchor_file" ]; then
+  anchor_src=$repo_dir/anchor/anchor.md
+  if [ -L "$anchor_file" ]; then
+    echo "refusing linked anchor destination: $anchor_file" >&2
+    exit 1
+  fi
+  if [ -e "$anchor_file" ] && [ "$anchor_src" -ef "$anchor_file" ]; then
+    echo "refusing anchor destination that aliases bundled source: $anchor_file" >&2
+    exit 1
+  fi
+  if [ -e "$anchor_file" ] || [ -L "$anchor_file" ]; then
+    if [ ! -f "$anchor_file" ]; then
+      echo "anchor destination exists but is not a file: $anchor_file" >&2
+      exit 1
+    fi
+    begin_marker='<!-- dev-rigor-lite anchor'
+    end_marker='<!-- /dev-rigor-lite anchor -->'
+    begin_count=$(grep -cF "$begin_marker" "$anchor_file" || true)
+    end_count=$(grep -cF "$end_marker" "$anchor_file" || true)
+    if { [ "$begin_count" -eq 0 ] && [ "$end_count" -ne 0 ]; } ||
+       { [ "$begin_count" -ne 0 ] && [ "$end_count" -eq 0 ]; }; then
+      echo "anchor block in $anchor_file has an incomplete marker pair - fix it by hand first" >&2
+      exit 1
+    fi
+    if [ "$begin_count" -gt 1 ] || [ "$end_count" -gt 1 ]; then
+      echo "anchor block in $anchor_file has duplicate markers - fix it by hand first" >&2
+      exit 1
+    fi
+    if [ "$begin_count" -eq 1 ]; then
+      begin_line=$(grep -nF "$begin_marker" "$anchor_file" | cut -d: -f1)
+      end_line=$(grep -nF "$end_marker" "$anchor_file" | cut -d: -f1)
+      if [ "$end_line" -le "$begin_line" ]; then
+        echo "anchor block in $anchor_file has markers out of order - fix it by hand first" >&2
+        exit 1
+      fi
+      canonical_begin=$(sed -n '1p' "$anchor_src" | tr -d '\r')
+      legacy_begin_v2='<!-- dev-rigor-lite anchor v2 — managed block, do not hand-edit (edits go outside the markers; the installer replaces this block on upgrade) -->'
+      canonical_end=$(awk 'NF { line=$0 } END { sub(/\r$/, "", line); print line }' "$anchor_src")
+      actual_begin=$(sed -n "${begin_line}p" "$anchor_file" | tr -d '\r')
+      actual_end=$(sed -n "${end_line}p" "$anchor_file" | tr -d '\r')
+      if { [ "$actual_begin" != "$canonical_begin" ] &&
+           [ "$actual_begin" != "$legacy_begin_v2" ]; } ||
+         [ "$actual_end" != "$canonical_end" ]; then
+        echo "anchor markers in $anchor_file share a line with owner or changed text - fix it by hand first" >&2
+        exit 1
+      fi
+    fi
+  fi
+  assert_directory_chain "$(dirname -- "$anchor_file")" "anchor destination"
+fi
+
+# Validate the complete output topology before creating any component. Companion
+# files inside the managed skills tree would be overwritten or removed by a
+# forced upgrade, and the goals/anchor collision would corrupt the goals program.
+if [ -n "$goals_dir" ]; then
+  goals_compare=$(canonical_candidate "$goals_file")
+  goals_key=$(comparison_key "$goals_compare")
+fi
+if [ -n "$anchor_file" ]; then
+  anchor_compare=$(canonical_candidate "$anchor_file")
+  anchor_key=$(comparison_key "$anchor_compare")
+fi
+if [ -n "$goals_dir" ] && [ -n "$anchor_file" ] &&
+   { [ "$goals_key" = "$anchor_key" ] ||
+     { [ -e "$goals_file" ] && [ -e "$anchor_file" ] && [ "$goals_file" -ef "$anchor_file" ]; }; }; then
+  echo "goals and anchor destinations must be different files: $goals_file" >&2
+  exit 1
+fi
+if [ -n "$goals_dir" ] && path_is_within "$goals_key" "$target_key"; then
+  echo "goals destination cannot be inside the skills target: $goals_file" >&2
+  exit 1
+fi
+if [ -n "$anchor_file" ] && path_is_within "$anchor_key" "$target_key"; then
+  echo "anchor destination cannot be inside the skills target: $anchor_file" >&2
+  exit 1
+fi
+
+# Create every required parent before copying the first component so a valid
+# missing anchor parent cannot fail after leaving a partial skill installation.
+mkdir -p "$target"
+if [ -n "$goals_dir" ]; then
+  mkdir -p "$goals_dir"
+fi
+if [ -n "$anchor_file" ]; then
+  mkdir -p "$(dirname -- "$anchor_file")"
+fi
+target=$(CDPATH= cd -- "$target" && pwd -P)
 
 # Migration (0.3.2): 0.3.1 renamed lite's audit-lite to quick-audit-lite, but an
 # upgrade over an old lite install left the stale audit-lite behind, still
@@ -84,7 +311,7 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 #   - identity = lite's exact escalation sentence, not a bare name mention —
 #     a file that merely *talks about* audit-team-lite must survive;
 #   - destructive only under --force, like every other destructive act here
-#     (real upgrades pass --force anyway to replace the 19 skill dirs);
+#     (real upgrades pass --force anyway to replace the 20 skill dirs);
 #   - case-sensitive, matching install.ps1 exactly.
 old_audit=$target/audit-lite
 lite_marker='Escalate to `audit-team-lite`'
@@ -106,7 +333,7 @@ for source in "$repo_dir"/skills/*; do
   [ -d "$source" ] || continue
   name=${source##*/}
   destination=$target/$name
-  if [ -e "$destination" ]; then
+  if [ -e "$destination" ] || [ -L "$destination" ]; then
     if [ "$force" != "--force" ]; then
       echo "skill already exists: $destination (use --force to replace)" >&2
       exit 1
@@ -115,10 +342,9 @@ for source in "$repo_dir"/skills/*; do
   fi
   cp -R -- "$source" "$destination"
 done
-echo "Installed 19 hook-free skills to $target"
+echo "Installed 20 hook-free skills to $target"
 
 if [ -n "$goals_dir" ]; then
-  mkdir -p "$goals_dir"
   cp -- "$repo_dir/tools/rigor_goals.py" "$goals_dir/rigor_goals.py"
   chmod +x "$goals_dir/rigor_goals.py" 2>/dev/null || true
   echo "Installed rigor-goals to $goals_dir/rigor_goals.py (run: python3 $goals_dir/rigor_goals.py)"

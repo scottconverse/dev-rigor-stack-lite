@@ -33,7 +33,7 @@ security boundaries are therefore deliberately narrow:
 - Target, goals, and anchor paths are trusted operator input. Explicit
   `-Goals`/`--goals` and `-Anchor`/`--anchor` values override inference.
 - `-Force`/`--force` is destructive within its documented scope: it replaces
-  each of the 19 manifest-named skill directories and overwrites the installed
+  each of the 20 manifest-named skill directories and overwrites the installed
   `rigor_goals.py`. Back up local modifications before using it.
 - Anchor management trusts its marker pair. The installer replaces the span
   between the dev-rigor-lite markers and preserves text outside it. A missing

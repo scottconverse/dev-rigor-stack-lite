@@ -9,7 +9,7 @@ description: >
   announcing changed public pages/assets as done, and after deploying those surfaces. CI is not a substitute.
 ---
 
-# Visitor Audit — PUBLIC SURFACE gate (Lite v0.5.1)
+# Visitor Audit — PUBLIC SURFACE gate (Lite v0.6.0)
 
 Verify the artifact as a first-time visitor experiences it, never through source diffs
 or CI proxies. This lane is distinct from product walkthrough: walkthrough asks whether
