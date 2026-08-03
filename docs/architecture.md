@@ -44,7 +44,10 @@ publication.
 
 ```mermaid
 flowchart TD
+    Explicit{"Explicit BRAINSTORM invocation?"}
     Brief{"Material design unresolved?"}
+    Explicit -- "Yes" --> Brainstorm
+    Explicit -- "No" --> Brief
     Brief -- "Yes" --> Brainstorm["Optional BRAINSTORM: approved text brief"]
     Brief -- "No" --> Route
     Brainstorm --> Route
@@ -67,8 +70,9 @@ flowchart TD
     Harness["Optional external regression harness"] -. "Supplemental evidence" .-> Verify
 ```
 
-Text fallback: explicit or materially unresolved design work may use optional BRAINSTORM
-before lane selection; a decision-complete brief skips it. Localized mechanical work uses Micro. Ordinary work uses Standard.
+Text fallback: Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+Without explicit invocation, materially unresolved design work may use optional BRAINSTORM
+before lane selection, while a decision-complete brief skips it. Localized mechanical work uses Micro. Ordinary work uses Standard.
 Named risks such as auth, money, persisted data, security, concurrency, installers,
 irreversible operations, or broad public contracts use Critical. Standard applies
 RED/GREEN and focused review where relevant; Critical adds independent proof. Release

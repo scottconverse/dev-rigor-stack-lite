@@ -25,6 +25,55 @@ function Resolve-UserPath([string]$p) {
   return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p)
 }
 
+function Get-ComparablePath([string]$p, [int]$Depth = 0) {
+  if ($Depth -gt 32) {
+    throw "refusing path with excessive link depth: $p"
+  }
+  $fullPath = Resolve-UserPath $p
+  $root = [IO.Path]::GetPathRoot($fullPath)
+  $segments = @($fullPath.Substring($root.Length).Split(
+    [char[]]'\/', [StringSplitOptions]::RemoveEmptyEntries
+  ))
+  $current = $root
+  for ($index = 0; $index -lt $segments.Count; $index++) {
+    $candidate = Join-Path $current $segments[$index]
+    $item = Get-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+      for ($remainder = $index; $remainder -lt $segments.Count; $remainder++) {
+        $current = Join-Path $current $segments[$remainder]
+      }
+      return $current.TrimEnd([char[]]'\/')
+    }
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+      $targets = @($item.Target)
+      if ($targets.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$targets[0])) {
+        throw "refusing path with an unresolved link target: $candidate"
+      }
+      $linkTarget = [string]$targets[0]
+      if (-not [IO.Path]::IsPathRooted($linkTarget)) {
+        $linkTarget = Join-Path (Split-Path -Parent $candidate) $linkTarget
+      }
+      for ($remainder = $index + 1; $remainder -lt $segments.Count; $remainder++) {
+        $linkTarget = Join-Path $linkTarget $segments[$remainder]
+      }
+      return Get-ComparablePath $linkTarget ($Depth + 1)
+    }
+    $current = $candidate
+  }
+  return $current.TrimEnd([char[]]'\/')
+}
+
+function Test-SamePath([string]$Left, [string]$Right) {
+  return [StringComparer]::OrdinalIgnoreCase.Equals(
+    (Get-ComparablePath $Left),
+    (Get-ComparablePath $Right)
+  )
+}
+
+function Test-PathEntry([string]$p) {
+  return $null -ne (Get-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue)
+}
+
 function Get-DefaultAnchorPath([string]$ResolvedTarget, [bool]$RootedInput) {
   $targetParent = Split-Path -Parent $ResolvedTarget
   $hostDirectory = (Split-Path -Leaf $targetParent).ToLowerInvariant()
@@ -56,6 +105,83 @@ if (-not $NoAnchor -and -not $Anchor) {
   $Anchor = Get-DefaultAnchorPath $targetPath $targetWasRooted
 }
 
+# Preflight every known refusal before the first filesystem mutation. A failed
+# install must not leave a mixed skill inventory or a goals-only partial install.
+if ((Test-PathEntry $targetPath) -and
+    -not (Test-Path -LiteralPath $targetPath -PathType Container)) {
+  throw "skills target exists but is not a directory: $targetPath"
+}
+if (Test-SamePath $targetPath $source) {
+  throw "refusing skills target that aliases bundled source: $targetPath"
+}
+
+$sourceSkills = @(Get-ChildItem -LiteralPath $source -Directory)
+if (-not $Force) {
+  $collisions = @($sourceSkills | Where-Object {
+    Test-PathEntry (Join-Path $targetPath $_.Name)
+  } | ForEach-Object { Join-Path $targetPath $_.Name })
+  if ($collisions.Count -gt 0) {
+    throw "Skills already exist (use -Force to replace): $($collisions -join ', ')"
+  }
+}
+
+if ($Goals) {
+  $goalsDir = Resolve-UserPath $Goals
+  if ((Test-PathEntry $goalsDir) -and
+      -not (Test-Path -LiteralPath $goalsDir -PathType Container)) {
+    throw "goals destination exists but is not a directory: $goalsDir"
+  }
+  $sourceGoals = Join-Path $PSScriptRoot 'tools\rigor_goals.py'
+  $goalsFile = Join-Path $goalsDir 'rigor_goals.py'
+  if (Test-SamePath $goalsFile $sourceGoals) {
+    throw "refusing goals destination that aliases bundled source: $goalsFile"
+  }
+}
+
+if ($Anchor) {
+  $anchorFile = Resolve-UserPath $Anchor
+  $anchorSrc = Join-Path $PSScriptRoot 'anchor\anchor.md'
+  if (Test-SamePath $anchorFile $anchorSrc) {
+    throw "refusing anchor destination that aliases bundled source: $anchorFile"
+  }
+  if (Test-PathEntry $anchorFile) {
+    if (-not (Test-Path -LiteralPath $anchorFile -PathType Leaf)) {
+      throw "anchor destination exists but is not a file: $anchorFile"
+    }
+    $existingAnchor = [IO.File]::ReadAllText($anchorFile)
+    $beginMarker = '<!-- dev-rigor-lite anchor'
+    $endMarker = '<!-- /dev-rigor-lite anchor -->'
+    $beginCount = ([regex]::Matches(
+      $existingAnchor, [regex]::Escape($beginMarker)
+    )).Count
+    $endCount = ([regex]::Matches(
+      $existingAnchor, [regex]::Escape($endMarker)
+    )).Count
+    if (($beginCount -eq 0) -xor ($endCount -eq 0)) {
+      throw "anchor block in $anchorFile has an incomplete marker pair - fix it by hand first"
+    }
+    if ($beginCount -gt 1 -or $endCount -gt 1) {
+      throw "anchor block in $anchorFile has duplicate markers - fix it by hand first"
+    }
+    if ($beginCount -eq 1 -and
+        $existingAnchor.IndexOf($endMarker, [StringComparison]::Ordinal) -lt
+        $existingAnchor.IndexOf($beginMarker, [StringComparison]::Ordinal)) {
+      throw "anchor block in $anchorFile has markers out of order - fix it by hand first"
+    }
+    if ($beginCount -eq 1) {
+      $canonicalLines = [IO.File]::ReadAllText($anchorSrc) -split '\r?\n'
+      $canonicalBegin = $canonicalLines[0]
+      $canonicalEnd = @($canonicalLines | Where-Object { $_ -ne '' })[-1]
+      $existingLines = $existingAnchor -split '\r?\n'
+      $actualBegin = @($existingLines | Where-Object { $_.Contains($beginMarker) })[0]
+      $actualEnd = @($existingLines | Where-Object { $_.Contains($endMarker) })[0]
+      if ($actualBegin -cne $canonicalBegin -or $actualEnd -cne $canonicalEnd) {
+        throw "anchor markers in $anchorFile share a line with owner or changed text - fix it by hand first"
+      }
+    }
+  }
+}
+
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
 
 # Migration (0.3.2, review-hardened): remove the stale lite-owned audit-lite left
@@ -78,7 +204,7 @@ if (Test-Path -LiteralPath $oldSkillMd) {
   }
 }
 
-foreach ($skill in Get-ChildItem -LiteralPath $source -Directory) {
+foreach ($skill in $sourceSkills) {
   $destination = Join-Path $targetPath $skill.Name
   if (Test-Path -LiteralPath $destination) {
     if (-not $Force) { throw "Skill already exists: $destination (use -Force to replace)" }

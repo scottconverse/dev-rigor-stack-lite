@@ -121,8 +121,10 @@ Exact commands are in [Technical verification](#technical-verification).
 
 Invoke `$dev-rigor-stack-lite-brainstorm` when the problem, success criteria, material
 constraints, or a consequential design choice is genuinely unresolved. It elicits and
-records an approved text-first design, then hands that record to PLAN. A decision-complete
-brief goes directly to PLAN, and Micro work never requires BRAINSTORM approval.
+records an approved text-first design, then hands that record to PLAN.
+Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+Without explicit invocation, a decision-complete brief goes directly to PLAN, and Micro
+work never requires BRAINSTORM approval.
 
 `tools/test_release_contract.py` checks the shipped prompt contract and scenario inventory.
 Those static checks do not prove that a host loads the skill or that a model follows it;
@@ -217,10 +219,13 @@ Explicit `-Anchor`/`--anchor` and `-Goals`/`--goals` values take precedence.
 The shell's working directory resolves relative inputs but never independently
 selects an anchor for a rooted target. Quote paths containing spaces.
 
-Without force, the first existing manifest-named skill makes installation fail.
-With force, each of those exact directories is removed and recopied. The goals
-file is copied with overwrite enabled. The installer adds or replaces the
-managed anchor span while preserving content outside the markers.
+Before writing, the installer preflights the complete manifest-name collision set,
+target and companion path types, source aliases, and the managed anchor marker
+structure. Any preflight refusal leaves the project byte-for-byte unchanged. Without
+force, one or more existing manifest-named skills make installation fail. With force,
+each of those exact directories is removed and recopied. The goals file is copied with
+overwrite enabled. The installer adds or replaces the managed anchor span while
+preserving content outside the markers.
 
 ### Technical verification
 
@@ -286,6 +291,8 @@ Then validate the source and exercise the installed goals tool from the project
 whose state you intend to use:
 
 ```sh
+python tools/test_release_contract.py
+python tools/test_installer_preflight.py
 python3 tools/validate_bundle.py
 python3 .claude/tools/rigor_goals.py status
 ```
@@ -411,7 +418,7 @@ Both procedures below enforce these preconditions before deletion:
 - the installed goals file byte-matches `tools/rigor_goals.py`;
 - the host instructions file is valid UTF-8 and contains exactly one ordered
   marker pair; and
-- the human types `REMOVE ALL MANIFEST SKILLS` after previewing every exact path.
+- the human types `REMOVE 19` after previewing every exact path.
 
 If the goals file has changed, it is copied to an owner-backup path and the
 procedure stops before any removal. Any skill mismatch or marker defect also
@@ -713,8 +720,8 @@ $skillPaths | ForEach-Object { Write-Host "  $_" }
 Write-Host "The exact goals file will be removed: $goalsPath"
 Write-Host "Only the verified managed span will be removed from: $anchorPath"
 Write-Host "The target directory, tools directory, host file, and .rigor will remain."
-$confirmation = Read-Host "Type REMOVE ALL MANIFEST SKILLS to continue"
-if ($confirmation -cne "REMOVE ALL MANIFEST SKILLS") { throw "removal cancelled" }
+$confirmation = Read-Host "Type REMOVE 19 to continue"
+if ($confirmation -cne "REMOVE 19") { throw "removal cancelled" }
 
 foreach ($path in $skillPaths) {
   Remove-Item -LiteralPath $path -Recurse -Force
@@ -808,9 +815,9 @@ print(f"Only the verified managed span will be removed from: {anchor}")
 print("The target directory, tools directory, host file, and .rigor will remain.")
 PY
 
-printf 'Type REMOVE ALL MANIFEST SKILLS to continue: '
+printf 'Type REMOVE 19 to continue: '
 IFS= read -r CONFIRMATION
-[ "$CONFIRMATION" = "REMOVE ALL MANIFEST SKILLS" ] || { echo "removal cancelled" >&2; exit 1; }
+[ "$CONFIRMATION" = "REMOVE 19" ] || { echo "removal cancelled" >&2; exit 1; }
 export CONFIRMATION
 
 python3 - <<'PY'
@@ -823,7 +830,7 @@ import re
 import shutil
 import sys
 
-if os.environ.get("CONFIRMATION") != "REMOVE ALL MANIFEST SKILLS":
+if os.environ.get("CONFIRMATION") != "REMOVE 19":
     raise SystemExit("removal cancelled")
 
 root = pathlib.Path(os.environ["ROOT"]).resolve(strict=True)

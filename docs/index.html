@@ -71,6 +71,11 @@
     .nav-links .btn{margin-top:14px; border-bottom:none}
     .menu-btn{display:block}
   }
+  @media(max-width:360px){
+    .nav-in{gap:8px; padding-inline:16px}
+    .brand{gap:7px; font-size:13px}
+    .brand .v{display:none}
+  }
 
   /* ---- hero ---- */
   .hero{padding:76px 0 66px; border-bottom:1px solid var(--rule)}
@@ -390,7 +395,7 @@
         <div><div class="tier-n">1</div></div>
         <div>
           <h3>The 20 skills</h3>
-          <p>The full workflow — planning, test-first build, adversarial verification, five review lanes, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
+          <p>The full workflow — planning, test-first build, adversarial verification, five review modes plus an advancement gate, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
           <span class="force">Force: none — invoked knowledge</span>
         </div>
       </div>
@@ -434,8 +439,9 @@
       </p>
       <p class="sub">
         Version 0.6.0 also adds optional, text-first BRAINSTORM discovery before PLAN when
-        the product problem or a consequential design choice is genuinely unresolved. A
-        decision-complete brief skips it, and its approval authorizes planning—not building.
+        the product problem or a consequential design choice is genuinely unresolved.
+        Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+        Without explicit invocation, a decision-complete brief skips it, and its approval authorizes planning—not building.
       </p>
     </div>
     <div>
@@ -474,7 +480,7 @@
   <div class="wrap">
     <p class="kicker">The lanes</p>
     <h2>Review depth you choose on purpose.</h2>
-    <p class="sub">Five review lanes, from a quick scoped read to a full simulated team. Each is invocable on its own.</p>
+    <p class="sub">Five review modes plus the GauntletGate advancement gate. Each is invocable on its own.</p>
     <div class="lanes">
       <div class="lane">
         <h3>Quick audit</h3>

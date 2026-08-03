@@ -24,6 +24,8 @@ From the repository root, run:
 
 ```sh
 python tools/validate_bundle.py
+python tools/test_release_contract.py
+python tools/test_installer_preflight.py
 python tools/test_rigor_goals.py
 git diff --check
 ```

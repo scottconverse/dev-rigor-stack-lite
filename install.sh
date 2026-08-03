@@ -68,15 +68,102 @@ if [ -z "$no_anchor" ] && [ -z "$anchor_file" ]; then
   esac
 fi
 
-mkdir -p "$target"
-target=$(CDPATH= cd -- "$target" && pwd -P)
+repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+source_skills=$(CDPATH= cd -- "$repo_dir/skills" && pwd -P)
+
+if [ -e "$target" ] || [ -L "$target" ]; then
+  if [ ! -d "$target" ]; then
+    echo "skills target exists but is not a directory: $target" >&2
+    exit 1
+  fi
+  target_compare=$(CDPATH= cd -- "$target" && pwd -P)
+else
+  target_compare=$anchor_target
+fi
+if [ "$target_compare" = "$source_skills" ]; then
+  echo "refusing skills target that aliases bundled source: $target" >&2
+  exit 1
+fi
 
 # Default-on: the full stack installs unless the owner opts out.
 if [ -z "$no_goals" ] && [ -z "$goals_dir" ]; then
-  goals_dir=$(dirname -- "$target")/tools
+  goals_dir=$(dirname -- "$target_compare")/tools
 fi
 
-repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Preflight every known refusal before the first filesystem mutation. A failed
+# install must not leave a mixed skill inventory or a goals-only partial install.
+if [ "$force" != "--force" ] && [ -d "$target" ]; then
+  collisions=""
+  for source in "$repo_dir"/skills/*; do
+    [ -d "$source" ] || continue
+    destination=$target/${source##*/}
+    if [ -e "$destination" ] || [ -L "$destination" ]; then
+      collisions="${collisions}${collisions:+, }$destination"
+    fi
+  done
+  if [ -n "$collisions" ]; then
+    echo "skills already exist (use --force to replace): $collisions" >&2
+    exit 1
+  fi
+fi
+
+if [ -n "$goals_dir" ]; then
+  if { [ -e "$goals_dir" ] || [ -L "$goals_dir" ]; } && [ ! -d "$goals_dir" ]; then
+    echo "goals destination exists but is not a directory: $goals_dir" >&2
+    exit 1
+  fi
+  goals_file=$goals_dir/rigor_goals.py
+  if [ -e "$goals_file" ] && [ "$repo_dir/tools/rigor_goals.py" -ef "$goals_file" ]; then
+    echo "refusing goals destination that aliases bundled source: $goals_file" >&2
+    exit 1
+  fi
+fi
+
+if [ -n "$anchor_file" ]; then
+  anchor_src=$repo_dir/anchor/anchor.md
+  if [ -e "$anchor_file" ] && [ "$anchor_src" -ef "$anchor_file" ]; then
+    echo "refusing anchor destination that aliases bundled source: $anchor_file" >&2
+    exit 1
+  fi
+  if [ -e "$anchor_file" ] || [ -L "$anchor_file" ]; then
+    if [ ! -f "$anchor_file" ]; then
+      echo "anchor destination exists but is not a file: $anchor_file" >&2
+      exit 1
+    fi
+    begin_marker='<!-- dev-rigor-lite anchor'
+    end_marker='<!-- /dev-rigor-lite anchor -->'
+    begin_count=$(grep -cF "$begin_marker" "$anchor_file" || true)
+    end_count=$(grep -cF "$end_marker" "$anchor_file" || true)
+    if { [ "$begin_count" -eq 0 ] && [ "$end_count" -ne 0 ]; } ||
+       { [ "$begin_count" -ne 0 ] && [ "$end_count" -eq 0 ]; }; then
+      echo "anchor block in $anchor_file has an incomplete marker pair - fix it by hand first" >&2
+      exit 1
+    fi
+    if [ "$begin_count" -gt 1 ] || [ "$end_count" -gt 1 ]; then
+      echo "anchor block in $anchor_file has duplicate markers - fix it by hand first" >&2
+      exit 1
+    fi
+    if [ "$begin_count" -eq 1 ]; then
+      begin_line=$(grep -nF "$begin_marker" "$anchor_file" | cut -d: -f1)
+      end_line=$(grep -nF "$end_marker" "$anchor_file" | cut -d: -f1)
+      if [ "$end_line" -le "$begin_line" ]; then
+        echo "anchor block in $anchor_file has markers out of order - fix it by hand first" >&2
+        exit 1
+      fi
+      canonical_begin=$(sed -n '1p' "$anchor_src" | tr -d '\r')
+      canonical_end=$(awk 'NF { line=$0 } END { sub(/\r$/, "", line); print line }' "$anchor_src")
+      actual_begin=$(sed -n "${begin_line}p" "$anchor_file" | tr -d '\r')
+      actual_end=$(sed -n "${end_line}p" "$anchor_file" | tr -d '\r')
+      if [ "$actual_begin" != "$canonical_begin" ] || [ "$actual_end" != "$canonical_end" ]; then
+        echo "anchor markers in $anchor_file share a line with owner or changed text - fix it by hand first" >&2
+        exit 1
+      fi
+    fi
+  fi
+fi
+
+mkdir -p "$target"
+target=$(CDPATH= cd -- "$target" && pwd -P)
 
 # Migration (0.3.2): 0.3.1 renamed lite's audit-lite to quick-audit-lite, but an
 # upgrade over an old lite install left the stale audit-lite behind, still

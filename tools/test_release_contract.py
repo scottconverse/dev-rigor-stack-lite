@@ -27,6 +27,7 @@ class ReleaseContractTests(unittest.TestCase):
             "Do not activate",
             "one material decision at a time",
             "Approve / Revise / Pause",
+            "Never label a proposed revision approved or owner-approved before the owner gives that approval.",
             "provisional lane",
             "$dev-rigor-stack-lite-plan",
             "goals and non-goals",
@@ -71,18 +72,55 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("seeded random sample", orchestration)
         self.assertIn("sampled finding IDs", orchestration)
 
-    def test_release_has_no_stale_numeric_removal_confirmation(self):
-        legacy_count = str(20 - 1)
-        candidates = [ROOT / "docs" / "manual.md", ROOT / ".github" / "workflows" / "ci.yml"]
-        for path in candidates:
-            with self.subTest(path=path.relative_to(ROOT)):
-                self.assertNotIn("REMOVE " + legacy_count, path.read_text(encoding="utf-8"))
+    def test_release_preserves_frozen_removal_confirmation(self):
+        expected_occurrences = {
+            "docs/manual.md": 6,
+            ".github/workflows/ci.yml": 8,
+        }
+        for relative, expected in expected_occurrences.items():
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            with self.subTest(path=relative):
+                self.assertEqual(text.count("REMOVE 19"), expected)
+                self.assertNotIn("REMOVE ALL MANIFEST SKILLS", text)
+
+    def test_public_brainstorm_copy_preserves_explicit_invocation_precedence(self):
+        precedence = (
+            "Explicit invocation always activates BRAINSTORM, even when the brief "
+            "is decision-complete."
+        )
+        for relative in (
+            "README.md",
+            "CHANGELOG.md",
+            "docs/architecture.md",
+            "docs/index.html",
+            "docs/manual.md",
+        ):
+            with self.subTest(path=relative):
+                text = (ROOT / relative).read_text(encoding="utf-8")
+                self.assertIn(precedence, text)
+
+    def test_maintainer_commands_include_release_contract_suite(self):
+        commands = (
+            "python tools/test_release_contract.py",
+            "python tools/test_installer_preflight.py",
+        )
+        for relative in ("CONTRIBUTING.md", "docs/manual.md"):
+            text = (ROOT / relative).read_text(encoding="utf-8")
+            for command in commands:
+                with self.subTest(path=relative, command=command):
+                    self.assertIn(command, text)
 
     def test_ci_covers_successful_removal_and_clean_rollback(self):
         text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         self.assertIn("SUCCESSFUL_REMOVAL_OWNER_CONTENT_PRESERVED=True", text)
+        self.assertIn("python tools/test_windows_rollback.py", text)
         self.assertIn("rollback_v0.6.0_only_skill_absent=true", text)
         self.assertIn("d3d4592b12e689140d589b09d10c2bec63658b60", text)
+        self.assertIn("python tools/test_installer_preflight.py", text)
+        windows_rollback = (ROOT / "tools" / "test_windows_rollback.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("WINDOWS_ROLLBACK_V0.6.0_ONLY_SKILL_ABSENT=True", windows_rollback)
 
     def test_portable_workflow_does_not_pin_a_worker_model(self):
         offenders = []
@@ -99,11 +137,26 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("Copyright (c) 2025 Jesse Vincent", text)
 
     def test_current_public_version_and_count_are_not_stale(self):
-        legacy_count = str(20 - 1)
-        for relative in ("README.md", "docs/manual.md", "docs/index.html"):
+        authoritative_markers = {
+            "README.md": (
+                "for 20 skills total",
+                "git clone --branch v0.6.0",
+            ),
+            "docs/manual.md": (
+                "owns the 20-skill",
+                "git checkout --detach v0.6.0",
+            ),
+            "docs/index.html": (
+                '<span class="v">v0.6.0</span>',
+                "<h3>The 20 skills</h3>",
+            ),
+        }
+        legacy_count = str(MANIFEST["skill_count"] - 1)
+        for relative, markers in authoritative_markers.items():
             text = (ROOT / relative).read_text(encoding="utf-8")
             with self.subTest(path=relative):
-                self.assertIn("0.6.0", text)
+                for marker in markers:
+                    self.assertIn(marker, text)
                 self.assertNotIn("all " + legacy_count + " skills", text)
                 self.assertNotIn("exactly " + legacy_count + " skills", text)
 

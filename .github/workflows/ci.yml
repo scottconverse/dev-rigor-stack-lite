@@ -22,7 +22,11 @@ jobs:
           python-version: '3.12'
       - run: python tools/validate_bundle.py
       - run: python tools/test_release_contract.py
+      - run: python tools/test_installer_preflight.py
       - run: python tools/test_rigor_goals.py
+      - name: Documented Windows removal to pinned v0.5.1 rollback
+        if: runner.os == 'Windows'
+        run: python tools/test_windows_rollback.py
       - name: Installer smoke on Linux (default-on contract)
         if: runner.os == 'Linux'
         run: |
@@ -843,8 +847,8 @@ jobs:
           $documented = $match.Groups['body'].Value
           [void][scriptblock]::Create($documented)
           $automated = $documented -replace (
-            '\$confirmation = Read-Host "Type REMOVE ALL MANIFEST SKILLS to continue"'
-          ), '$confirmation = "REMOVE ALL MANIFEST SKILLS"'
+            '\$confirmation = Read-Host "Type REMOVE 19 to continue"'
+          ), '$confirmation = "REMOVE 19"'
 
           $sourceAliasScript = $automated `
             -replace '\$Target = "\.claude\\skills"', '$Target = "skills"' `
@@ -908,7 +912,7 @@ jobs:
                 '$GoalsFile = ' + (ConvertTo-PowerShellLiteral $GoalsFile)
               '$AnchorFile = "CLAUDE.md"' =
                 '$AnchorFile = ' + (ConvertTo-PowerShellLiteral $AnchorFile)
-              '$confirmation = Read-Host "Type REMOVE ALL MANIFEST SKILLS to continue"' =
+              '$confirmation = Read-Host "Type REMOVE 19 to continue"' =
                 '$confirmation = "UNC ALIAS REGRESSION - DO NOT REMOVE"'
             }
             foreach ($entry in $replacements.GetEnumerator()) {
@@ -1165,8 +1169,8 @@ jobs:
               '$GoalsFile = ' + (ConvertTo-PowerShellLiteral $successGoals)
             '$AnchorFile = "CLAUDE.md"' =
               '$AnchorFile = ' + (ConvertTo-PowerShellLiteral $successAnchor)
-            '$confirmation = Read-Host "Type REMOVE ALL MANIFEST SKILLS to continue"' =
-              '$confirmation = "REMOVE ALL MANIFEST SKILLS"'
+            '$confirmation = Read-Host "Type REMOVE 19 to continue"' =
+              '$confirmation = "REMOVE 19"'
           }
           foreach ($entry in $successReplacements.GetEnumerator()) {
             if ($successScript.IndexOf([string]$entry.Key, [StringComparison]::Ordinal) -lt 0) {
@@ -1214,6 +1218,7 @@ jobs:
           if ($successAnchorText -cne "OWNER_BEFORE`nOWNER_AFTER`n") {
             throw 'successful removal changed owner anchor text outside the managed span'
           }
+
           Set-Content -LiteralPath (Join-Path $evidence 'result.log') -Encoding utf8 -Value @(
             "CANDIDATE_SHA=$env:CANDIDATE_SHA"
             "CHECKOUT_SHA=$checkoutSha"
@@ -1716,7 +1721,7 @@ jobs:
           set +e
           (
             cd "$source_alias"
-            printf 'REMOVE ALL MANIFEST SKILLS\n' | bash "$source_alias_script"
+            printf 'REMOVE 19\n' | bash "$source_alias_script"
           ) > "$evidence/source-alias.stdout.log" 2> "$evidence/source-alias.stderr.log"
           source_alias_status=$?
           set -e
@@ -1749,7 +1754,7 @@ jobs:
           set +e
           (
             cd "$linked_goals"
-            printf 'REMOVE ALL MANIFEST SKILLS\n' | bash "$documented"
+            printf 'REMOVE 19\n' | bash "$documented"
           ) > "$evidence/linked-goals.stdout.log" 2> "$evidence/linked-goals.stderr.log"
           linked_goals_status=$?
           set -e
@@ -1800,7 +1805,7 @@ jobs:
           PY
           (
             cd "$candidate"
-            printf 'REMOVE ALL MANIFEST SKILLS\n' | bash "$success_script"
+            printf 'REMOVE 19\n' | bash "$success_script"
           ) > "$evidence/successful-removal.stdout.log" \
             2> "$evidence/successful-removal.stderr.log"
           python - "$candidate/manifest.json" "$success" <<'PY'

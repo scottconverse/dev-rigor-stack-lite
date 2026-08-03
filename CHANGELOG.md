@@ -3,17 +3,24 @@
 ## 0.6.0 - 2026-08-03
 
 - **Optional BRAINSTORM discovery now precedes PLAN when material product choices are
-  unresolved.** The text-first skill activates explicitly or for genuine ambiguity,
-  skips decision-complete briefs, scales questions and approval to the design, and hands
-  a complete approved record to PLAN without taking implementation action.
+  unresolved.** Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+  Without explicit invocation, the text-first skill activates only for genuine ambiguity,
+  skips decision-complete briefs, scales questions and approval to the design, and hands a
+  complete approved record to PLAN without taking implementation action.
 - **Debugging and audit fan-out contracts are sharper without duplicating skills.**
   Diagnostic probes are separated from production fix attempts; audit coordinators
   reverify verdict-driving claims and record replayable sampling of lower-risk findings.
   Portable orchestration examples no longer pin a provider-specific worker model.
-- **The installer lifecycle now covers 20 manifest-owned skills.** Public instructions,
-  verification, and safe removal use the manifest inventory, a count-neutral confirmation
-  phrase, and tested preservation boundaries. Downgrade guidance removes the current
-  release before installing an older pinned source so a newer-only skill cannot linger.
+- **The installer lifecycle now covers 20 manifest-owned skills without weakening its
+  trust boundaries.** Public instructions and safe removal preserve the owner-frozen
+  `REMOVE 19` confirmation, use the manifest inventory, and test owner-content preservation.
+  Read-only preflight rejects collisions, malformed markers, and source aliases before any
+  write. Windows and POSIX both prove removal followed by a pinned v0.5.1 rollback so a
+  newer-only skill cannot linger.
+- **The public release path is consistent at narrow widths and across documentation.**
+  Explicit BRAINSTORM invocation wins even for a decision-complete brief, the landing page
+  distinguishes five review modes from the GauntletGate umbrella, and primary navigation
+  remains inside a 320 CSS-pixel viewport.
 - **Release claims stay bounded to the evidence.** Static contract and lifecycle checks
   verify packaging, documentation, and cleanup mechanics; they do not prove that a host
   loads BRAINSTORM or that a model follows its behavior contract.

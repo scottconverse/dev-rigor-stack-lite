@@ -60,6 +60,7 @@ Approval is required only when BRAINSTORM was warranted and produced a material 
 Do not hand unresolved or unapproved material design choices to implementation. If the
 owner revises a material assumption, constraint, or outcome after approval, invalidate
 the affected portion, return to BRAINSTORM, and seek approval for the changed design.
+Never label a proposed revision approved or owner-approved before the owner gives that approval.
 
 Approval means the design may proceed to planning. It does not authorize implementation,
 merging, publishing, or bypassing any selected gate.

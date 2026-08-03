@@ -40,8 +40,10 @@ needs a handoff, uses parallel agents, or waits on an external event.
 ## What changes in Lite
 
 - Skills, references, templates, and deterministic helper scripts remain.
-- Optional BRAINSTORM discovery resolves material design ambiguity before PLAN; a
-  decision-complete brief skips it and Micro never gains a mandatory approval gate.
+- Optional BRAINSTORM discovery resolves material design ambiguity before PLAN.
+  Explicit invocation always activates BRAINSTORM, even when the brief is decision-complete.
+  Without explicit invocation, a decision-complete brief skips discovery, and Micro
+  never gains a mandatory approval gate.
 - Evidence comes from ordinary commands, logs, CI, screenshots, traces, hashes, and reports.
 - Host policies control delegation, approvals, merges, publishing, and available tools.
 - Passing a gate establishes readiness; it never grants the agent authority to merge or publish.
@@ -136,8 +138,11 @@ Adjust the tool path for the target you installed. See the
 Use `rigor-goals` only for cross-session work, handoffs, parallel agents, or an external
 wait. Ordinary same-session work does not need a durable plan.
 
-Installation copies only the 20 directories under `skills/`. Existing directories with
-the same names are refused unless `-Force` or `--force` is supplied.
+Installation copies only the 20 directories under `skills/`. Before writing anything, a
+read-only preflight validates the target, all manifest-name collisions, the goals and anchor
+destinations, and the managed marker structure. Existing directories with the same names
+are refused unless `-Force` or `--force` is supplied; every preflight refusal leaves the
+project unchanged.
 
 ### The anchor block and rigor-goals install by default
 
