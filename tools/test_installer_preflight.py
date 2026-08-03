@@ -161,6 +161,35 @@ class InstallerPreflightTests(unittest.TestCase):
                     self.assertFalse(installed.is_symlink())
                     self.assertEqual(snapshot(installed), snapshot(ROOT / "skills" / name))
 
+    def test_force_replaces_linked_skill_without_touching_link_target(self):
+        with tempfile.TemporaryDirectory(prefix="rigor-installer-linked-skill-") as raw:
+            project = Path(raw)
+            owner = project / "owner-skill"
+            owner.mkdir()
+            (owner / "owner.txt").write_text("OWNER\n", encoding="utf-8")
+            destination = (
+                project / ".claude" / "skills" / "dev-rigor-stack-lite-brainstorm"
+            )
+            destination.parent.mkdir(parents=True)
+            try:
+                destination.symlink_to(link_target(owner), target_is_directory=True)
+            except OSError as error:
+                self.skipTest(f"directory links unavailable: {error}")
+            owner_before = snapshot(owner)
+            force = "-Force" if os.name == "nt" else "--force"
+            result = self.run_installer(ROOT, project, ".claude/skills", force)
+            self.assertEqual(
+                result.returncode,
+                0,
+                msg=f"forced install failed\n{result.stdout}\n{result.stderr}",
+            )
+            self.assertEqual(snapshot(owner), owner_before)
+            self.assertFalse(destination.is_symlink())
+            self.assertEqual(
+                snapshot(destination),
+                snapshot(ROOT / "skills" / "dev-rigor-stack-lite-brainstorm"),
+            )
+
     def test_malformed_anchor_is_preflighted_before_copy(self):
         for label, text in (
             ("begin-only", f"OWNER\n{BEGIN}\n"),
@@ -211,6 +240,132 @@ class InstallerPreflightTests(unittest.TestCase):
                 "skills",
                 force,
             )
+
+    def test_case_variant_target_cannot_alias_bundled_skill_source(self):
+        with tempfile.TemporaryDirectory(
+            prefix="rigor-installer-case-alias-", dir=ROOT.parent
+        ) as raw:
+            source = Path(raw) / "source"
+            copy_installer_source(source)
+            alternate_target = source / "SKILLS"
+            try:
+                if not os.path.samefile(alternate_target, source / "skills"):
+                    self.skipTest("fixture filesystem is case-sensitive")
+            except FileNotFoundError:
+                self.skipTest("fixture filesystem is case-sensitive")
+            force = "-Force" if os.name == "nt" else "--force"
+            no_goals = "-NoGoals" if os.name == "nt" else "--no-goals"
+            no_anchor = "-NoAnchor" if os.name == "nt" else "--no-anchor"
+            self.assert_refusal_is_mutation_free(
+                source,
+                source,
+                source,
+                str(alternate_target),
+                force,
+                no_goals,
+                no_anchor,
+            )
+
+    def test_goals_and_anchor_output_collision_is_preflighted(self):
+        with tempfile.TemporaryDirectory(prefix="rigor-installer-output-alias-") as raw:
+            project = Path(raw)
+            options = (
+                ("-Goals", ".claude\\tools", "-Anchor", ".claude\\tools\\rigor_goals.py")
+                if os.name == "nt"
+                else ("--goals", ".claude/tools", "--anchor", ".claude/tools/rigor_goals.py")
+            )
+            self.assert_refusal_is_mutation_free(
+                ROOT, project, project, ".claude/skills", *options
+            )
+
+    def test_dot_segments_cannot_bypass_output_topology(self):
+        with tempfile.TemporaryDirectory(prefix="rigor-installer-dot-segments-") as raw:
+            project = Path(raw)
+            options = (
+                (
+                    "-Goals", ".claude\\tools", "-Anchor",
+                    ".claude\\missing\\..\\tools\\rigor_goals.py",
+                )
+                if os.name == "nt"
+                else (
+                    "--goals", ".claude/tools", "--anchor",
+                    ".claude/missing/../tools/rigor_goals.py",
+                )
+            )
+            self.assert_refusal_is_mutation_free(
+                ROOT, project, project, ".claude/skills", *options
+            )
+
+    def test_companion_outputs_cannot_be_inside_skills_target(self):
+        cases = (
+            (
+                "goals",
+                ("-Goals", ".claude\\skills\\tools")
+                if os.name == "nt"
+                else ("--goals", ".claude/skills/tools"),
+            ),
+            (
+                "anchor",
+                ("-Anchor", ".claude\\skills\\AGENTS.md")
+                if os.name == "nt"
+                else ("--anchor", ".claude/skills/AGENTS.md"),
+            ),
+        )
+        for label, options in cases:
+            with self.subTest(label=label):
+                with tempfile.TemporaryDirectory(
+                    prefix=f"rigor-installer-{label}-inside-target-"
+                ) as raw:
+                    project = Path(raw)
+                    self.assert_refusal_is_mutation_free(
+                        ROOT, project, project, ".claude/skills", *options
+                    )
+
+    def test_missing_anchor_parent_is_created_before_component_copy(self):
+        with tempfile.TemporaryDirectory(prefix="rigor-installer-anchor-parent-") as raw:
+            project = Path(raw)
+            options = (
+                ("-Anchor", "nested\\host\\AGENTS.md")
+                if os.name == "nt"
+                else ("--anchor", "nested/host/AGENTS.md")
+            )
+            result = self.run_installer(ROOT, project, ".claude/skills", *options)
+            self.assertEqual(
+                result.returncode,
+                0,
+                msg=f"install failed\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+            )
+            self.assertTrue((project / "nested" / "host" / "AGENTS.md").is_file())
+            self.assertEqual(
+                len([path for path in (project / ".claude" / "skills").iterdir() if path.is_dir()]),
+                20,
+            )
+
+    def test_blocked_companion_parent_chain_is_preflighted(self):
+        cases = (
+            (
+                "goals",
+                ("-Goals", "blocked\\tools")
+                if os.name == "nt"
+                else ("--goals", "blocked/tools"),
+            ),
+            (
+                "anchor",
+                ("-Anchor", "blocked\\host\\AGENTS.md")
+                if os.name == "nt"
+                else ("--anchor", "blocked/host/AGENTS.md"),
+            ),
+        )
+        for label, options in cases:
+            with self.subTest(label=label):
+                with tempfile.TemporaryDirectory(
+                    prefix=f"rigor-installer-blocked-{label}-parent-"
+                ) as raw:
+                    project = Path(raw)
+                    (project / "blocked").write_text("OWNER\n", encoding="utf-8")
+                    self.assert_refusal_is_mutation_free(
+                        ROOT, project, project, ".claude/skills", *options
+                    )
 
     def test_target_link_cannot_alias_bundled_skill_source(self):
         with tempfile.TemporaryDirectory(prefix="rigor-installer-linked-source-") as raw:
@@ -263,6 +418,28 @@ class InstallerPreflightTests(unittest.TestCase):
             except OSError as error:
                 self.skipTest(f"directory links unavailable: {error}")
             self.assert_refusal_is_mutation_free(source, project, fixture)
+
+    def test_linked_companion_files_cannot_redirect_owner_writes(self):
+        cases = ("goals", "anchor")
+        for label in cases:
+            with self.subTest(label=label):
+                with tempfile.TemporaryDirectory(
+                    prefix=f"rigor-installer-linked-{label}-owner-"
+                ) as raw:
+                    project = Path(raw)
+                    owner = project / "owner" / f"{label}.txt"
+                    owner.parent.mkdir()
+                    owner.write_text("OWNER\n", encoding="utf-8")
+                    if label == "goals":
+                        linked = project / ".claude" / "tools" / "rigor_goals.py"
+                        linked.parent.mkdir(parents=True)
+                    else:
+                        linked = project / "CLAUDE.md"
+                    try:
+                        linked.symlink_to(link_target(owner))
+                    except OSError as error:
+                        self.skipTest(f"file links unavailable: {error}")
+                    self.assert_refusal_is_mutation_free(ROOT, project, project)
 
     def test_anchor_destination_cannot_alias_bundled_source(self):
         with tempfile.TemporaryDirectory(prefix="rigor-installer-anchor-alias-") as raw:

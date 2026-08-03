@@ -288,11 +288,12 @@ PY
 ```
 
 Then validate the source and exercise the installed goals tool from the project
-whose state you intend to use:
+whose state you intend to use. These examples use `python3`; if your Python 3
+interpreter is named `python`, use that command consistently instead:
 
 ```sh
-python tools/test_release_contract.py
-python tools/test_installer_preflight.py
+python3 tools/test_release_contract.py
+python3 tools/test_installer_preflight.py
 python3 tools/validate_bundle.py
 python3 .claude/tools/rigor_goals.py status
 ```
@@ -908,8 +909,11 @@ def inventory(tree):
     for member in sorted(tree.rglob("*")):
         if member.is_symlink():
             raise SystemExit(f"refusing linked content: {member}")
-        if member.is_file():
-            result.append((member.relative_to(tree).as_posix(), digest(member)))
+        relative = member.relative_to(tree).as_posix()
+        if member.is_dir():
+            result.append(("DIR", relative))
+        elif member.is_file():
+            result.append(("FILE", relative, digest(member)))
     return result
 
 skill_paths = []

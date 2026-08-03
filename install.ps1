@@ -148,6 +148,29 @@ function Test-PathEntry([string]$p) {
   return $null -ne (Get-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue)
 }
 
+function Test-PathWithin([string]$Child, [string]$Parent) {
+  $childPath = Get-ComparablePath $Child
+  $parentPath = (Get-ComparablePath $Parent).TrimEnd([char[]]'\/')
+  return [StringComparer]::OrdinalIgnoreCase.Equals($childPath, $parentPath) -or
+    $childPath.StartsWith($parentPath + [IO.Path]::DirectorySeparatorChar,
+      [StringComparison]::OrdinalIgnoreCase) -or
+    $childPath.StartsWith($parentPath + [IO.Path]::AltDirectorySeparatorChar,
+      [StringComparison]::OrdinalIgnoreCase)
+}
+
+function Assert-DirectoryChain([string]$Directory, [string]$Label) {
+  $candidate = Resolve-UserPath $Directory
+  while (-not (Test-PathEntry $candidate)) {
+    $parent = Split-Path -Parent $candidate
+    if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $candidate) { break }
+    $candidate = $parent
+  }
+  if ((Test-PathEntry $candidate) -and
+      -not (Test-Path -LiteralPath $candidate -PathType Container)) {
+    throw "$Label parent chain is blocked by a non-directory: $candidate"
+  }
+}
+
 function Get-DefaultAnchorPath([string]$ResolvedTarget, [bool]$RootedInput) {
   $targetParent = Split-Path -Parent $ResolvedTarget
   $hostDirectory = (Split-Path -Leaf $targetParent).ToLowerInvariant()
@@ -188,6 +211,9 @@ if ((Test-PathEntry $targetPath) -and
 if (Test-SamePath $targetPath $source) {
   throw "refusing skills target that aliases bundled source: $targetPath"
 }
+if (Test-PathWithin $targetPath $source) {
+  throw "refusing skills target inside bundled source: $targetPath"
+}
 
 $sourceSkills = @(Get-ChildItem -LiteralPath $source -Directory)
 if (-not $Force) {
@@ -207,17 +233,29 @@ if ($Goals) {
   }
   $sourceGoals = Join-Path $PSScriptRoot 'tools\rigor_goals.py'
   $goalsFile = Join-Path $goalsDir 'rigor_goals.py'
+  $goalsItem = Get-Item -LiteralPath $goalsFile -Force -ErrorAction SilentlyContinue
+  if ($null -ne $goalsItem -and
+      ($goalsItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw "refusing linked goals destination: $goalsFile"
+  }
   if (Test-SamePath $goalsFile $sourceGoals) {
     throw "refusing goals destination that aliases bundled source: $goalsFile"
   }
+  Assert-DirectoryChain $goalsDir 'goals destination'
 }
 
 if ($Anchor) {
   $anchorFile = Resolve-UserPath $Anchor
   $anchorSrc = Join-Path $PSScriptRoot 'anchor\anchor.md'
+  $anchorItem = Get-Item -LiteralPath $anchorFile -Force -ErrorAction SilentlyContinue
+  if ($null -ne $anchorItem -and
+      ($anchorItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    throw "refusing linked anchor destination: $anchorFile"
+  }
   if (Test-SamePath $anchorFile $anchorSrc) {
     throw "refusing anchor destination that aliases bundled source: $anchorFile"
   }
+  Assert-DirectoryChain (Split-Path -Parent $anchorFile) 'anchor destination'
   if (Test-PathEntry $anchorFile) {
     if (-not (Test-Path -LiteralPath $anchorFile -PathType Leaf)) {
       throw "anchor destination exists but is not a file: $anchorFile"
@@ -258,7 +296,28 @@ if ($Anchor) {
   }
 }
 
+# Validate the complete output topology before creating any component. Companion
+# files inside the managed skills tree would be overwritten or removed by a
+# forced upgrade, and the goals/anchor collision would corrupt the goals program.
+if ($Goals -and $Anchor -and (Test-SamePath $goalsFile $anchorFile)) {
+  throw "goals and anchor destinations must be different files: $goalsFile"
+}
+if ($Goals -and (Test-PathWithin $goalsFile $targetPath)) {
+  throw "goals destination cannot be inside the skills target: $goalsFile"
+}
+if ($Anchor -and (Test-PathWithin $anchorFile $targetPath)) {
+  throw "anchor destination cannot be inside the skills target: $anchorFile"
+}
+
+# Create every required parent before copying the first component so a valid
+# missing anchor parent cannot fail after leaving a partial skill installation.
 New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
+if ($Goals) {
+  New-Item -ItemType Directory -Force -Path $goalsDir | Out-Null
+}
+if ($Anchor) {
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $anchorFile) | Out-Null
+}
 
 # Migration (0.3.2, review-hardened): remove the stale lite-owned audit-lite left
 # by upgrades over a pre-0.3.1 lite install. Identity = lite's exact escalation
@@ -291,8 +350,6 @@ foreach ($skill in $sourceSkills) {
 Write-Host "Installed 20 hook-free skills to $targetPath"
 
 if ($Goals) {
-  $goalsDir = Resolve-UserPath $Goals
-  New-Item -ItemType Directory -Force -Path $goalsDir | Out-Null
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tools\rigor_goals.py') -Destination (Join-Path $goalsDir 'rigor_goals.py') -Force
   Write-Host "Installed rigor-goals to $goalsDir\rigor_goals.py (run: python $goalsDir\rigor_goals.py)"
 }

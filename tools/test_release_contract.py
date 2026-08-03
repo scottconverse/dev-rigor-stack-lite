@@ -2,13 +2,42 @@
 """Executable contract checks for the dev-rigor-stack-lite 0.6.0 release."""
 
 import json
+import hashlib
+import os
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
+
+
+def tree_snapshot(root: Path) -> dict[str, tuple[str, str]]:
+    result = {}
+    for path in sorted((root, *root.rglob("*")), key=lambda item: item.as_posix()):
+        relative = "." if path == root else path.relative_to(root).as_posix()
+        if path.is_symlink():
+            result[relative] = ("link", os.readlink(path))
+        elif path.is_dir():
+            result[relative] = ("dir", "")
+        else:
+            result[relative] = ("file", hashlib.sha256(path.read_bytes()).hexdigest())
+    return result
+
+
+def copy_removal_fixture_source(destination: Path) -> None:
+    destination.mkdir()
+    for name in ("install.ps1", "install.sh", "manifest.json"):
+        shutil.copy2(ROOT / name, destination / name)
+    shutil.copytree(ROOT / "skills", destination / "skills")
+    shutil.copytree(ROOT / "anchor", destination / "anchor")
+    (destination / "tools").mkdir()
+    shutil.copy2(ROOT / "tools" / "rigor_goals.py", destination / "tools" / "rigor_goals.py")
 
 
 class ReleaseContractTests(unittest.TestCase):
@@ -99,12 +128,24 @@ class ReleaseContractTests(unittest.TestCase):
                 text = (ROOT / relative).read_text(encoding="utf-8")
                 self.assertIn(precedence, text)
 
-    def test_maintainer_commands_include_release_contract_suite(self):
-        commands = (
-            "python tools/test_release_contract.py",
-            "python tools/test_installer_preflight.py",
+        coordinator = (ROOT / "skills" / "dev-rigor-stack-lite" / "SKILL.md").read_text(
+            encoding="utf-8"
         )
-        for relative in ("CONTRIBUTING.md", "docs/manual.md"):
+        self.assertIn("When BRAINSTORM was not explicitly invoked", coordinator)
+        self.assertIn("When BRAINSTORM produces a material design", coordinator)
+
+    def test_maintainer_commands_include_release_contract_suite(self):
+        commands_by_file = {
+            "CONTRIBUTING.md": (
+                "python tools/test_release_contract.py",
+                "python tools/test_installer_preflight.py",
+            ),
+            "docs/manual.md": (
+                "python3 tools/test_release_contract.py",
+                "python3 tools/test_installer_preflight.py",
+            ),
+        }
+        for relative, commands in commands_by_file.items():
             text = (ROOT / relative).read_text(encoding="utf-8")
             for command in commands:
                 with self.subTest(path=relative, command=command):
@@ -134,6 +175,81 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertNotIn("Get-FileHash", removal)
         self.assertIn("function Visit-Tree", removal)
         self.assertNotIn(".Substring($base.Length)", removal)
+
+    def test_documented_bash_removal_inventory_includes_directories(self):
+        manual = (ROOT / "docs" / "manual.md").read_text(encoding="utf-8")
+        match = re.search(
+            r"(?ms)^#### Bash removal\s+.*?^```sh\r?\n(?P<body>.*?)^```\s*$",
+            manual,
+        )
+        self.assertIsNotNone(match)
+        removal = match.group("body")
+        self.assertIn('result.append(("DIR", relative))', removal)
+        self.assertIn('result.append(("FILE", relative, digest(member)))', removal)
+
+    def test_documented_bash_removal_refuses_empty_directory_drift_without_mutation(self):
+        manual = (ROOT / "docs" / "manual.md").read_text(encoding="utf-8")
+        match = re.search(
+            r"(?ms)^#### Bash removal\s+.*?^```sh\r?\n(?P<body>.*?)^```\s*$",
+            manual,
+        )
+        self.assertIsNotNone(match)
+        python_bodies = re.findall(
+            r"(?ms)^python3 - <<'PY'\r?\n(.*?)^PY\s*$", match.group("body")
+        )
+        self.assertEqual(len(python_bodies), 2)
+        removal = python_bodies[1]
+
+        for drift in ("extra", "missing"):
+            with self.subTest(drift=drift):
+                with tempfile.TemporaryDirectory(prefix=f"rigor-removal-{drift}-dir-") as raw:
+                    fixture = Path(raw)
+                    project = fixture / "project"
+                    project.mkdir()
+                    source = ROOT
+                    empty_relative = Path(MANIFEST["skills"][0]) / "empty-contract-dir"
+                    if drift == "missing":
+                        source = fixture / "source"
+                        copy_removal_fixture_source(source)
+                        (source / "skills" / empty_relative).mkdir()
+
+                    if os.name == "nt":
+                        command = [
+                            "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                            "-File", str(source / "install.ps1"), "-Target", ".claude\\skills",
+                        ]
+                    else:
+                        command = ["sh", str(source / "install.sh"), ".claude/skills"]
+                    installed = subprocess.run(
+                        command, cwd=project, text=True,
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+                    )
+                    self.assertEqual(
+                        installed.returncode, 0,
+                        msg=f"fixture install failed\n{installed.stdout}\n{installed.stderr}",
+                    )
+
+                    installed_empty = project / ".claude" / "skills" / empty_relative
+                    if drift == "extra":
+                        installed_empty.mkdir()
+                    else:
+                        installed_empty.rmdir()
+                    before = tree_snapshot(project)
+                    environment = os.environ.copy()
+                    environment.update(
+                        ROOT=str(source),
+                        TARGET=str(project / ".claude" / "skills"),
+                        GOALS_FILE=str(project / ".claude" / "tools" / "rigor_goals.py"),
+                        ANCHOR_FILE=str(project / "CLAUDE.md"),
+                        CONFIRMATION="REMOVE 19",
+                    )
+                    refused = subprocess.run(
+                        [sys.executable, "-c", removal], cwd=source, env=environment,
+                        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+                    )
+                    self.assertNotEqual(refused.returncode, 0)
+                    self.assertIn("installed skill differs from pinned source", refused.stderr)
+                    self.assertEqual(tree_snapshot(project), before)
 
     def test_portable_workflow_does_not_pin_a_worker_model(self):
         offenders = []
@@ -172,6 +288,29 @@ class ReleaseContractTests(unittest.TestCase):
                     self.assertIn(marker, text)
                 self.assertNotIn("all " + legacy_count + " skills", text)
                 self.assertNotIn("exactly " + legacy_count + " skills", text)
+
+    def test_landing_install_journey_targets_the_owner_project(self):
+        text = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('$Installer = (Resolve-Path', text)
+        self.assertIn('INSTALLER=$(cd dev-rigor-stack-lite', text)
+        self.assertIn('Set-Location <span class="s">"C:\\path\\to\\your-project"</span>', text)
+        self.assertIn('<span class="k">cd</span> /path/to/your-project', text)
+        self.assertIn('.claude\\tools\\rigor_goals.py create', text)
+        self.assertIn('.claude/tools/rigor_goals.py create', text)
+        self.assertNotIn('python3</span> tools/rigor_goals.py', text)
+
+    def test_landing_overflow_and_fragment_targets_are_keyboard_operable(self):
+        text = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<main id="main" tabindex="-1">', text)
+        self.assertIn('class="gate-row" tabindex="0" aria-label=', text)
+        self.assertIn('class="tbl-wrap" tabindex="0" aria-label=', text)
+        self.assertIn("pre.tabIndex=0", text)
+        self.assertIn("region.scrollLeft+=48", text)
+        self.assertIn("copy.className='copy-btn'", text)
+        self.assertIn("target.focus({preventScroll:true})", text)
+        self.assertIn("window.addEventListener('hashchange'", text)
+        self.assertIn(".catch(fallback)", text)
+        self.assertIn(".lanes,.limits{grid-template-columns:minmax(0,1fr)}", text)
 
 
 if __name__ == "__main__":

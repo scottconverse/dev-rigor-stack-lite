@@ -31,7 +31,7 @@ the discipline's memory into places that do not decay:
 | Tier | What | Force | Why it resists drift |
 |---|---|---|---|
 | 1 | The 20 skills | none — invoked knowledge | — |
-| 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | reminder every turn | the host re-reads its instructions file each turn |
+| 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | persistent reminder | the instructions remain in session context and reload at host-defined boundaries; Claude Code also re-injects root `CLAUDE.md` after compaction |
 | 3 | `rigor-goals` CLI | hard state transitions at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
 
 The anchor routes work by risk and invokes `rigor-goals` only when work crosses sessions,

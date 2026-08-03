@@ -14,13 +14,16 @@
 - **The installer lifecycle now covers 20 manifest-owned skills without weakening its
   trust boundaries.** Public instructions and safe removal preserve the owner-frozen
   `REMOVE 19` confirmation, use the manifest inventory, and test owner-content preservation.
-  Read-only preflight rejects collisions, malformed markers, and source aliases before any
-  write. Windows and POSIX both prove removal followed by a pinned v0.5.1 rollback so a
-  newer-only skill cannot linger.
+  Read-only preflight rejects collisions, malformed markers, source aliases, redirected
+  companion files, and conflicting output topology before any component copy. Missing
+  companion parents are prepared before installation. Windows and POSIX both prove removal
+  followed by a pinned v0.5.1 rollback so a newer-only skill cannot linger.
 - **The public release path is consistent at narrow widths and across documentation.**
   Explicit BRAINSTORM invocation wins even for a decision-complete brief, the landing page
   distinguishes five review modes from the GauntletGate umbrella, and primary navigation
-  remains inside a 320 CSS-pixel viewport.
+  remains inside a 320 CSS-pixel viewport. Quick-start commands now keep the pinned installer
+  separate from the target project; keyboard-operable overflow panes and copy controls keep
+  long commands usable at narrow widths.
 - **Release claims stay bounded to the evidence.** Static contract and lifecycle checks
   verify packaging, documentation, and cleanup mechanics; they do not prove that a host
   loads BRAINSTORM or that a model follows its behavior contract.

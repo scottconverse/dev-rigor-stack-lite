@@ -126,10 +126,12 @@ runnable check, and a concise receipt.
 
 0. BRAINSTORM (optional discovery) — `$dev-rigor-stack-lite-brainstorm`
    Use only when explicitly invoked or when purpose, success criteria, material
-   constraints, or consequential choices remain unresolved. A decision-complete brief
-   goes directly to PLAN. BRAINSTORM produces an approved text design, takes no
-   implementation action, and treats any suggested lane as provisional; PLAN remains
-   authoritative. Micro never gains a mandatory approval gate from this stage.
+   constraints, or consequential choices remain unresolved. When BRAINSTORM was not explicitly invoked,
+   a decision-complete brief goes directly to PLAN. When BRAINSTORM produces a material design,
+   it obtains owner approval before handing the approved text
+   to PLAN. It takes no implementation action and treats any suggested lane as
+   provisional; PLAN remains authoritative. Micro never gains a mandatory approval gate
+   from this stage.
 
 1. PLAN (main-thread coordinator)
    Standalone: `$dev-rigor-stack-lite-plan`.
