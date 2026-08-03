@@ -439,6 +439,7 @@ $Target = ".claude\skills"
 $GoalsFile = ".claude\tools\rigor_goals.py"
 $AnchorFile = "CLAUDE.md"
 $ErrorActionPreference = "Stop"
+Import-Module Microsoft.PowerShell.Utility -ErrorAction Stop
 
 function Resolve-UserPath([string]$Path) {
   $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path)

@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLLBACK_SHA = "d3d4592b12e689140d589b09d10c2bec63658b60"
-POWERSHELL = shutil.which("pwsh") or shutil.which("powershell") or "powershell"
+POWERSHELL = shutil.which("powershell") or shutil.which("pwsh") or "powershell"
 
 
 def powershell(*arguments: str, cwd: Path) -> subprocess.CompletedProcess[str]:
