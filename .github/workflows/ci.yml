@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     strategy:
@@ -13,11 +16,12 @@ jobs:
     env:
       CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
       - run: python tools/validate_bundle.py
@@ -767,7 +771,7 @@ jobs:
           }
       - name: Preserve README Restricted-policy evidence
         if: runner.os == 'Windows' && always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: readme-restricted-windows
           path: ${{ runner.temp }}\readme-restricted-evidence
@@ -1238,7 +1242,7 @@ jobs:
           )
       - name: Preserve documented PowerShell removal-safety evidence
         if: runner.os == 'Windows' && always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: documented-removal-safety-windows
           path: ${{ runner.temp }}\removal-safety-windows
@@ -1269,11 +1273,12 @@ jobs:
       V033_SHA: 824bc12a6612da50a150bcb3ef524002fac9452e
       V033_ARCHIVE_URL: https://github.com/scottconverse/dev-rigor-stack-lite/archive/refs/tags/v0.3.3.tar.gz
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
       - name: Exercise archived install.sh lifecycle
@@ -1889,7 +1894,7 @@ jobs:
           } > "$evidence/result.log"
       - name: Preserve POSIX installer lifecycle evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: posix-installer-lifecycle-${{ matrix.os }}
           path: ${{ runner.temp }}/posix-installer-lifecycle-evidence

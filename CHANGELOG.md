@@ -26,7 +26,13 @@
   long commands usable at narrow widths.
 - **Release claims stay bounded to the evidence.** Static contract and lifecycle checks
   verify packaging, documentation, and cleanup mechanics; they do not prove that a host
-  loads BRAINSTORM or that a model follows its behavior contract.
+  loads BRAINSTORM or that a model follows its behavior contract. A billed opt-in harness
+  can record one Codex worker's handling of GauntletGate mutation isolation without
+  promoting that observation into universal behavior proof.
+- **Release provenance and CI inputs are now complete and immutable.** The full upstream
+  fivetaku MIT notice and exact source identity ship beside the goals adaptation. GitHub
+  Actions dependencies are pinned to verified full commits, checkout credentials are not
+  persisted, and the workflow token is explicitly read-only.
 
 ## 0.5.1 - 2026-07-31
 

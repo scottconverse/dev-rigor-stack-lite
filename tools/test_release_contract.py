@@ -101,6 +101,38 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("seeded random sample", orchestration)
         self.assertIn("sampled finding IDs", orchestration)
 
+    def test_gauntlet_mutation_isolation_has_contract_and_behavior_harness(self):
+        full_lane = (
+            ROOT / "skills" / "gauntletgate-lite" / "lanes" / "full.md"
+        ).read_text(encoding="utf-8")
+        for phrase in (
+            "live-mutating the product's source",
+            "isolated worktree/copy",
+            "never the shared clone",
+            "live-mutation roles need their own copy",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, full_lane)
+
+        harness = ROOT / "tools" / "eval_isolation_behavior.py"
+        self.assertTrue(harness.is_file())
+        harness_text = harness.read_text(encoding="utf-8")
+        for phrase in (
+            "EVAL_SHARED_REPO",
+            "EVAL_ISOLATED_REPO",
+            "isolation-eval-receipt.json",
+            "BUNDLE_INVALID",
+            "shared clone changed during behavior evaluation",
+            "ISOLATION_BEHAVIOR_EVAL_PASS",
+        ):
+            with self.subTest(harness_phrase=phrase):
+                self.assertIn(phrase, harness_text)
+        for relative in ("README.md", "docs/manual.md", "docs/index.html"):
+            with self.subTest(public_behavior_scope=relative):
+                public_text = (ROOT / relative).read_text(encoding="utf-8")
+                self.assertIn("opt-in Gauntlet isolation harness", public_text)
+                self.assertNotIn("Lite has no host-level behavior harness", public_text)
+
     def test_release_preserves_frozen_removal_confirmation(self):
         expected_occurrences = {
             "docs/manual.md": 6,
@@ -264,6 +296,32 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("obra/superpowers", text)
         self.assertIn("1f20bef3f59b85ad7b52718f822e37c4478a3ff5", text)
         self.assertIn("Copyright (c) 2025 Jesse Vincent", text)
+
+    def test_notice_carries_complete_fivetaku_license_and_source_identity(self):
+        notice = (ROOT / "NOTICE.md").read_text(encoding="utf-8")
+        for phrase in (
+            "e221f32b16f7b0ef39393ba47c37cb8345ffe749",
+            "a8ea7996c320f9bf09759073ba832aa609e370ea",
+            "Copyright (c) 2026 fivetaku",
+            "The above copyright notice and this permission notice shall be included",
+            "THE SOFTWARE IS PROVIDED \"AS IS\"",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, notice)
+
+    def test_external_github_actions_are_immutable_and_least_privilege(self):
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        external_uses = re.findall(r"(?m)^\s*uses:\s+(.+?)\s*$", workflow)
+        self.assertTrue(external_uses)
+        for use in external_uses:
+            if use.startswith("./"):
+                continue
+            with self.subTest(use=use):
+                self.assertRegex(use, r"^[^@]+@[0-9a-f]{40}\s+#\s+v\d+$")
+        self.assertRegex(workflow, r"(?m)^permissions:\s*\n\s+contents:\s+read\s*$")
+        self.assertEqual(workflow.count("persist-credentials: false"), 2)
 
     def test_current_public_version_and_count_are_not_stale(self):
         authoritative_markers = {

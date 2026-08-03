@@ -379,8 +379,9 @@ identifies stage evidence.
 
 Executable tests cover these CLI transitions and the anchor/skill bundle contract.
 Worker-local `DONE`, coordinator reconciliation after merge, and receipt-shape discipline
-are advisory scenario contracts because Lite has no host-level behavior harness; do not
-cite them as CI-enforced model adherence.
+remain advisory scenario contracts. The opt-in Gauntlet isolation harness observes one
+bounded worker mutation path; it does not test these goals behaviors and must not be cited
+as CI-enforced or universal model adherence.
 
 ### Upgrade and repair evidence
 
