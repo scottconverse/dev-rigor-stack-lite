@@ -196,7 +196,7 @@ for source in "$repo_dir"/skills/*; do
   [ -d "$source" ] || continue
   name=${source##*/}
   destination=$target/$name
-  if [ -e "$destination" ]; then
+  if [ -e "$destination" ] || [ -L "$destination" ]; then
     if [ "$force" != "--force" ]; then
       echo "skill already exists: $destination (use --force to replace)" >&2
       exit 1

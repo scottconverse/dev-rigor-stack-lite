@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -116,6 +117,49 @@ class InstallerPreflightTests(unittest.TestCase):
             owner.parent.mkdir(parents=True)
             owner.write_text("OWNER\n", encoding="utf-8")
             self.assert_refusal_is_mutation_free(ROOT, project, project)
+
+    def test_force_replaces_dangling_skill_link_without_partial_install(self):
+        with tempfile.TemporaryDirectory(prefix="rigor-installer-dangling-skill-") as raw:
+            project = Path(raw)
+            initial = self.run_installer(ROOT, project)
+            self.assertEqual(
+                initial.returncode,
+                0,
+                msg=f"initial install failed\n{initial.stdout}\n{initial.stderr}",
+            )
+
+            target = project / ".claude" / "skills"
+            earlier = target / "audit-team-lite" / "SKILL.md"
+            earlier.write_bytes(earlier.read_bytes() + b"OWNER_MUTATION\n")
+            dangling = target / "dev-rigor-stack-lite-brainstorm"
+            shutil.rmtree(dangling)
+            try:
+                dangling.symlink_to(
+                    link_target(project / "missing-skill-target"),
+                    target_is_directory=True,
+                )
+            except OSError as error:
+                self.skipTest(f"directory links unavailable: {error}")
+
+            force = "-Force" if os.name == "nt" else "--force"
+            repaired = self.run_installer(ROOT, project, ".claude/skills", force)
+            self.assertEqual(
+                repaired.returncode,
+                0,
+                msg=(
+                    "forced repair failed or stopped after partial replacement\n"
+                    f"stdout:\n{repaired.stdout}\nstderr:\n{repaired.stderr}"
+                ),
+            )
+            self.assertFalse(dangling.is_symlink())
+
+            manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
+            for name in manifest["skills"]:
+                with self.subTest(skill=name):
+                    installed = target / name
+                    self.assertTrue(installed.is_dir())
+                    self.assertFalse(installed.is_symlink())
+                    self.assertEqual(snapshot(installed), snapshot(ROOT / "skills" / name))
 
     def test_malformed_anchor_is_preflighted_before_copy(self):
         for label, text in (
