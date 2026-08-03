@@ -151,10 +151,13 @@ if [ -n "$anchor_file" ]; then
         exit 1
       fi
       canonical_begin=$(sed -n '1p' "$anchor_src" | tr -d '\r')
+      legacy_begin_v2='<!-- dev-rigor-lite anchor v2 — managed block, do not hand-edit (edits go outside the markers; the installer replaces this block on upgrade) -->'
       canonical_end=$(awk 'NF { line=$0 } END { sub(/\r$/, "", line); print line }' "$anchor_src")
       actual_begin=$(sed -n "${begin_line}p" "$anchor_file" | tr -d '\r')
       actual_end=$(sed -n "${end_line}p" "$anchor_file" | tr -d '\r')
-      if [ "$actual_begin" != "$canonical_begin" ] || [ "$actual_end" != "$canonical_end" ]; then
+      if { [ "$actual_begin" != "$canonical_begin" ] &&
+           [ "$actual_begin" != "$legacy_begin_v2" ]; } ||
+         [ "$actual_end" != "$canonical_end" ]; then
         echo "anchor markers in $anchor_file share a line with owner or changed text - fix it by hand first" >&2
         exit 1
       fi

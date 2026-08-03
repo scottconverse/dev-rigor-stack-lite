@@ -15,6 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BEGIN = "<!-- dev-rigor-lite anchor"
 END = "<!-- /dev-rigor-lite anchor -->"
+LEGACY_BEGIN_V2 = (
+    "<!-- dev-rigor-lite anchor v2 — managed block, do not hand-edit "
+    "(edits go outside the markers; the installer replaces this block on upgrade) -->"
+)
 
 
 def link_target(path: Path) -> Path:
@@ -126,6 +130,30 @@ class InstallerPreflightTests(unittest.TestCase):
                     project = Path(raw)
                     (project / "CLAUDE.md").write_text(text, encoding="utf-8")
                     self.assert_refusal_is_mutation_free(ROOT, project, project)
+
+    def test_legacy_v2_anchor_is_replaced_without_losing_owner_text(self):
+        with tempfile.TemporaryDirectory(prefix="rigor-installer-legacy-anchor-") as raw:
+            project = Path(raw)
+            current = (ROOT / "anchor" / "anchor.md").read_text(encoding="utf-8")
+            current_begin = current.splitlines()[0]
+            legacy = current.replace(current_begin, LEGACY_BEGIN_V2, 1)
+            anchor = project / "CLAUDE.md"
+            anchor.write_text(
+                "OWNER_BEFORE\n" + legacy + "OWNER_AFTER\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            result = self.run_installer(ROOT, project)
+            self.assertEqual(
+                result.returncode,
+                0,
+                msg=f"legacy upgrade failed\n{result.stdout}\n{result.stderr}",
+            )
+            upgraded = anchor.read_text(encoding="utf-8-sig")
+            self.assertIn(current_begin, upgraded)
+            self.assertNotIn(LEGACY_BEGIN_V2, upgraded)
+            self.assertTrue(upgraded.startswith("OWNER_BEFORE\n"))
+            self.assertTrue(upgraded.endswith("OWNER_AFTER\n"))
 
     def test_target_cannot_alias_bundled_skill_source(self):
         with tempfile.TemporaryDirectory(prefix="rigor-installer-source-alias-") as raw:

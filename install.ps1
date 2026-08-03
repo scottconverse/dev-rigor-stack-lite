@@ -75,6 +75,69 @@ function Get-ComparablePath([string]$p, [int]$Depth = 0) {
 }
 
 function Test-SamePath([string]$Left, [string]$Right) {
+  if ((Test-PathEntry $Left) -and (Test-PathEntry $Right)) {
+    if (-not ('DevRigorStackLite.FileIdentity' -as [type])) {
+      Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.IO;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
+namespace DevRigorStackLite {
+  public static class FileIdentity {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ByHandleFileInformation {
+      public uint FileAttributes;
+      public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+      public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+      public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+      public uint VolumeSerialNumber;
+      public uint FileSizeHigh;
+      public uint FileSizeLow;
+      public uint NumberOfLinks;
+      public uint FileIndexHigh;
+      public uint FileIndexLow;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(
+      string name, uint access, FileShare share, IntPtr security,
+      FileMode mode, uint flags, IntPtr template);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetFileInformationByHandle(
+      SafeFileHandle handle, out ByHandleFileInformation information);
+
+    public static string Get(string path) {
+      const uint BackupSemantics = 0x02000000;
+      using (SafeFileHandle handle = CreateFileW(
+        path, 0, FileShare.ReadWrite | FileShare.Delete, IntPtr.Zero,
+        FileMode.Open, BackupSemantics, IntPtr.Zero)) {
+        if (handle.IsInvalid) {
+          throw new Win32Exception(Marshal.GetLastWin32Error(),
+            "Cannot inspect filesystem identity: " + path);
+        }
+        ByHandleFileInformation information;
+        if (!GetFileInformationByHandle(handle, out information)) {
+          throw new Win32Exception(Marshal.GetLastWin32Error(),
+            "Cannot inspect filesystem identity: " + path);
+        }
+        return String.Format("{0:X8}:{1:X8}:{2:X8}",
+          information.VolumeSerialNumber,
+          information.FileIndexHigh,
+          information.FileIndexLow);
+      }
+    }
+  }
+}
+'@
+    }
+    return [StringComparer]::Ordinal.Equals(
+      [DevRigorStackLite.FileIdentity]::Get((Resolve-UserPath $Left)),
+      [DevRigorStackLite.FileIdentity]::Get((Resolve-UserPath $Right))
+    )
+  }
   return [StringComparer]::OrdinalIgnoreCase.Equals(
     (Get-ComparablePath $Left),
     (Get-ComparablePath $Right)
@@ -182,11 +245,13 @@ if ($Anchor) {
     if ($beginCount -eq 1) {
       $canonicalLines = [IO.File]::ReadAllText($anchorSrc) -split '\r?\n'
       $canonicalBegin = $canonicalLines[0]
+      $legacyBeginV2 = $canonicalBegin.Replace(' v4 ', ' v2 ')
       $canonicalEnd = @($canonicalLines | Where-Object { $_ -ne '' })[-1]
       $existingLines = $existingAnchor -split '\r?\n'
       $actualBegin = @($existingLines | Where-Object { $_.Contains($beginMarker) })[0]
       $actualEnd = @($existingLines | Where-Object { $_.Contains($endMarker) })[0]
-      if ($actualBegin -cne $canonicalBegin -or $actualEnd -cne $canonicalEnd) {
+      if (($actualBegin -cne $canonicalBegin -and $actualBegin -cne $legacyBeginV2) -or
+          $actualEnd -cne $canonicalEnd) {
         throw "anchor markers in $anchorFile share a line with owner or changed text - fix it by hand first"
       }
     }
