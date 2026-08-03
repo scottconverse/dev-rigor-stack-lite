@@ -12,7 +12,7 @@ description: >
 license: MIT
 ---
 
-# Standing dev rigor stack Lite v0.5.1
+# Standing dev rigor stack Lite v0.6.0
 
 Route every unit before choosing its process. Micro work takes the short path below.
 Standard work uses the proportionate per-unit loop. Critical work uses the complete
@@ -64,6 +64,7 @@ checkpoint as a stop, or discard pending commitments on its own.
 
 Every functional section is independently invokable and also routed by this coordinator:
 
+- `$dev-rigor-stack-lite-brainstorm`
 - `$dev-rigor-stack-lite-continuity`
 - `$dev-rigor-stack-lite-plan`
 - `$dev-rigor-stack-lite-build` (backward-compatible `$coder-tdd-qa-lite`)
@@ -122,6 +123,13 @@ tag (a decision killed in 0.1 is still worth not reopening in 0.4).
 
 Micro work does not run this formal loop. It stops after inspect, change, one relevant
 runnable check, and a concise receipt.
+
+0. BRAINSTORM (optional discovery) — `$dev-rigor-stack-lite-brainstorm`
+   Use only when explicitly invoked or when purpose, success criteria, material
+   constraints, or consequential choices remain unresolved. A decision-complete brief
+   goes directly to PLAN. BRAINSTORM produces an approved text design, takes no
+   implementation action, and treats any suggested lane as provisional; PLAN remains
+   authoritative. Micro never gains a mandatory approval gate from this stage.
 
 1. PLAN (main-thread coordinator)
    Standalone: `$dev-rigor-stack-lite-plan`.

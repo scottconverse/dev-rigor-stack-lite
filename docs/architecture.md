@@ -11,7 +11,7 @@ evidence ledger.
 flowchart LR
     Source["Pinned source or release archive"] --> Installer["install.ps1 or install.sh"]
     Owner["Human owner"] --> Installer
-    Installer --> Skills["19 skill directories"]
+    Installer --> Skills["20 skill directories"]
     Installer --> Goals["tools/rigor_goals.py"]
     Installer --> Anchor["Managed block in host instructions"]
     Skills --> Host["Agent host"]
@@ -24,7 +24,7 @@ flowchart LR
 ```
 
 Text fallback: a human runs one of the installers from pinned source. The
-installer copies the 19 skill directories, one Python tool, and one
+installer copies the 20 skill directories, one Python tool, and one
 marker-fenced block in a host instructions file. The host reads the skills and
 anchor. For cross-session work, handoffs, parallel agents, or external waits, the
 operator invokes the goals tool, which writes project-local state under `./.rigor/`.
@@ -44,6 +44,10 @@ publication.
 
 ```mermaid
 flowchart TD
+    Brief{"Material design unresolved?"}
+    Brief -- "Yes" --> Brainstorm["Optional BRAINSTORM: approved text brief"]
+    Brief -- "No" --> Route
+    Brainstorm --> Route
     Route{"Risk lane"}
     Route -- "Micro" --> Micro["MICRO: inspect - change - one check - receipt"]
     Route -- "Standard" --> Plan["STANDARD: brief PLAN and acceptance"]
@@ -63,7 +67,8 @@ flowchart TD
     Harness["Optional external regression harness"] -. "Supplemental evidence" .-> Verify
 ```
 
-Text fallback: localized mechanical work uses Micro. Ordinary work uses Standard.
+Text fallback: explicit or materially unresolved design work may use optional BRAINSTORM
+before lane selection; a decision-complete brief skips it. Localized mechanical work uses Micro. Ordinary work uses Standard.
 Named risks such as auth, money, persisted data, security, concurrency, installers,
 irreversible operations, or broad public contracts use Critical. Standard applies
 RED/GREEN and focused review where relevant; Critical adds independent proof. Release

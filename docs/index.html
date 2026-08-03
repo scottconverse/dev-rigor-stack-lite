@@ -159,6 +159,7 @@
   h2{font-size:clamp(1.75rem,3.4vw,2.4rem); max-width:22ch}
   .sub{color:var(--ink-2); max-width:var(--read); margin-top:16px; font-size:1.04rem}
   .split{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:56px; align-items:start}
+  .split>*{min-width:0}
   @media(max-width:900px){.split{grid-template-columns:1fr; gap:34px}}
 
   /* ---- tiers ---- */
@@ -255,7 +256,7 @@
   <div class="wrap nav-in">
     <a class="brand" href="#top">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#17140F"/><path d="M8 16h5l2.5-5 3 10 2.5-5h5" stroke="#E4571F" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      dev-rigor-stack-lite <span class="v">v0.5.1</span>
+      dev-rigor-stack-lite <span class="v">v0.6.0</span>
     </a>
     <button class="menu-btn" aria-expanded="false" aria-controls="navlinks">Menu</button>
     <nav class="nav-links" id="navlinks" aria-label="Main">
@@ -273,14 +274,14 @@
 <div id="top" class="hero">
   <div class="wrap hero-grid">
     <div>
-      <p class="eyebrow">Portable agent delivery · MIT · v0.5.1</p>
+      <p class="eyebrow">Portable agent delivery · MIT · v0.6.0</p>
       <h1>Rigor for the unit. Continuity for the work.</h1>
       <p class="lede">
         A portable delivery workflow for coding agents: proportional proof for each change,
         persistent engagement state for work that must continue, and no hooks or background runtime.
       </p>
       <div class="cta-row">
-        <a class="btn btn-1" href="#install">Install v0.5.1</a>
+        <a class="btn btn-1" href="#install">Install v0.6.0</a>
         <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite">Inspect the source</a>
       </div>
       <p class="hero-note">For Codex, Claude Code, Antigravity, Gemini CLI, and compatible Agent&nbsp;Skills hosts. Requires Git and Python&nbsp;3.</p>
@@ -310,7 +311,7 @@
 
 <div class="strip">
   <div class="wrap strip-in">
-    <span><b>19</b> workflow skills</span>
+    <span><b>20</b> workflow skills</span>
     <span><b>39</b> rigor-goals tests</span>
     <span><b>0</b> third-party runtime packages</span>
     <span><b>No</b> hooks or daemon</span>
@@ -388,7 +389,7 @@
       <div class="tier">
         <div><div class="tier-n">1</div></div>
         <div>
-          <h3>The 19 skills</h3>
+          <h3>The 20 skills</h3>
           <p>The full workflow — planning, test-first build, adversarial verification, five review lanes, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
           <span class="force">Force: none — invoked knowledge</span>
         </div>
@@ -430,6 +431,11 @@
       </p>
       <p class="sub">
         Each gate is also a standalone entry point, so you can run one without the others.
+      </p>
+      <p class="sub">
+        Version 0.6.0 also adds optional, text-first BRAINSTORM discovery before PLAN when
+        the product problem or a consequential design choice is genuinely unresolved. A
+        decision-complete brief skips it, and its approval authorizes planning—not building.
       </p>
     </div>
     <div>
@@ -517,7 +523,7 @@
           <p>Pin to a tag so the bundle you install is the bundle that was tested.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
-<pre><span class="k">git</span> clone --branch v0.5.1 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+<pre><span class="k">git</span> clone --branch v0.6.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 <span class="k">cd</span> dev-rigor-stack-lite</pre>
           </div>
         </div>
@@ -546,11 +552,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target <span 
       <div class="step">
         <div>
           <h3>Verify the bundle</h3>
-          <p>Confirms all 19 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
+          <p>Confirms all 20 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
 <pre><span class="k">python</span> tools/validate_bundle.py
-<span class="cm">→ BUNDLE_VALID: 19 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
+<span class="cm">→ BUNDLE_VALID: 20 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
           </div>
         </div>
       </div>
@@ -709,7 +715,7 @@ MERGE(unit)
     <p class="kicker">Status &amp; limits</p>
     <h2>Actively developed, and honest about its edges.</h2>
     <p class="sub">
-      Version v0.5.1 under MIT. The installer's fresh, refusal, forced, and upgrade paths are
+      Version v0.6.0 under MIT. The installer's fresh, refusal, forced, upgrade, and removal paths are
       exercised in CI on Windows, Ubuntu and macOS, and the documented Windows command is executed
       verbatim from a fresh Restricted-policy process on every push. These are the limits worth knowing
       before you adopt it.
@@ -740,7 +746,7 @@ MERGE(unit)
     <h2>Put a gate between your agent and "done".</h2>
     <p>Clone the pinned tag, run one installer command, and let named risk select the amount of process the work needs.</p>
     <div class="cta-row">
-      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.5.1">Get v0.5.1</a>
+      <a class="btn btn-1" href="https://github.com/scottconverse/dev-rigor-stack-lite/tree/v0.6.0">Get v0.6.0</a>
       <a class="btn btn-2" href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/docs/manual.md">Read the manual</a>
     </div>
   </div>
@@ -757,7 +763,7 @@ MERGE(unit)
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/SECURITY.md">Security</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/issues">Issues</a>
     <a href="https://github.com/scottconverse/dev-rigor-stack-lite/blob/main/LICENSE">MIT License</a>
-    <span class="sp">v0.5.1</span>
+    <span class="sp">v0.6.0</span>
   </div>
 </footer>
 

@@ -86,7 +86,7 @@ foreach ($skill in Get-ChildItem -LiteralPath $source -Directory) {
   }
   Copy-Item -LiteralPath $skill.FullName -Destination $destination -Recurse
 }
-Write-Host "Installed 19 hook-free skills to $targetPath"
+Write-Host "Installed 20 hook-free skills to $targetPath"
 
 if ($Goals) {
   $goalsDir = Resolve-UserPath $Goals

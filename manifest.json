@@ -1,6 +1,6 @@
 {
   "name": "dev-rigor-stack-lite",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "tiers": {
     "anchor": "anchor/anchor.md — marker-fenced discipline block for the host's persistent instructions file",
     "goals": "tools/rigor_goals.py — mode-pinned durable development loop with structural evidence gates; state in ./.rigor/ (adapted from fivetaku/fablize, MIT — see NOTICE.md)"
@@ -13,7 +13,7 @@
   },
   "format": "agent-skills",
   "hooks": false,
-  "skill_count": 19,
+  "skill_count": 20,
   "supported_hosts": ["codex", "claude-code", "google-antigravity", "agent-skills-compatible"],
   "skills": [
     "quick-audit-lite",
@@ -23,6 +23,7 @@
     "dev-rigor-stack-lite-audit-lite",
     "dev-rigor-stack-lite-audit-team",
     "dev-rigor-stack-lite-build",
+    "dev-rigor-stack-lite-brainstorm",
     "dev-rigor-stack-lite-continuity",
     "dev-rigor-stack-lite-docs-gate",
     "dev-rigor-stack-lite-gauntletgate",

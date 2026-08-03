@@ -39,7 +39,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".clau
 ./install.sh .claude/skills --force
 ```
 
-Force replaces the 19 manifest-named skill directories and the installed goals
+Force replaces the 20 manifest-named skill directories and the installed goals
 file. It does not authorize deleting unrelated target entries or owner text
 outside the anchor markers.
 

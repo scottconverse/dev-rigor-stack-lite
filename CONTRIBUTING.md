@@ -42,11 +42,7 @@ release artifacts or other identity-sensitive evidence.
 - `manifest.json` is the version authority. Version labels in shipped skills
   must agree with it.
 - `manifest.json` owns the skill inventory, and that inventory must remain
-  exactly 19 unless an explicitly planned release changes the contract.
-- The fenced `SHARED-BLOCK` in
-  `skills/dev-rigor-stack-lite/SKILL.md` is maintained in lockstep with the full
-  stack through its sanctioned substitution map. Do not edit inside that fence
-  as an isolated lite-only change.
+  exactly 20 unless an explicitly planned release changes the contract.
 - Keep portable workflow prose host-neutral. Do not encode model names or
   personal agent assignments in the bundle.
 - Do not add hooks, background services, trust activation, Stop interception,

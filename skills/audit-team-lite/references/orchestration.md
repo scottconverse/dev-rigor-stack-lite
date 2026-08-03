@@ -73,7 +73,7 @@ One bounded parallel dispatch, all roles as leaf workers. Example (concept, not 
 
 ```js
 const summaries = await parallel(ROLES.map((r) => () =>
-  agent(rolePrompt(r), { label: `role:${r.key}`, model: 'sonnet', schema: SUMMARY })))
+  agent(rolePrompt(r), { label: `role:${r.key}`, schema: SUMMARY })))
 ```
 
 - one `agent()` per in-scope role — Principal Engineer, UI/UX, Technical Writer, Test Engineer, QA
@@ -81,6 +81,17 @@ const summaries = await parallel(ROLES.map((r) => () =>
 - a structured-output schema for the terse summary keeps returns machine-readable
 
 Launch once; wait for the combined return.
+
+Before synthesis, inspect returned diffs and receipts for overlap: determine whether two
+or more workers modified the same file or symbol. Do not infer isolation from summaries.
+Reconcile overlapping edits explicitly, preserve the selected version's evidence, and
+rerun affected checks before accepting either return.
+
+Reverify every Blocker, Critical, and verdict-driving claim against primary evidence in
+the coordinator context; a worker summary is a lead, not proof. For Major and lower
+claims, verify every item that changes acceptance and take a recorded risk-weighted or
+seeded random sample of the rest. Record the sampled finding IDs, selection method, and
+seed when randomness is used so another reviewer can replay the check.
 
 If the user scoped down (e.g., just UI/UX and QA), only dispatch those roles. Do not silently drop roles from a full-scope audit.
 

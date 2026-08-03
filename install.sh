@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   echo "usage: ./install.sh TARGET [--force] [--goals DIR] [--anchor FILE] [--no-goals] [--no-anchor]" >&2
-  echo "  TARGET        directory to copy the 19 skills into" >&2
+  echo "  TARGET        directory to copy the 20 skills into" >&2
   echo "  --force       replace skills that already exist in TARGET" >&2
   echo "  --goals DIR   override where the rigor-goals tool installs (default: <TARGET>/../tools)" >&2
   echo "  --anchor FILE override which instructions file gets the anchor block" >&2
@@ -84,7 +84,7 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 #   - identity = lite's exact escalation sentence, not a bare name mention —
 #     a file that merely *talks about* audit-team-lite must survive;
 #   - destructive only under --force, like every other destructive act here
-#     (real upgrades pass --force anyway to replace the 19 skill dirs);
+#     (real upgrades pass --force anyway to replace the 20 skill dirs);
 #   - case-sensitive, matching install.ps1 exactly.
 old_audit=$target/audit-lite
 lite_marker='Escalate to `audit-team-lite`'
@@ -115,7 +115,7 @@ for source in "$repo_dir"/skills/*; do
   fi
   cp -R -- "$source" "$destination"
 done
-echo "Installed 19 hook-free skills to $target"
+echo "Installed 20 hook-free skills to $target"
 
 if [ -n "$goals_dir" ]; then
   mkdir -p "$goals_dir"
