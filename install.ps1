@@ -25,6 +25,17 @@ function Resolve-UserPath([string]$p) {
   return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p)
 }
 
+function ConvertFrom-ExtendedPath([string]$p) {
+  if ($p.StartsWith('\\?\UNC\', [StringComparison]::OrdinalIgnoreCase)) {
+    return '\\' + $p.Substring(8)
+  }
+  if ($p.StartsWith('\\?\', [StringComparison]::OrdinalIgnoreCase) -or
+      $p.StartsWith('\??\', [StringComparison]::OrdinalIgnoreCase)) {
+    return $p.Substring(4)
+  }
+  return $p
+}
+
 function Get-ComparablePath([string]$p, [int]$Depth = 0) {
   if ($Depth -gt 32) {
     throw "refusing path with excessive link depth: $p"
@@ -49,7 +60,7 @@ function Get-ComparablePath([string]$p, [int]$Depth = 0) {
       if ($targets.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$targets[0])) {
         throw "refusing path with an unresolved link target: $candidate"
       }
-      $linkTarget = [string]$targets[0]
+      $linkTarget = ConvertFrom-ExtendedPath ([string]$targets[0])
       if (-not [IO.Path]::IsPathRooted($linkTarget)) {
         $linkTarget = Join-Path (Split-Path -Parent $candidate) $linkTarget
       }
@@ -121,7 +132,7 @@ if (-not $Force) {
     Test-PathEntry (Join-Path $targetPath $_.Name)
   } | ForEach-Object { Join-Path $targetPath $_.Name })
   if ($collisions.Count -gt 0) {
-    throw "Skills already exist (use -Force to replace): $($collisions -join ', ')"
+    throw "Skill already exists: $($collisions -join ', ') (use -Force to replace)"
   }
 }
 

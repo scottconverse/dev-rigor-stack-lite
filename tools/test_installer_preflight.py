@@ -17,6 +17,13 @@ BEGIN = "<!-- dev-rigor-lite anchor"
 END = "<!-- /dev-rigor-lite anchor -->"
 
 
+def link_target(path: Path) -> Path:
+    """Use Windows' extended spelling so alias checks cover runner-created links."""
+    if os.name == "nt":
+        return Path("\\\\?\\" + str(path))
+    return path
+
+
 def snapshot(root: Path) -> dict[str, tuple[str, str]]:
     """Return a byte-sensitive inventory that also records empty directories."""
     result: dict[str, tuple[str, str]] = {}
@@ -142,7 +149,9 @@ class InstallerPreflightTests(unittest.TestCase):
             (project / ".claude").mkdir(parents=True)
             linked_target = project / ".claude" / "skills"
             try:
-                linked_target.symlink_to(source / "skills", target_is_directory=True)
+                linked_target.symlink_to(
+                    link_target(source / "skills"), target_is_directory=True
+                )
             except OSError as error:
                 self.skipTest(f"directory links unavailable: {error}")
             force = "-Force" if os.name == "nt" else "--force"
@@ -176,7 +185,9 @@ class InstallerPreflightTests(unittest.TestCase):
             (project / ".claude").mkdir(parents=True)
             linked_tools = project / ".claude" / "tools"
             try:
-                linked_tools.symlink_to(source / "tools", target_is_directory=True)
+                linked_tools.symlink_to(
+                    link_target(source / "tools"), target_is_directory=True
+                )
             except OSError as error:
                 self.skipTest(f"directory links unavailable: {error}")
             self.assert_refusal_is_mutation_free(source, project, fixture)
@@ -206,7 +217,9 @@ class InstallerPreflightTests(unittest.TestCase):
             copy_installer_source(source)
             project.mkdir()
             try:
-                (project / "CLAUDE.md").symlink_to(source / "anchor" / "anchor.md")
+                (project / "CLAUDE.md").symlink_to(
+                    link_target(source / "anchor" / "anchor.md")
+                )
             except OSError as error:
                 self.skipTest(f"file links unavailable: {error}")
             self.assert_refusal_is_mutation_free(source, project, fixture)

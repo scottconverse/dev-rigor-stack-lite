@@ -102,7 +102,7 @@ if [ "$force" != "--force" ] && [ -d "$target" ]; then
     fi
   done
   if [ -n "$collisions" ]; then
-    echo "skills already exist (use --force to replace): $collisions" >&2
+    echo "skill already exists: $collisions (use --force to replace)" >&2
     exit 1
   fi
 fi
