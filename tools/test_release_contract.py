@@ -124,6 +124,8 @@ class ReleaseContractTests(unittest.TestCase):
             "BUNDLE_INVALID",
             "shared clone changed during behavior evaluation",
             "ISOLATION_BEHAVIOR_EVAL_PASS",
+            'command.append("-")',
+            "input=prompt",
         ):
             with self.subTest(harness_phrase=phrase):
                 self.assertIn(phrase, harness_text)

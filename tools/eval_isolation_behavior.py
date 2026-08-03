@@ -225,7 +225,7 @@ Environment aliases are also provided as EVAL_SHARED_REPO and EVAL_ISOLATED_REPO
     ]
     if args.model:
         command.extend(["--model", args.model])
-    command.append(prompt)
+    command.append("-")
     environment = os.environ.copy()
     environment["EVAL_SHARED_REPO"] = str(shared)
     environment["EVAL_ISOLATED_REPO"] = str(isolated)
@@ -236,6 +236,7 @@ Environment aliases are also provided as EVAL_SHARED_REPO and EVAL_ISOLATED_REPO
             command,
             cwd=shared,
             env=environment,
+            input=prompt,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
