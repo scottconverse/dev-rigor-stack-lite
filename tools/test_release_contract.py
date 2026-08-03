@@ -126,6 +126,8 @@ class ReleaseContractTests(unittest.TestCase):
             "ISOLATION_BEHAVIOR_EVAL_PASS",
             'command.append("-")',
             "input=prompt",
+            'str(isolated),\n        "--add-dir",\n        str(shared),',
+            'errors="replace"',
         ):
             with self.subTest(harness_phrase=phrase):
                 self.assertIn(phrase, harness_text)
