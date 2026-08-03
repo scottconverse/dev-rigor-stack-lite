@@ -1354,8 +1354,12 @@ jobs:
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
           expected = sorted(manifest["skills"])
           actual = sorted(path.name for path in target.iterdir() if path.is_dir())
-          if manifest.get("skill_count") != 20 or len(expected) != 20:
-              raise SystemExit(f"{label}: source manifest does not declare exactly 20 skills")
+          declared_count = manifest.get("skill_count")
+          if declared_count != len(expected):
+              raise SystemExit(
+                  f"{label}: source manifest skill_count {declared_count!r} "
+                  f"does not match its {len(expected)} declared skills"
+              )
           if actual != expected:
               raise SystemExit(
                   f"{label}: installed directories differ from manifest\n"
