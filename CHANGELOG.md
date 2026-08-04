@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 - 2026-08-04
 
 - **VERIFY/MERGE now cite a deterministic verification-integrity receipt when
   available.** If [tampercheck](https://github.com/scottconverse/tampercheck) is
@@ -11,6 +11,10 @@
   `tampercheck: allow <reason>`; tool failure (exit 2) is never a pass; absence
   is disclosed, not implied green. The skills remain hook-free and fully
   functional without the tool.
+- **Public surfaces tell the alone-or-as-a-set story.** The landing page and
+  README describe the 0.7.0 receipt behavior and the option to install this
+  stack as layer 1 of [rigor-suite](https://github.com/scottconverse/rigor-suite)
+  alongside tampercheck and deterministic-detector — pinned, never mixed.
 
 ## 0.6.0 - 2026-08-03
 

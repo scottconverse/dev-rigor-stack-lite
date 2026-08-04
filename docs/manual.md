@@ -26,13 +26,13 @@ Clone the repository and detach at the release tag:
 git clone https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 git fetch --tags --force
-git checkout --detach v0.6.0
+git checkout --detach v0.7.0
 git rev-parse HEAD
-git rev-list -n 1 v0.6.0
+git rev-list -n 1 v0.7.0
 ```
 
 The last two commit IDs must match. `git status --short` should print nothing,
-and `manifest.json` should report `0.6.0`. For a later release, replace the tag
+and `manifest.json` should report `0.7.0`. For a later release, replace the tag
 and expected manifest version together. If you use a release archive, compare
 its SHA-256 to the checksum published with that release. If no archive checksum
 is published, prefer the pinned Git checkout.
@@ -154,7 +154,7 @@ repair; a newer pinned source is an upgrade.
 ### Downgrade or roll back
 
 Do not force an older release over a newer installation. An older manifest does not know
-about skills introduced later, so overlaying v0.5.1 onto v0.6.0 would leave
+about skills introduced later, so overlaying v0.5.1 onto v0.7.0 would leave
 `dev-rigor-stack-lite-brainstorm` installed and create a mixed-version bundle.
 
 To downgrade safely, first use the currently installed release's matching pinned source
@@ -185,7 +185,7 @@ inventory. For a Git acquisition, bind the work to all of the following:
 
 ```sh
 git rev-parse HEAD
-git rev-list -n 1 v0.6.0
+git rev-list -n 1 v0.7.0
 git status --short
 python3 -c "import json; print(json.load(open('manifest.json', encoding='utf-8'))['version'])"
 ```
