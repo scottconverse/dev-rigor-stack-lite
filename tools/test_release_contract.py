@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Executable contract checks for the dev-rigor-stack-lite 0.6.0 release."""
+"""Executable contract checks for the dev-rigor-stack-lite 0.7.0 release."""
 
 import json
 import hashlib
@@ -41,8 +41,8 @@ def copy_removal_fixture_source(destination: Path) -> None:
 
 
 class ReleaseContractTests(unittest.TestCase):
-    def test_manifest_declares_0_6_0_and_twenty_skills(self):
-        self.assertEqual(MANIFEST["version"], "0.6.0")
+    def test_manifest_declares_0_7_0_and_twenty_skills(self):
+        self.assertEqual(MANIFEST["version"], "0.7.0")
         self.assertEqual(MANIFEST["skill_count"], 20)
         self.assertEqual(len(MANIFEST["skills"]), 20)
         self.assertIn("dev-rigor-stack-lite-brainstorm", MANIFEST["skills"])
@@ -308,14 +308,14 @@ class ReleaseContractTests(unittest.TestCase):
         authoritative_markers = {
             "README.md": (
                 "for 20 skills total",
-                "git clone --branch v0.6.0",
+                "git clone --branch v0.7.0",
             ),
             "docs/manual.md": (
                 "owns the 20-skill",
-                "git checkout --detach v0.6.0",
+                "git checkout --detach v0.7.0",
             ),
             "docs/index.html": (
-                '<span class="v">v0.6.0</span>',
+                '<span class="v">v0.7.0</span>',
                 "<h3>The 20 skills</h3>",
             ),
         }
