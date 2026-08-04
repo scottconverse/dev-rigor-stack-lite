@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **VERIFY/MERGE now cite a deterministic verification-integrity receipt when
+  available.** If [tampercheck](https://github.com/scottconverse/tampercheck) is
+  present (PATH or `uvx tampercheck`), the coder-tdd-qa-lite verification report
+  (Standard and Critical) and the merge gate include its verbatim run against the
+  unit's diff: exit 0 receipts that the change did not weaken the project's own
+  verification; findings are fixed or justified in-diff via
+  `tampercheck: allow <reason>`; tool failure (exit 2) is never a pass; absence
+  is disclosed, not implied green. The skills remain hook-free and fully
+  functional without the tool.
+
 ## 0.6.0 - 2026-08-03
 
 - **Optional BRAINSTORM discovery now precedes PLAN when material product choices are

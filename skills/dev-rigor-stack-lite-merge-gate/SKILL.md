@@ -17,6 +17,12 @@ means only that this exact unit may use the authorized green path. For `finite_p
 and `continuous_development`, a successful merge hands control to RECONCILE; it does not
 report the program or engagement done.
 
+When `tampercheck` is available (PATH or `uvx tampercheck`), the unit's diff must carry
+its receipt: `git diff <base>...HEAD | tampercheck` exiting 0, with verbatim output in
+the evidence. Findings are fixed or justified in-diff (`tampercheck: allow <reason>`),
+never waved through in prose; exit 2 (tool failure) is not a pass. If the tool is
+unavailable, record the receipt as absent — absence is disclosure, not failure.
+
 Allow only the configured green-path merge method under existing authorization. Never use
 admin override, bypass branch protection, merge red, silently dismiss a finding, or treat
 a partial/unverifiable gate as passed. Report READY TO MERGE or DO NOT MERGE with exact
