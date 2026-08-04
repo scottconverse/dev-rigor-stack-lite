@@ -84,10 +84,17 @@ host loads the skill or that a model follows it.
 
 Requirements: Git, Python 3, and either Windows PowerShell 5.1+ or a POSIX shell.
 
+> **Alone, or as part of the set.** This stack is fully standalone. It also installs
+> together with [tampercheck](https://github.com/scottconverse/tampercheck) (whose
+> verification-integrity receipts the VERIFY and MERGE gates cite when the tool is
+> present) and [deterministic-detector](https://github.com/scottconverse/deterministic-detector)
+> via one pinned command: [rigor-suite](https://github.com/scottconverse/rigor-suite).
+> The layers stay independent — installed together, never mixed.
+
 ### 1. Acquire the pinned release source
 
 ```console
-git clone --branch v0.6.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
+git clone --branch v0.7.0 --depth 1 https://github.com/scottconverse/dev-rigor-stack-lite.git
 cd dev-rigor-stack-lite
 ```
 
