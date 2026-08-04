@@ -257,6 +257,17 @@ Scale the report to the selected lane.
 - Randomized/mutation evidence when its named trigger applies.
 - `proved: <checks + results> · lane: Critical`.
 
+**Verification-integrity receipt (Standard and Critical):** if `tampercheck`
+is available on PATH or via `uvx tampercheck`, run it against the unit's diff
+(`git diff <base>...HEAD | tampercheck`) and include the command and verbatim
+output in the report. Exit 0 is the receipt that the change did not weaken the
+project's own verification (deleted/skipped/focused tests, forced success,
+hollowed assertions, swallowed errors). Exit 1 findings are fixed or justified
+with an inline `tampercheck: allow <reason>` marker in the diff — never waved
+through in prose. Exit 2 means the check itself failed and is NOT a pass. If
+tampercheck is unavailable, state that this receipt is absent rather than
+implying it passed.
+
 A checkmark with no evidence is worth nothing. Show what you found, not that you
 looked.
 
