@@ -2,7 +2,7 @@
 
 dev-rigor-stack-lite is a portable, hook-free adaptation of `codex-dev-rigor-stack` (v0.4.2, MIT): the same 19-skill evidence-first workflow with no lifecycle hooks, background runtime, trust activation, Stop interception or private evidence ledger, so it runs on any Agent Skills-compatible host. Two drift-resistance tiers replace the hooks and install by default: a marker-fenced anchor block in the host's instructions file, and the stdlib-only `tools/rigor_goals.py` CLI with state in `./.rigor/`. Treat both as part of the stack, not optional extras. The reasoning: model attention decays over a long session and dies at compaction, so the discipline's memory lives in places that do not decay.
 
-Test entrypoints, scratch-install commands and goals CLI examples: `.claude/reference/commands.md`. Never install over this repo's own `CLAUDE.md` while testing.
+Read `.claude/reference/commands.md` before running tests, installing, exercising the goals CLI, or reasoning about which instructions file an install writes (it holds the three-tier description and the install-target inference table). Never install over this repo's own `CLAUDE.md` while testing.
 
 ## Gotchas
 - CI runs on ubuntu, windows and macos plus a separate `posix-installer-lifecycle` job. The contracts it protects:
@@ -13,10 +13,10 @@ Test entrypoints, scratch-install commands and goals CLI examples: `.claude/refe
   - Anchor target inference is case-insensitive: installing to `.CLAUDE/skills` must produce `CLAUDE.md`, not `AGENTS.md`.
   - Documented removal procedures must refuse source aliases, symlinks and links rather than following them.
   - Relative paths resolve against `$PWD`, not the installer's location.
-- Owner-only controls: `--no-anchor` and `--no-goals` (and the PowerShell equivalents) exist so the human owner can turn the discipline off. An agent must never pass them on its own initiative and must never delete the anchor block on its own initiative. The anchor text carries this rule; preserve it.
+- Owner-only controls: `--no-anchor` / `-NoAnchor` and `--no-goals` / `-NoGoals` exist so the human owner can turn the discipline off. An agent must never pass them on its own initiative and must never delete the anchor block on its own initiative. The anchor text carries this rule; preserve it.
 - Claims discipline. Do not overstate what the repo enforces:
   - `rigor-goals` records the verification command and its result; it does not run the command or check the result is true. It is a workflow-completeness gate, not independent proof enforcement.
-  - The state is a file, not a fortress. `create --force` prints what it destroys and every ledger event carries a `plan_id`, but that is detection, not protection.
+  - The state is a file, not a fortress: any process that can delete workspace files can destroy the plan. `create --force` prints what it destroys and every ledger event carries a `plan_id`, but that is detection, not protection.
   - One active plan per working tree; concurrent tasks sharing a checkout fight over `./.rigor/`. Use separate worktrees.
   - Tool availability and instruction adherence vary by host and model. The repo does not claim mechanical enforcement.
   - Passing a gate establishes readiness; it never grants authority to merge or publish. Missing capabilities are reported as blocked or unverifiable, never silently passed.
