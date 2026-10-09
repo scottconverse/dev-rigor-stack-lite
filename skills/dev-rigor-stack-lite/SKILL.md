@@ -153,6 +153,7 @@ runnable check, and a concise receipt.
    host cannot provide an independent worker, use an explicitly fresh adversarial
    serial pass and disclose the limitation.
 
+   <!-- SHARED-BLOCK: detector-proportionality -->
    **Deterministic-detector harness (when present):** require randomized/pollution
    evidence only for shared mutable fixtures, global state, order dependence,
    concurrency, or a known pollution-prone area. Require mutation evidence only for
@@ -160,6 +161,7 @@ runnable check, and a concise receipt.
    seeds and survivor dispositions. Neither tool is required merely because work is
    called `medium`, spans several files, or is being released. Never alter required
    status checks or branch protection; those remain owner-only.
+   <!-- /SHARED-BLOCK: detector-proportionality -->
 
 4. REVIEW — use `$dev-rigor-stack-lite-audit-lite` / `$quick-audit-lite` as the
    Standard focused review. Use `$dev-rigor-stack-lite-audit-team` /
