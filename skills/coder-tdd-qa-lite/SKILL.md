@@ -120,8 +120,8 @@ the regression forever.
 2. **Run it and watch it fail for the right reason.** An error (import failure,
    typo) is not a valid RED; fix the test until it fails on the *assertion*.
    Capture the failure in Evidence Format.
-3. **GREEN — write the minimum code that passes.** No speculative parameters, no
-   cases the test doesn't demand. Run; confirm green.
+3. **GREEN — write the minimum code that passes,** because untested code is
+   unproven code. Run; confirm green.
 4. **REFACTOR — clean up with the tests as a net.** Rename, extract, simplify.
    Tests stay green throughout.
 5. **Widen the run.** Run the full suite for the affected package/module (full repo
