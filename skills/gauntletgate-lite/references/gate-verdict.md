@@ -9,20 +9,17 @@ masquerade as the full gate.
 
 ## The two verdict types
 
-### CLEAR TO ADVANCE
+### CLEAR TO ADVANCE  (only `all`, or `walkthrough full` together)
 
 Emit **CLEAR TO ADVANCE** only when **all** of the following hold:
 
-- The **full** lane ran (`lite` is a feeder, not part of the advancement bar).
-- Walkthrough ran when the changed scope includes UI, onboarding, acquisition,
-  installer, or another first-run surface. It may be marked N/A only with a concrete
-  reason that none of those surfaces changed.
+- Both the **walkthrough** and **full** lanes ran (this is what `gauntletgate-lite all`
+  does; `lite` is a feeder, not part of the advancement bar).
 - `blocking_findings` is empty under the default policy: Blocker/Critical block;
   Major blocks when it violates acceptance criteria or creates material release risk;
   Minor blocks only when it violates acceptance criteria; Nit never blocks.
-- When Walkthrough applies, **first-run coverage is VALID** (the environment
-  attestation is filled with verified facts) **and a brand-new user can reach the
-  core feature.**
+- **First-run coverage is VALID** (the environment attestation is filled with
+  verified facts) **and a brand-new user can reach the core feature.**
 
 Every confirmed finding remains in the severity roll-up and findings report. Unresolved
 nonblocking findings go to the existing watchlist with an owner or explicit disposition.
@@ -30,13 +27,12 @@ Literal `0/0/0/0/0` is an optional owner-selected stricter policy, not the defau
 
 ### PARTIAL CHECK  (any run missing a required lane)
 
-Any run that omits the full lane, or omits an applicable Walkthrough — e.g. `lite`,
-`walkthrough`, or `lite walkthrough` — emits a **PARTIAL CHECK** verdict, never CLEAR
-TO ADVANCE. A `full` run is also partial unless Walkthrough ran or was explicitly
-classified N/A from the changed scope. The report must say, in the first line:
+Any run that does **not** include both walkthrough and full — e.g. `lite`,
+`walkthrough`, `full` alone, or `lite walkthrough` — emits a **PARTIAL CHECK**
+verdict, never CLEAR TO ADVANCE. The report must say, in the first line:
 
 > ⚠️ PARTIAL CHECK — lanes run: `<list>`. This is **not** an advancement gate.
-> Run the missing applicable lane(s) for a clear-to-advance decision.
+> Run `gauntletgate-lite all` for a clear-to-advance decision.
 
 A PARTIAL CHECK still reports its findings and its own pass/fail *within the lanes
 it ran* — it just cannot greenlight advancement.

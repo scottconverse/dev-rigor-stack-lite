@@ -329,6 +329,29 @@ if [ -f "$old_audit/SKILL.md" ]; then
   fi
 fi
 
+# Migration (Oct 2026 trim): the bundle dropped its alias-stub skills and the
+# namespaced visitor-audit copy. An upgrade over an older install leaves them behind,
+# still routable. Identity = a lite-owned name: the directory starts with
+# dev-rigor-stack-lite-, its SKILL.md frontmatter declares that same name, and the
+# source no longer ships it. Destructive only under --force, like the block above.
+for stale in "$target"/dev-rigor-stack-lite-*; do
+  [ -d "$stale" ] || continue
+  stale_name=${stale##*/}
+  [ -d "$repo_dir/skills/$stale_name" ] && continue
+  [ -f "$stale/SKILL.md" ] || continue
+  if ! grep -q "^name: $stale_name[[:space:]]*$" "$stale/SKILL.md"; then
+    echo "Note: $stale is not lite-owned (no 'name: $stale_name' frontmatter) - left untouched"
+    continue
+  fi
+  if [ "$force" = "--force" ]; then
+    rm -rf -- "$stale"
+    echo "Migrated: removed stale lite-owned $stale_name (dropped from the bundle)"
+  else
+    echo "WARNING: stale lite-owned $stale_name detected at $stale (dropped from the bundle)." >&2
+    echo "         Re-run with --force to migrate it, or remove it by hand - until then it may still route." >&2
+  fi
+done
+
 for source in "$repo_dir"/skills/*; do
   [ -d "$source" ] || continue
   name=${source##*/}

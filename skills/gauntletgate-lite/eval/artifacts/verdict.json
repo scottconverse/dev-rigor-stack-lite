@@ -1,0 +1,9 @@
+{
+  "fixture": "sample-app first-run dead-end",
+  "dependency_absent_is_dead_end": true,
+  "dependency_present_is_reachable": true,
+  "expected_gate_verdict_for_first_run": "DO NOT ADVANCE",
+  "gate_would_block_first_run": true,
+  "eval_passed": true,
+  "note": "Deterministically proves the first-run dead-end is REAL and detectable by a new-user fetch with the dependency genuinely absent \u2014 i.e. a correctly-executed Walkthrough lane WOULD return DO NOT ADVANCE. It does not exercise an LLM agent's judgment; see eval/README.md for the live agent eval."
+}

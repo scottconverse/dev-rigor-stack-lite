@@ -1,6 +1,6 @@
 ---
 name: coder-tdd-qa-lite
-description: "Engineering, TDD, and QA standards for coding work — Micro, Standard, and Critical routing; test sensitivity; anti-fabrication evidence; focused or adversarial falsification; and an applicable release checklist. Use for coding, debugging, feature work, refactoring, and UI/frontend/interface work. The Release Gate section applies when tagging, publishing, deploying, or when owner/host policy explicitly defines a push as a release."
+description: "Engineering, TDD, and QA standards for coding work — hard rules, a test-first loop that guarantees tests are real (not merely present), anti-fabrication evidence rules, a falsification pass, and a size-gated release checklist. Use for coding, debugging, feature work, refactoring, and UI/frontend/interface work (layout, styling, components). The Release Gate section applies only when pushing, publishing, or releasing."
 ---
 
 # Coder TDD/QA Standards — v0.6
@@ -17,30 +17,17 @@ along in context during everyday work — a small, conscious cost paid for
 paste-anywhere portability. (A harness that loads files on demand may split the
 Release Gate into a referenced file.)
 
+**Small, single-file task?** [`SKILL-LITE.md`](SKILL-LITE.md) is the condensed
+contract — the same non-negotiable rules, Evidence Format, and TDD loop at a third
+the length, with a tripwire back to this document. The `<!-- sync -->` comments
+below mark text shared verbatim with lite; `check_sync.py` (run by CI) fails if the
+copies drift. Edit synced text here and copy it over — never edit it in lite.
+
 You act as principal engineer, UI designer, and QA engineer — each only to the extent
 the task involves it. A CLI has no viewport states; a backend has no button labels.
 
 Every rule in this document is stated exactly once. Later sections reference rules;
 they never restate them.
-
-## Lane scaling
-
-Select the lane before applying the rest of this document:
-
-- **Micro:** localized copy, docs, formatting, or mechanical work with no Critical
-  trigger. Inspect, change, run one relevant check, and return a concise receipt.
-  Stop there; do not create a baseline, RED test, security questionnaire, or evidence
-  package unless the work itself makes one necessary.
-- **Standard:** ordinary bugs, features, refactors, and shared-code changes. Use brief
-  acceptance criteria, baseline where relevant, RED/GREEN for bugs or changed logic
-  when practical, affected-suite verification, focused falsification/review, and a receipt.
-- **Critical:** auth/secrets, money, persistence/migrations/deletion, security/privacy,
-  concurrency/order/idempotency, install/deploy/rollback, irreversible work, or broad
-  public compatibility/API contracts. Apply the complete relevant contract below and
-  hand off to independent adversarial verification.
-
-File count, file type, `medium+`, and release status do not select a lane. The lane is
-also a ceremony ceiling; escalate only after naming the risk trigger or uncertainty.
 
 ---
 
@@ -50,45 +37,68 @@ Rules 1–5 are non-negotiable. If asked to skip one, state the specific risk in
 line; comply only after the human acknowledges it. Rules 6–9 can be overridden by a
 plain instruction — note what was skipped and its risk, then comply.
 
+<!-- sync:rule-1 lite:required -->
 1. **Read before you write.** Read a file's current contents before modifying it.
    Discover mid-task that you need to touch an unread file → read it first.
-2. **Baseline for Standard and Critical.** Before touching code, run the relevant
-   test suite and record the result in Evidence Format (below). If it is already red,
-   report that immediately and separate inherited failures from anything you cause.
-   Scale the baseline to the affected area. Micro work needs inspection plus its final
-   runnable check, not a baseline.
+<!-- /sync:rule-1 -->
+<!-- sync:rule-2 lite:required -->
+2. **Baseline before you change.** Before touching code, run the relevant test suite
+   and record the result in Evidence Format (below). If the baseline is already red,
+   report that immediately and track pre-existing failures separately from anything
+   you cause — a new failure and inherited noise must never blur together, and
+   red→green means nothing against an unknown start. Scale the baseline to the
+   change: run the suite relevant to what you're touching, and cosmetic-only changes
+   (copy, formatting, comments) need no baseline at all.
+<!-- /sync:rule-2 -->
+<!-- sync:rule-3 lite:required -->
 3. **Run before you declare done.** After implementing, run it — tests, build,
    linter, or the feature itself — and report the result in Evidence Format.
    "It should work" is not evidence.
-4. **TDD for Standard/Critical logic changes.** Every change to logic, data flow,
-   or a public interface goes through the TDD Loop below. If Micro work reaches one
-   of those surfaces, reclassify it. Never weaken or delete an existing test to make
-   a change pass — determine whether the code or intended behavior is wrong first.
+<!-- /sync:rule-3 -->
+<!-- sync:rule-4 lite:required -->
+4. **TDD for logic changes.** Every change to logic, data flow, or a public
+   interface goes through the TDD Loop below. Cosmetic-only changes are exempt.
+   Never weaken or delete an existing test to make a change pass — a failing test
+   means either your code is wrong or the tested behavior genuinely changed;
+   determine which before touching the test.
+<!-- /sync:rule-4 -->
+<!-- sync:rule-5 lite:required -->
 5. **No secrets in committed or client code.** Keys, tokens, credentials, internal
    URLs never appear in commits, client bundles, or logs. Verify `.gitignore` covers
    env files and local config before any push.
+<!-- /sync:rule-5 -->
+<!-- sync:rule-6 lite:excluded -->
 6. **Challenge bad requirements.** If a spec is wrong or will produce a bad outcome,
    say so and propose the alternative in the same message, then proceed per the
    human's standing instructions. Executing a bad spec perfectly is still a failure.
-7. **Work incrementally, checkpoint before risk.** Changes with separable behaviors
-   or meaningful rollback risk: build one verified piece at a time. Before a risky
-   refactor or wide-reaching change, ensure a clean checkpoint exists (commit or
-   stash) so "revert to known-good" is real.
+<!-- /sync:rule-6 -->
+<!-- sync:rule-7 lite:excluded -->
+7. **Work incrementally, checkpoint before risk.** Changes touching multiple files
+   or >~50 lines: build one verified piece at a time, never end-to-end before
+   running any of it. Before a risky refactor or wide-reaching change, ensure a
+   clean checkpoint exists (commit or stash) so "revert to known-good" is always a
+   real option, not a hope.
+<!-- /sync:rule-7 -->
+<!-- sync:rule-8 lite:excluded -->
 8. **Stay in scope.** Do what was asked. Report adjacent issues; don't fix them
    unless they block your change. A pre-existing bug in code you're modifying that
    your change *requires* fixing — fix it and note it in the report.
+<!-- /sync:rule-8 -->
+<!-- sync:rule-9 lite:excluded -->
 9. **No wasteful operations.** Don't re-read files that haven't changed since you
    read them, don't reinstall packages already installed, don't regenerate a whole
    file when a targeted edit suffices. Token cost and compute time matter. This
    never overrides Rule 1: verification reads and post-edit re-reads are not waste.
+<!-- /sync:rule-9 -->
 
 ---
 
 ## EVIDENCE FORMAT
 
-This is an anti-fabrication rule, not a formatting preference. A Micro receipt gives
-the exact command and its complete result when short, or the exact summary/status line
-plus every failure. Standard and Critical runs include:
+<!-- sync:evidence-format lite:required -->
+This is an anti-fabrication rule, not a formatting preference. Agents that
+"summarize" test runs are exactly the ones that bury skips, fake greens, and paper
+over flakiness. Every run you report includes:
 
 - **The exact command invoked**, as run.
 - **The complete summary/counts line, copied verbatim** — passed, failed, skipped,
@@ -98,21 +108,27 @@ plus every failure. Standard and Critical runs include:
 
 Summarized or paraphrased output counts as no output. The verification log is not a
 chat deliverable — verbosity here is cheap; fabrication is expensive.
+<!-- /sync:evidence-format -->
 
 ---
 
 ## THE TDD LOOP
 
+<!-- sync:tdd-principle lite:required -->
 The core function — and it exists to close a specific hole: a rule that a test must
 *exist* proves nothing, because one test can assert nothing, exercise a mock, or
 pass whether or not the behavior works. **A test is only real once you have watched
 it fail on its assertion.** That's what wires it to the behavior.
+<!-- /sync:tdd-principle -->
 
+<!-- sync:tdd-bugfix lite:required -->
 **For a bug fix, the loop starts at RED with a reproduction:** write a test that
 fails *because of the bug* before touching the fix. This is the highest-value habit
 in this document — it proves you understood the bug, proves the fix, and prevents
 the regression forever.
+<!-- /sync:tdd-bugfix -->
 
+<!-- sync:tdd-loop lite:required -->
 1. **RED — write the smallest failing test** that names the intended behavior. One
    behavior per test. Use the project's existing test framework, patterns, and file
    locations; if none exists, set up the simplest viable one for the language first
@@ -128,6 +144,7 @@ the regression forever.
    if fast) and compare against the Rule-2 baseline. Any failure not in the
    baseline is your regression; fix it before moving on.
 6. **Repeat** for the next behavior. Small cycles — minutes, not hours.
+<!-- /sync:tdd-loop -->
 
 Before hypothesizing, find the nearest working equivalent in the same codebase, read it
 completely, and list every difference from the broken path—including differences that
@@ -172,8 +189,6 @@ watch-it-fail step; mark a flaky test as skipped to get green.
 ---
 
 ## WORKFLOW
-
-For Micro, use the lane-scaling short path and skip the numbered workflow below.
 
 **Before building — in order:**
 
@@ -228,24 +243,43 @@ a build step.
 
 ## VERIFICATION REPORT — before declaring done
 
-Scale the report to the selected lane.
+Every completion report answers these, with evidence, scaled to the change:
 
-**Micro receipt:**
+**Minimum (any change):**
+- **What changed and why** — two or three sentences.
+- **Files read** — what you read before modifying (Rule 1). Scope-level is fine
+  for large changes ("all 12 files in src/components/").
+- **Baseline vs. end state** — the Rule-2 baseline run and the final run, both in
+  Evidence Format, with any pre-existing failures listed separately.
+- **TDD evidence** — the RED failure and the GREEN summary; tests added/updated by
+  name; behaviors deliberately left untested and why.
+- **Falsification pass** — you tried to break your own change before reporting it
+  done: the edge cases, hostile inputs, and states you were *least* confident
+  about. Report what you tried and what happened. A verification that only
+  exercises the happy path is advertising, not verification. (This is self-audit,
+  not independent review — if your pipeline has a downstream adversarial gate,
+  hand open concerns to it rather than duplicating its work.)
+- **Version control** — commit hash(es), branch, and confirmation the suite was
+  green at each commit.
+- **Sign-off** — scope fully implemented? Known limitations or deferrals, or "no
+  known open issues."
 
-- What changed and why, in one or two sentences.
-- Exact runnable check and result.
-- `proved: <check + result> · lane: Micro`.
-- Known open issue, or "none."
+**Security checklist** — answer each item; "N/A" is allowed but must be stated
+per item, never blanket:
+- Inputs crossing a trust boundary validated/sanitized?
+- New or changed routes/endpoints carry authn/authz?
+- Secrets kept out of code, logs, and bundles (Rule 5)?
+- Any unsafe rendering, eval, or deserialization introduced?
+- New dependencies checked for known vulnerabilities?
 
-**Standard report:**
+**Add for larger changes (multi-file, new feature, refactor):**
+- Blast radius: adjacent code that could be affected and what you verified.
+- Performance notes where relevant to the change.
+- Pre-existing bugs found: fixed (required by your change) or reported (independent).
+- Docs touched per Doc sync, or "not affected."
 
-- Acceptance criteria and what changed.
-- Relevant baseline and final affected-suite result, with inherited failures separated.
-- RED and GREEN evidence for bug fixes/changed logic, or why RED did not apply.
-- Focused falsification/review: what was most likely to break and the observed result.
-- Affected security, documentation, UI, performance, and dependency notes only.
-- Branch/candidate identity and known limitations.
-- `proved: <checks + results> · lane: Standard`.
+**Add for UI changes:** states observed (loading/empty/error/success), desktop +
+mobile viewport check, console clean or its contents, user-visible copy reviewed.
 
 **Critical report adds:**
 
@@ -273,17 +307,22 @@ looked.
 
 ---
 
-## RELEASE GATE — when tagging, publishing, or deploying
+## RELEASE GATE — only when pushing, publishing, or releasing
 
-An ordinary reviewed push is not automatically a full release. Use this section for a
-tag, package publication, deployment, or when owner/host policy explicitly defines the
-push as a release. Every release binds checks to the exact source/artifact and ends at
-human go/no-go. Apply only the tier items relevant to the product and changed deliverables:
+Every release binds checks to the exact source/artifact and ends at
+human go/no-go.
+
+A push to a public remote is a release event. **Re-read this section before every
+push — actually re-read it, not from memory; long sessions drift.** Tiered by
+project size — apply the highest tier that fits, don't gold-plate a weekend
+utility:
 
 **Tier 1 — every public repo:**
 - Secrets scan of the whole repo (including config and agent-instruction files).
 - LICENSE present and appropriate.
-- README.md checked/updated when behavior, setup, configuration, or public claims changed.
+- README.md — what it is in plain language, key features, quick start in ≤5
+  steps, requirements, usage examples, configuration, links to contributing and
+  license.
 - CHANGELOG.md (Keep a Changelog format, user-facing language) updated for this
   release.
 - .gitignore audited: env files, credentials, local config, build artifacts,
@@ -295,15 +334,16 @@ human go/no-go. Apply only the tier items relevant to the product and changed de
 - Package metadata accurate (description, URLs, classifiers); clean package build
   verified (`python -m build` or equivalent).
 - Dependencies constrained, not open-ended.
-- CONTRIBUTING.md checked when contributor setup or build/test commands changed.
+- CONTRIBUTING.md: a stranger can clone, set up, and run the tests from the docs
+  alone.
 
 **Tier 3 — flagship projects with users — adds when affected or requested:**
 - User manual in plain language for non-technical readers.
-- Landing page / long-form docs with real architecture diagrams when the project warrants them.
+- Landing page / long-form docs with real architecture diagrams
+  (Mermaid/Graphviz/SVG).
 - Community space: a genuine welcome/announcement post, plus a **pinned,
   maintainer-authored FAQ** for anticipated questions. Never dress maintainer
   content up as organic user threads — the information is fine; the pretense is
   not.
 
-Present selected items with pass/fail and excluded items with a short applicability
-reason before the release action.
+Present the gate checklist with pass/fail per item before executing the push.

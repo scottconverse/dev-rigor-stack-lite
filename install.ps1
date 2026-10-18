@@ -339,6 +339,29 @@ if (Test-Path -LiteralPath $oldSkillMd) {
   }
 }
 
+# Migration (Oct 2026 trim): remove stale lite-owned skills the bundle no longer ships
+# (alias stubs, namespaced visitor-audit). Identity = directory starts with
+# dev-rigor-stack-lite- AND its SKILL.md frontmatter declares that same name AND the
+# source no longer ships it. Destructive only under -Force, matching install.sh.
+$shippedNames = @($sourceSkills | ForEach-Object { $_.Name })
+Get-ChildItem -LiteralPath $targetPath -Directory -Filter 'dev-rigor-stack-lite-*' -ErrorAction SilentlyContinue | ForEach-Object {
+  $staleName = $_.Name
+  if ($shippedNames -contains $staleName) { return }
+  $staleSkillMd = Join-Path $_.FullName 'SKILL.md'
+  if (-not (Test-Path -LiteralPath $staleSkillMd)) { return }
+  $namePattern = '^name: ' + [regex]::Escape($staleName) + '\s*$'
+  if (-not (Select-String -LiteralPath $staleSkillMd -Pattern $namePattern -CaseSensitive -Quiet)) {
+    Write-Host "Note: $($_.FullName) is not lite-owned (no 'name: $staleName' frontmatter) - left untouched"
+    return
+  }
+  if ($Force) {
+    Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    Write-Host "Migrated: removed stale lite-owned $staleName (dropped from the bundle)"
+  } else {
+    Write-Warning "stale lite-owned $staleName detected at $($_.FullName) (dropped from the bundle). Re-run with -Force to migrate it, or remove it by hand - until then it may still route."
+  }
+}
+
 foreach ($skill in $sourceSkills) {
   $destination = Join-Path $targetPath $skill.Name
   if (Test-Path -LiteralPath $destination) {

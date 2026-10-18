@@ -67,16 +67,9 @@ explicitly). Never silently fire a 5-role fan-out.
 After the selected lanes finish, **synthesize one gate report** per
 `references/report-template.md` and emit the verdict per `references/gate-verdict.md`.
 
-## The verdict (summary — full rules in gate-verdict.md)
+## The verdict
 
-- **✅ CLEAR TO ADVANCE** only when the **full lane ran**, `blocking_findings` is
-  empty, and Walkthrough either ran when applicable with **first-run coverage VALID**
-  and the core feature reachable, or is explicitly N/A because no changed
-  UI/onboarding/acquisition/installer/first-run surface is in scope.
-- **⚠️ PARTIAL CHECK** — any partial run (missing walkthrough or full); explicitly
-  *not* an advancement gate. A cheap `lite` run can never masquerade as the gate.
-- **⛔ DO NOT ADVANCE** — any unresolved blocking finding, or INVALID first-run coverage on a
-  product with a first-run surface → + the blocking punch list.
+Verdicts and rules: references/gate-verdict.md.
 
 ## Operating mode
 
