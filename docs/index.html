@@ -322,7 +322,7 @@
 
 <div class="strip">
   <div class="wrap strip-in">
-    <span><b>20</b> workflow skills</span>
+    <span><b>14</b> workflow skills</span>
     <span><b>39</b> rigor-goals tests</span>
     <span><b>0</b> third-party runtime packages</span>
     <span><b>No</b> hooks or daemon</span>
@@ -400,7 +400,7 @@
       <div class="tier">
         <div><div class="tier-n">1</div></div>
         <div>
-          <h3>The 20 skills</h3>
+          <h3>The 14 skills</h3>
           <p>The full workflow — planning, test-first build, adversarial verification, five review modes plus an advancement gate, merge and release gates, and cross-session continuity. Invoked knowledge: it works when it's called.</p>
           <span class="force">Force: none — invoked knowledge</span>
         </div>
@@ -500,12 +500,12 @@
       <div class="lane">
         <h3>Quick audit</h3>
         <p>The default. A scoped diff, a slice, an end-of-unit read — one tight pass across correctness, docs, tests and runtime behavior.</p>
-        <span class="cmd">$dev-rigor-stack-lite-audit-lite</span>
+        <span class="cmd">$quick-audit-lite</span>
       </div>
       <div class="lane">
         <h3>Audit team</h3>
         <p>Five roles — principal engineer, UI/UX, technical writer, test engineer, QA — with severity-ranked findings and a punch list. For high-blast units.</p>
-        <span class="cmd">$dev-rigor-stack-lite-audit-team</span>
+        <span class="cmd">$audit-team-lite</span>
       </div>
       <div class="lane">
         <h3>Walkthrough</h3>
@@ -515,17 +515,17 @@
       <div class="lane">
         <h3>Visitor audit</h3>
         <p>Your public surfaces as a stranger meets them — every page read as rendered, every link followed and counted, published checksums verified.</p>
-        <span class="cmd">$dev-rigor-stack-lite-visitor-audit</span>
+        <span class="cmd">$visitor-audit-lite</span>
       </div>
       <div class="lane">
         <h3>Proof gate</h3>
         <p>Adversarial verification. Skeptics try to refute the claim; it stands only if they can't.</p>
-        <span class="cmd">$dev-rigor-stack-lite-proof-gate</span>
+        <span class="cmd">$proof-gate-lite</span>
       </div>
       <div class="lane">
         <h3>GauntletGate</h3>
         <p>The release-altitude advancement gate, in lite, walkthrough and full lanes, driving unresolved release blockers to zero.</p>
-        <span class="cmd">$dev-rigor-stack-lite-gauntletgate</span>
+        <span class="cmd">$gauntletgate-lite</span>
       </div>
     </div>
   </div>
@@ -584,14 +584,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File <span class="s">"$Installer\
       <div class="step">
         <div>
           <h3>Verify the bundle</h3>
-          <p>Run this against the pinned source. It confirms all 20 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
+          <p>Run this against the pinned source. It confirms all 14 skills, matching frontmatter, a hook-free manifest, and the anchor.</p>
           <div class="code">
             <div class="code-bar"><span class="dot"></span> terminal</div>
 <pre><span class="cm"># PowerShell</span>
 <span class="k">python</span> <span class="s">"$Installer\tools\validate_bundle.py"</span>
 <span class="cm"># Bash</span>
 <span class="k">python3</span> <span class="s">"$INSTALLER/tools/validate_bundle.py"</span>
-<span class="cm">→ BUNDLE_VALID: 20 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
+<span class="cm">→ BUNDLE_VALID: 14 skills, hook-free manifest, matching frontmatter, anchor ok, goals gate ok</span></pre>
           </div>
         </div>
       </div>

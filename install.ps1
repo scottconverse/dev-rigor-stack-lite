@@ -347,7 +347,7 @@ foreach ($skill in $sourceSkills) {
   }
   Copy-Item -LiteralPath $skill.FullName -Destination $destination -Recurse
 }
-Write-Host "Installed 20 hook-free skills to $targetPath"
+Write-Host "Installed 14 hook-free skills to $targetPath"
 
 if ($Goals) {
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'tools\rigor_goals.py') -Destination (Join-Path $goalsDir 'rigor_goals.py') -Force

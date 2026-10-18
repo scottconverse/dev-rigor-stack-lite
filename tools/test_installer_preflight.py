@@ -338,7 +338,7 @@ class InstallerPreflightTests(unittest.TestCase):
             self.assertTrue((project / "nested" / "host" / "AGENTS.md").is_file())
             self.assertEqual(
                 len([path for path in (project / ".claude" / "skills").iterdir() if path.is_dir()]),
-                20,
+                14,
             )
 
     def test_blocked_companion_parent_chain_is_preflighted(self):

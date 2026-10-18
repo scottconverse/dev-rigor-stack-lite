@@ -14,30 +14,9 @@ license: MIT
 
 # Standing dev rigor stack Lite v0.7.0
 
-Route every unit before choosing its process. Micro work takes the short path below.
-Standard work uses the proportionate per-unit loop. Critical work uses the complete
-independent proof path. A release adds exact-candidate and owner-authority controls,
+A release adds exact-candidate and owner-authority controls,
 then runs only the gates applicable to what changed. A red result returns to the phase
 that owns it; never route around a selected gate or merge/tag past it.
-
-## Route by named risk
-
-- **Micro:** localized copy, documentation, formatting, or mechanical work with no
-  named Critical trigger. Flow: inspect → change → one relevant runnable check → receipt.
-- **Standard:** the default for ordinary bugs, features, refactors, and shared-code
-  changes. Use brief acceptance criteria, witnessed RED/GREEN for bugs or changed logic
-  when practical, affected-suite verification, focused review, and a receipt.
-- **Critical:** use the full stack when work touches authentication, authorization,
-  permissions, secrets, money, persisted data, migrations, deletion/recovery,
-  security/privacy/trust boundaries, concurrency/order/idempotency/shared mutable state,
-  install/update/uninstall/deployment/rollback mechanics, irreversible operations, or
-  broad public compatibility/API contracts.
-
-File count, file type, `medium+`, and release status do not select a lane. A config or
-documentation change can be Critical. A multi-file mechanical change can remain Micro
-when its effects stay local and one check covers them. The
-selected lane is also a ceremony ceiling: escalate only after naming the trigger or
-uncertainty that creates the added risk.
 
 ## Engagement continuation
 
@@ -67,24 +46,22 @@ Every functional section is independently invokable and also routed by this coor
 - `$dev-rigor-stack-lite-brainstorm`
 - `$dev-rigor-stack-lite-continuity`
 - `$dev-rigor-stack-lite-plan`
-- `$dev-rigor-stack-lite-build` (backward-compatible `$coder-tdd-qa-lite`)
-- `$dev-rigor-stack-lite-proof-gate` (backward-compatible `$proof-gate-lite`)
-- `$dev-rigor-stack-lite-audit-lite` (short name `$quick-audit-lite`)
-- `$dev-rigor-stack-lite-audit-team` (backward-compatible `$audit-team-lite`)
+- `$coder-tdd-qa-lite`
+- `$proof-gate-lite`
+- `$quick-audit-lite`
+- `$audit-team-lite`
 - `$dev-rigor-stack-lite-walkthrough`
-- `$dev-rigor-stack-lite-visitor-audit` (backward-compatible `$visitor-audit-lite`)
-- `$dev-rigor-stack-lite-gauntletgate` (backward-compatible `$gauntletgate-lite`)
+- `$visitor-audit-lite`
+- `$gauntletgate-lite`
 - `$dev-rigor-stack-lite-merge-gate`
 - `$dev-rigor-stack-lite-docs-gate`
 - `$dev-rigor-stack-lite-release`
 
-Namespaced entrypoints load the complete canonical sibling contract; they are not compact
-rewrites. Missing or unreadable required skills make the affected gate INVALID rather than
+Missing or unreadable required skills make the affected gate INVALID rather than
 silently degrading to a weaker approximation.
 
 Read `references/artifact-contracts.md` before a Critical/release run or any standalone
-stage that emits its shapes. Micro needs only its receipt. Standard uses structured
-artifacts only when a handoff, durable decision, or selected gate needs them. Never
+stage that emits its shapes. Never
 change upstream evidence or lose artifact identity.
 
 ## Session & machine continuity
@@ -119,10 +96,15 @@ only in context:
 State lives for the project's duration and purges at project retirement — not per release
 tag (a decision killed in 0.1 is still worth not reopening in 0.4).
 
-## Per-unit loop (Standard and Critical)
+## Critical work
 
-Micro work does not run this formal loop. It stops after inspect, change, one relevant
-runnable check, and a concise receipt.
+- **Critical:** use the full stack when work touches authentication, authorization,
+  permissions, secrets, money, persisted data, migrations, deletion/recovery,
+  security/privacy/trust boundaries, concurrency/order/idempotency/shared mutable state,
+  install/update/uninstall/deployment/rollback mechanics, irreversible operations, or
+  broad public compatibility/API contracts.
+
+## Per-unit loop (Standard and Critical)
 
 0. BRAINSTORM (optional discovery) — `$dev-rigor-stack-lite-brainstorm`
    Use only when explicitly invoked or when purpose, success criteria, material
@@ -133,21 +115,14 @@ runnable check, and a concise receipt.
    provisional; PLAN remains authoritative. Micro never gains a mandatory approval gate
    from this stage.
 
-1. PLAN (main-thread coordinator)
-   Standalone: `$dev-rigor-stack-lite-plan`.
-   Trace the real path, challenge unnecessary work, state brief acceptance criteria and
-   the affected test list, then select Standard or Critical from the named triggers.
-   Inventory manifests, lockfiles, CI commands, version readers, and external harnesses
-   only when relevant. Diff size is not a risk trigger.
-
-2. BUILD — `$dev-rigor-stack-lite-build` / `$coder-tdd-qa-lite`
+1. BUILD — `$coder-tdd-qa-lite`
    For a bug fix or changed logic, write or reproduce the smallest meaningful failure
    and witness RED before GREEN. Then implement the minimum change, refactor green, and
    run the affected suite/static checks. Do not manufacture RED for copy-only or
    mechanical work. Coverage is a gap diagnostic, not a threshold. Fan-out is a
    Critical option, not a Standard requirement.
 
-3. VERIFY — `$dev-rigor-stack-lite-proof-gate` / `$proof-gate-lite`
+2. VERIFY — `$proof-gate-lite`
    Standard uses a focused falsification pass and may combine VERIFY with REVIEW.
    Critical uses independent adversarial verification of the exact candidate. If the
    host cannot provide an independent worker, use an explicitly fresh adversarial
@@ -163,18 +138,17 @@ runnable check, and a concise receipt.
    status checks or branch protection; those remain owner-only.
    <!-- /SHARED-BLOCK: detector-proportionality -->
 
-4. REVIEW — use `$dev-rigor-stack-lite-audit-lite` / `$quick-audit-lite` as the
-   Standard focused review. Use `$dev-rigor-stack-lite-audit-team` /
-   `$audit-team-lite` for Critical work, with an independent reviewer when authorized
+3. REVIEW — use `$quick-audit-lite` as the
+   Standard focused review. Use `$audit-team-lite` for Critical work, with an independent reviewer when authorized
    and available. Add `$dev-rigor-stack-lite-walkthrough` only for changed UI,
    onboarding, acquisition, or installer journeys. Add
-   `$dev-rigor-stack-lite-visitor-audit` / `$visitor-audit-lite` only for changed
+   `$visitor-audit-lite` only for changed
    public pages, rendered docs, release assets, or announcements.
 
    A finding is a real defect. Classify a false positive OUT with evidence; never
    contort correct code to satisfy a wrong tool or pass a real defect by relabeling it.
 
-5. MERGE — green-path decision and execution only when authorized.
+4. MERGE — green-path decision and execution only when authorized.
    Standalone evidence decision: `$dev-rigor-stack-lite-merge-gate`.
    Prefer units landing on the integration line through a green PR. Passing gates proves
    readiness; it does not grant permission to merge. Execute a merge only when the user or
@@ -237,12 +211,12 @@ deployment or another hard-to-reverse action is in scope.
 
 Select extra gates by applicability:
 
-- Run the `$dev-rigor-stack-lite-gauntletgate` full lane only for Critical or broad
+- Run the `$gauntletgate-lite` full lane only for Critical or broad
   releases. Add its walkthrough lane only when the Walkthrough trigger below applies;
   `all` is shorthand only when every lane applies. Standard releases use the focused
   review/gate evidence selected for their change.
-- Run `$dev-rigor-stack-lite-proof-gate` for Critical changes or material changed claims.
-- Run `$dev-rigor-stack-lite-visitor-audit` when public pages, rendered docs, release
+- Run `$proof-gate-lite` for Critical changes or material changed claims.
+- Run `$visitor-audit-lite` when public pages, rendered docs, release
   assets, or announcements changed.
 - Run `$dev-rigor-stack-lite-walkthrough` when UI, onboarding, acquisition, or installer
   journeys changed. Require a verified clean machine for install/update/uninstall changes.
@@ -363,12 +337,6 @@ Same discipline, different altitude — a report vs. a gate.
 - Open-source-first: verify licenses; prefer MIT/Apache/MPL over BUSL/SSPL/closed.
 - Evidence over claims: reproduce before fixing, verify with numbers, never claim
   beyond the evidence, own mistakes plainly.
-- Code and process minimalism both apply: use the shortest working diff and do not add
-  ceremony above the selected lane. Never skip evidence that lane requires.
-
-The stack routes to the unit: Micro stops after one relevant check, Standard combines
-focused VERIFY/REVIEW when useful, and Critical keeps the full path. Selected gates are
-not optional; unselected gates need only the lane/applicability reason, not a fake artifact.
 
 ---
 

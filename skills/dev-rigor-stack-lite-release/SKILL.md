@@ -12,12 +12,12 @@ Bind every check to the exact candidate commit and artifacts. Before owner go/no
 2. Verify version consistency, changelog, license, secrets, dependencies, and all checks
    claimed. Define rollback trigger/owner when deployment or hard-to-reverse work applies.
 3. Select gates from the changed risk:
-   - The `$dev-rigor-stack-lite-gauntletgate` full lane only for Critical or broad
+   - The `$gauntletgate-lite` full lane only for Critical or broad
      releases. Add walkthrough only when its trigger below applies; use `all` only
      when every lane applies.
-   - `$dev-rigor-stack-lite-proof-gate` for Critical changes or material changed claims.
+   - `$proof-gate-lite` for Critical changes or material changed claims.
    - `$dev-rigor-stack-lite-docs-gate` for affected deliverables.
-   - Candidate `$dev-rigor-stack-lite-visitor-audit` for changed public surfaces/assets.
+   - Candidate `$visitor-audit-lite` for changed public surfaces/assets.
    - `$dev-rigor-stack-lite-walkthrough` for changed UI, onboarding, acquisition, or
      installer journeys; use a verified clean machine for install lifecycle changes.
    - Randomized/mutation evidence only when its named risk trigger applies.

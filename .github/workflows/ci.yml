@@ -37,7 +37,7 @@ jobs:
           # A bare install from a project dir must produce ALL THREE tiers.
           mkdir -p "$RUNNER_TEMP/proj" && cd "$RUNNER_TEMP/proj"
           "$GITHUB_WORKSPACE/install.sh" ".claude/skills"
-          test "$(find .claude/skills -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 20
+          test "$(find .claude/skills -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 14
           test -f .claude/tools/rigor_goals.py
           grep -qF '<!-- dev-rigor-lite anchor' CLAUDE.md
           # second run must be idempotent: still exactly one managed block
@@ -125,7 +125,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $proj | Out-Null
           Set-Location $proj
           & $installer -Target ".claude\skills"
-          if ((Get-ChildItem "$proj\.claude\skills" -Directory).Count -ne 20) { throw 'wrong skill count' }
+          if ((Get-ChildItem "$proj\.claude\skills" -Directory).Count -ne 14) { throw 'wrong skill count' }
           if (-not (Test-Path "$proj\.claude\tools\rigor_goals.py")) { throw 'rigor-goals not installed by default' }
           if (-not (Select-String -Path "$proj\CLAUDE.md" -SimpleMatch '<!-- dev-rigor-lite anchor' -Quiet)) { throw 'anchor block missing by default' }
           & $installer -Target ".claude\skills" -Force
@@ -317,9 +317,9 @@ jobs:
             Stop-InstallVerification 'MANIFEST_JSON' 'source manifest is not valid JSON'
           }
           $expectedSkills = [string[]]@($manifest.skills | ForEach-Object { [string]$_ })
-          if ([int]$manifest.skill_count -ne 20 -or $expectedSkills.Count -ne 20) {
+          if ([int]$manifest.skill_count -ne 14 -or $expectedSkills.Count -ne 14) {
             Stop-InstallVerification 'MANIFEST_COUNT' (
-              "source manifest must declare exactly 20 skills; skill_count=$(
+              "source manifest must declare exactly 14 skills; skill_count=$(
                 $manifest.skill_count
               ), names=$($expectedSkills.Count)"
             )
@@ -478,7 +478,7 @@ jobs:
             Join-Path $EvidenceDirectory "$Label-result.txt"
           ) @(
             'RESULT=PASS'
-            'EXPECTED_SKILL_COUNT=20'
+            'EXPECTED_SKILL_COUNT=14'
             "SOURCE_TOP_LEVEL_COUNT=$($sourceNames.Count)"
             "INSTALLED_TOP_LEVEL_COUNT=$($installedNames.Count)"
             "NORMALIZED_TREE_RECORDS=$($sourceTree.Count)"
@@ -489,7 +489,7 @@ jobs:
             "ANCHOR_END_MARKERS=$endCount"
           )
           Write-Output (
-            "INSTALL_VERIFY_PASS label=$Label skills=20 tree_records=$($sourceTree.Count)"
+            "INSTALL_VERIFY_PASS label=$Label skills=14 tree_records=$($sourceTree.Count)"
           )
           '@
           [IO.File]::WriteAllText(
@@ -629,7 +629,7 @@ jobs:
           }
           if (-not (Test-Path -LiteralPath $target)) { throw 'README command did not create the target' }
           $skillCount = @(Get-ChildItem -LiteralPath $target -Directory).Count
-          if ($skillCount -ne 20) { throw "expected 20 installed skill directories, found $skillCount" }
+          if ($skillCount -ne 14) { throw "expected 14 installed skill directories, found $skillCount" }
           if (-not (Test-Path -LiteralPath (Join-Path $candidate '.claude\tools\rigor_goals.py'))) {
             throw 'README command did not install rigor-goals'
           }
@@ -681,8 +681,8 @@ jobs:
               Join-Path $wrongNameProject '.claude\skills'
             ) -Directory
           ).Count
-          if ($wrongNameCount -ne 20) {
-            throw "wrong-name mutation did not preserve 20 directories: $wrongNameCount"
+          if ($wrongNameCount -ne 14) {
+            throw "wrong-name mutation did not preserve 14 directories: $wrongNameCount"
           }
           $wrongNameError = $null
           try {

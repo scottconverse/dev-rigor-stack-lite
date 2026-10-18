@@ -1,10 +1,5 @@
 <!-- dev-rigor-lite anchor v4 — managed block, do not hand-edit (edits go outside the markers; the installer replaces this block on upgrade) -->
 ## Delivery discipline (always)
-- Prove work at the layer of the claim: "wrote it" ≠ "ran it" ≠ "checked it's correct".
-- Route first: Micro for localized mechanical work; Standard for ordinary bugs/features; Critical only for a named risk trigger. The lane is also a ceiling on ceremony.
-- Micro: inspect → change → one runnable check → receipt. Standard: brief acceptance, RED/GREEN where applicable, affected tests, focused review, receipt.
-- Critical triggers: auth/secrets; money; persisted data/migrations/deletion; security/privacy; concurrency/order/idempotency; install/deploy/rollback; irreversible work; broad public contracts.
-- File count, file type, `medium+`, and release status do not select a lane.
 - A logic test never seen failing is not proven sensitive. Never claim beyond the check run.
 - If the same final-style check fails twice for one cause, diagnose or report it; do not blind-retry.
 - Use `rigor-goals` only for cross-session work, handoffs, parallel agents, or an external wait.

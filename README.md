@@ -8,7 +8,7 @@
 
 A portable, evidence-first development and release workflow for AI coding agents. It
 contains the original workflow skills adapted from `codex-dev-rigor-stack`, plus a
-text-first BRAINSTORM entrypoint adapted from `obra/superpowers`, for 20 skills total. It runs without
+text-first BRAINSTORM entrypoint adapted from `obra/superpowers`, for 14 skills total. It runs without
 lifecycle hooks, a background runtime, trust activation, Stop interception, or a private
 evidence ledger. Two drift-resistance layers **install by default with everything else**:
 a small **anchor block** for the host's persistent instructions file, and **rigor-goals**,
@@ -30,7 +30,7 @@ the discipline's memory into places that do not decay:
 
 | Tier | What | Force | Why it resists drift |
 |---|---|---|---|
-| 1 | The 20 skills | none — invoked knowledge | — |
+| 1 | The 14 skills | none — invoked knowledge | — |
 | 2 | Anchor block in `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` | persistent reminder | the instructions remain in session context and reload at host-defined boundaries; Claude Code also re-injects root `CLAUDE.md` after compaction |
 | 3 | `rigor-goals` CLI | hard state transitions at "done" | state lives in `./.rigor/` on disk — survives compaction and session death; the *refusal* is a program, not a prompt (what it checks is that evidence is named and recorded — see the precision note below) |
 
@@ -145,7 +145,7 @@ Adjust the tool path for the target you installed. See the
 Use `rigor-goals` only for cross-session work, handoffs, parallel agents, or an external
 wait. Ordinary same-session work does not need a durable plan.
 
-Installation copies only the 20 directories under `skills/`. Before writing anything, a
+Installation copies only the 14 directories under `skills/`. Before writing anything, a
 read-only preflight validates the target, all manifest-name collisions, the goals and anchor
 destinations, and the managed marker structure. Existing directories with the same names
 are refused unless `-Force` or `--force` is supplied; every preflight refusal leaves the
@@ -154,7 +154,7 @@ project unchanged.
 ### The anchor block and rigor-goals install by default
 
 A plain `./install.sh .claude/skills` (or the process-scoped PowerShell form above)
-installs all three tiers: the 20 skills, the `rigor-goals` tool, and the anchor block.
+installs all three tiers: the 14 skills, the `rigor-goals` tool, and the anchor block.
 Defaults are inferred from the target:
 
 | Target pattern | Default goals location | Default anchor location |
@@ -175,7 +175,7 @@ running the installer must never pass them on its own initiative.
 
 For an upgrade or same-version repair, acquire the intended source version and rerun the
 same command with `--force` or `-Force`. This replaces managed skill/tool bytes while
-preserving text outside the anchor markers. Safe removal must delete only the 20
+preserving text outside the anchor markers. Safe removal must delete only the 14
 manifest-owned skill directories, the one managed tool file, and the single
 marker-fenced anchor span; follow the preview-and-preserve procedure in the
 [manual](docs/manual.md).
@@ -276,13 +276,7 @@ durable as the files it lives in.
 - `dev-rigor-stack-lite` — route Micro, Standard, or Critical and coordinate applicable gates
 - `dev-rigor-stack-lite-brainstorm` — optional discovery for materially unresolved designs
 - `dev-rigor-stack-lite-plan`
-- `dev-rigor-stack-lite-build`
-- `dev-rigor-stack-lite-proof-gate`
-- `dev-rigor-stack-lite-audit-lite`
-- `dev-rigor-stack-lite-audit-team`
 - `dev-rigor-stack-lite-walkthrough`
-- `dev-rigor-stack-lite-visitor-audit`
-- `dev-rigor-stack-lite-gauntletgate`
 - `dev-rigor-stack-lite-merge-gate`
 - `dev-rigor-stack-lite-docs-gate`
 - `dev-rigor-stack-lite-continuity`

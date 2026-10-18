@@ -169,9 +169,9 @@ else:
         errors.append("anchor: end marker missing")
     if "rigor-goals" not in anchor_text:
         errors.append("anchor: must reference the rigor-goals tool (Tier 3 entry point)")
-    for marker in ("Micro:", "Standard:", "Critical triggers:", "cross-session"):
+    for marker in ("cross-session",):
         if marker not in anchor_text:
-            errors.append(f"anchor: proportional policy marker missing: {marker}")
+            errors.append(f"anchor: policy marker missing: {marker}")
     if "green merge is a checkpoint, not an exit" not in anchor_text:
         errors.append("anchor: continuing-engagement merge checkpoint rule missing")
     content_lines = [

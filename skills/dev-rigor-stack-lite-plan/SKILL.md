@@ -40,5 +40,5 @@ For Standard or Critical, produce:
 - rollback/checkpoint strategy for risky work;
 - owner decisions required, without inventing the owner's answer.
 
-The output must be directly consumable by `$dev-rigor-stack-lite-build`. Unknowns that could
+The output must be directly consumable by `$coder-tdd-qa-lite`. Unknowns that could
 materially change the implementation remain explicit; do not turn assumptions into facts.

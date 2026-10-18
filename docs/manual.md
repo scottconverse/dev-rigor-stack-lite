@@ -10,7 +10,7 @@ identity, placement, verification, repair, and removal procedures.
 
 A default installation adds three local tiers:
 
-1. the 20 directories named in `manifest.json`;
+1. the 14 directories named in `manifest.json`;
 2. `rigor_goals.py` in a tools directory beside the skills directory; and
 3. one marker-fenced anchor block in the host's instructions file.
 
@@ -109,7 +109,7 @@ agents.
 
 Before using the stack, confirm:
 
-- every one of the 20 manifest names exists under the skills target;
+- every one of the 14 manifest names exists under the skills target;
 - the expected `rigor_goals.py` file exists;
 - the expected host instructions file contains exactly one anchor begin marker
   and one end marker; and
@@ -146,7 +146,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Target ".clau
 ./install.sh .claude/skills --force
 ```
 
-Force replaces the 20 manifest-named skill directories, refreshes the goals
+Force replaces the 14 manifest-named skill directories, refreshes the goals
 file, and replaces the single managed anchor span. It preserves unrelated
 target entries and text outside the markers. The same-version command is a
 repair; a newer pinned source is an upgrade.
@@ -170,7 +170,7 @@ Do not remove the whole skills target, tools directory, or host instructions
 file. They may contain unrelated owner data. Do not use wildcards.
 
 Use the audited procedure in [Safe three-tier removal](#safe-three-tier-removal).
-It derives exactly 20 names from the matching pinned manifest, verifies that
+It derives exactly 14 names from the matching pinned manifest, verifies that
 installed skill bytes still match that source, refuses symbolic links, backs up
 and refuses a changed goals file, and removes only one verified marker-fenced
 anchor span. It preserves `./.rigor/` by default so project history is not
@@ -180,7 +180,7 @@ silently destroyed.
 
 ### Identity and acquisition
 
-`manifest.json` is the product version authority and owns the 20-skill
+`manifest.json` is the product version authority and owns the 14-skill
 inventory. For a Git acquisition, bind the work to all of the following:
 
 ```sh
@@ -240,8 +240,8 @@ $AnchorFile = "CLAUDE.md"
 
 $manifest = Get-Content -Raw -LiteralPath .\manifest.json | ConvertFrom-Json
 $names = @($manifest.skills)
-if ($manifest.skill_count -ne 20 -or $names.Count -ne 20) {
-  throw "manifest does not authorize exactly 20 skills"
+if ($manifest.skill_count -ne 14 -or $names.Count -ne 14) {
+  throw "manifest does not authorize exactly 14 skills"
 }
 $missing = @($names | Where-Object {
   -not (Test-Path -LiteralPath (Join-Path $Target $_) -PathType Container)
@@ -258,7 +258,7 @@ $end = ([regex]::Matches($anchorText, [regex]::Escape('<!-- /dev-rigor-lite anch
 if ($begin -ne 1 -or $end -ne 1) {
   throw "expected one anchor marker pair; found begin=$begin end=$end"
 }
-Write-Host "Verified 20 manifest skills, goals file, and one anchor pair"
+Write-Host "Verified 14 manifest skills, goals file, and one anchor pair"
 ```
 
 The equivalent Bash-hosted check uses Python's standard library:
@@ -275,15 +275,15 @@ import sys
 target, goals, anchor = map(pathlib.Path, sys.argv[1:])
 manifest = json.loads(pathlib.Path("manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
-assert manifest["skill_count"] == 20
-assert len(names) == len(set(names)) == 20
+assert manifest["skill_count"] == 14
+assert len(names) == len(set(names)) == 14
 missing = [name for name in names if not (target / name).is_dir()]
 assert not missing, f"missing skills: {missing}"
 assert goals.is_file(), f"missing goals file: {goals}"
 text = anchor.read_text(encoding="utf-8-sig")
 assert text.count("<!-- dev-rigor-lite anchor") == 1
 assert text.count("<!-- /dev-rigor-lite anchor -->") == 1
-print("Verified 20 manifest skills, goals file, and one anchor pair")
+print("Verified 14 manifest skills, goals file, and one anchor pair")
 PY
 ```
 
@@ -408,7 +408,7 @@ when the install lives outside the source checkout.
 
 Both procedures below enforce these preconditions before deletion:
 
-- `manifest.json` contains 20 unique, path-safe names and `skill_count` is 20;
+- `manifest.json` contains 14 unique, path-safe names and `skill_count` is 14;
 - each exact installed skill tree byte-matches the corresponding pinned source
   tree and is not a symbolic link or junction;
 - the skills target, goals file, and anchor file are real, non-linked entries;
@@ -625,8 +625,8 @@ Assert-PlainPath $sourceAnchor "pinned anchor file"
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $names = @($manifest.skills)
 $unique = @($names | Sort-Object -Unique)
-if ($manifest.skill_count -ne 20 -or $names.Count -ne 20 -or $unique.Count -ne 20) {
-  throw "manifest does not authorize exactly 20 unique skills"
+if ($manifest.skill_count -ne 14 -or $names.Count -ne 14 -or $unique.Count -ne 14) {
+  throw "manifest does not authorize exactly 14 unique skills"
 }
 foreach ($name in $names) {
   if ($name -cnotmatch '^[a-z0-9][a-z0-9-]*$') {
@@ -755,7 +755,7 @@ $after = [IO.File]::ReadAllText($anchorPath)
 if ($after.Contains($beginMarker) -or $after.Contains($endMarker)) {
   throw "managed marker remains"
 }
-Write-Host "Removed exactly 20 verified skill directories, one goals file, and one anchor span."
+Write-Host "Removed exactly 14 verified skill directories, one goals file, and one anchor span."
 Write-Host ".rigor and all parent directories were preserved."
 ```
 
@@ -821,8 +821,8 @@ if os.path.samefile(anchor, source_anchor):
 
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
-assert manifest["skill_count"] == 20
-assert len(names) == len(set(names)) == 20
+assert manifest["skill_count"] == 14
+assert len(names) == len(set(names)) == 14
 assert all(re.fullmatch(r"[a-z0-9][a-z0-9-]*", name) for name in names)
 print("The following exact skill directories will be removed:")
 for name in names:
@@ -890,8 +890,8 @@ if os.path.samefile(anchor, source_anchor):
 
 manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
 names = manifest["skills"]
-if manifest.get("skill_count") != 20 or len(names) != 20 or len(set(names)) != 20:
-    raise SystemExit("manifest does not authorize exactly 20 unique skills")
+if manifest.get("skill_count") != 14 or len(names) != 14 or len(set(names)) != 14:
+    raise SystemExit("manifest does not authorize exactly 14 unique skills")
 if not all(re.fullmatch(r"[a-z0-9][a-z0-9-]*", name) for name in names):
     raise SystemExit("manifest contains an unsafe skill name")
 
@@ -980,7 +980,7 @@ if goals.exists():
 after = anchor.read_text(encoding="utf-8-sig")
 if begin in after or end in after:
     raise SystemExit("managed marker remains")
-print("Removed exactly 20 verified skill directories, one goals file, and one anchor span.")
+print("Removed exactly 14 verified skill directories, one goals file, and one anchor span.")
 print(".rigor and all parent directories were preserved.")
 PY
 ```

@@ -41,10 +41,10 @@ def copy_removal_fixture_source(destination: Path) -> None:
 
 
 class ReleaseContractTests(unittest.TestCase):
-    def test_manifest_declares_0_7_0_and_twenty_skills(self):
+    def test_manifest_declares_0_7_0_and_fourteen_skills(self):
         self.assertEqual(MANIFEST["version"], "0.7.0")
-        self.assertEqual(MANIFEST["skill_count"], 20)
-        self.assertEqual(len(MANIFEST["skills"]), 20)
+        self.assertEqual(MANIFEST["skill_count"], 14)
+        self.assertEqual(len(MANIFEST["skills"]), 14)
         self.assertIn("dev-rigor-stack-lite-brainstorm", MANIFEST["skills"])
 
     def test_brainstorm_contract_covers_activation_approval_and_handoff(self):
@@ -307,16 +307,16 @@ class ReleaseContractTests(unittest.TestCase):
     def test_current_public_version_and_count_are_not_stale(self):
         authoritative_markers = {
             "README.md": (
-                "for 20 skills total",
+                "for 14 skills total",
                 "git clone --branch v0.7.0",
             ),
             "docs/manual.md": (
-                "owns the 20-skill",
+                "owns the 14-skill",
                 "git checkout --detach v0.7.0",
             ),
             "docs/index.html": (
                 '<span class="v">v0.7.0</span>',
-                "<h3>The 20 skills</h3>",
+                "<h3>The 14 skills</h3>",
             ),
         }
         legacy_count = str(MANIFEST["skill_count"] - 1)

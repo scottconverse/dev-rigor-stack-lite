@@ -11,7 +11,7 @@ evidence ledger.
 flowchart LR
     Source["Pinned source or release archive"] --> Installer["install.ps1 or install.sh"]
     Owner["Human owner"] --> Installer
-    Installer --> Skills["20 skill directories"]
+    Installer --> Skills["14 skill directories"]
     Installer --> Goals["tools/rigor_goals.py"]
     Installer --> Anchor["Managed block in host instructions"]
     Skills --> Host["Agent host"]
@@ -24,7 +24,7 @@ flowchart LR
 ```
 
 Text fallback: a human runs one of the installers from pinned source. The
-installer copies the 20 skill directories, one Python tool, and one
+installer copies the 14 skill directories, one Python tool, and one
 marker-fenced block in a host instructions file. The host reads the skills and
 anchor. For cross-session work, handoffs, parallel agents, or external waits, the
 operator invokes the goals tool, which writes project-local state under `./.rigor/`.

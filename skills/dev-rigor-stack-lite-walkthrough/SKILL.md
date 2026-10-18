@@ -206,7 +206,7 @@ Missing denominators, missing artifacts, a contaminated blind pass, or unverifie
 state makes full coverage INVALID. A gap is never a pass.
 
 When invoked alone, emit a standalone Walkthrough report and PARTIAL CHECK relative to
-the overall release gate. When invoked by `$dev-rigor-stack-lite-gauntletgate`, provide the
+the overall release gate. When invoked by `$gauntletgate-lite`, provide the
 attestation, acquisition evidence, coverage ledger, findings, first-run verdict, and
 machine-readable gate result. Under the default stack policy, advancement and release
 closure require valid applicable coverage and an empty `blocking_findings` list. Literal
